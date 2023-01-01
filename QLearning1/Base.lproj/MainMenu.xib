@@ -21,10 +21,7 @@
         <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
         <viewController id="a1R-tO-5DS" customClass="MyViewController">
             <connections>
-                <outlet property="resetItem" destination="ghb-zP-ATY" id="aO5-BG-V98"/>
-                <outlet property="resetMenuItem" destination="I2C-MS-5NY" id="5eR-aM-jRb"/>
                 <outlet property="startStopItem" destination="Lzv-6U-ndk" id="zuu-R7-3t5"/>
-                <outlet property="startStopMenuItem" destination="UhA-84-zGi" id="U7Y-ew-BoB"/>
                 <outlet property="view" destination="EiT-Mj-1SZ" id="vBi-nN-TV0"/>
             </connections>
         </viewController>
@@ -128,9 +125,9 @@
                         </items>
                     </menu>
                 </menuItem>
-                <menuItem title="Run" id="bxb-iI-qZU">
+                <menuItem title="Run/View" id="bxb-iI-qZU">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Run" id="Z4f-OF-CYf">
+                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
                         <items>
                             <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
                                 <connections>
@@ -140,6 +137,12 @@
                             <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
                                 <connections>
                                     <action selector="reset:" target="a1R-tO-5DS" id="orW-XT-a4T"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
+                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
+                                <connections>
+                                    <action selector="fullScreen:" target="a1R-tO-5DS" id="XE6-Oo-rdx"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -190,14 +193,17 @@
             </items>
             <point key="canvasLocation" x="104" y="-38"/>
         </menu>
-        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
+        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" toolbarStyle="expanded" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="900" height="600"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
-            <view key="contentView" id="EiT-Mj-1SZ" customClass="MTKView">
+            <rect key="screenRect" x="0.0" y="0.0" width="1800" height="1125"/>
+            <view key="contentView" id="EiT-Mj-1SZ" customClass="MyMTKView">
                 <rect key="frame" x="0.0" y="0.0" width="900" height="600"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                <connections>
+                    <outlet property="myMenu" destination="OJ2-Jj-caX" id="Mv3-00-nGQ"/>
+                </connections>
             </view>
             <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="avF-sr-rj5">
                 <allowedToolbarItems>
@@ -214,12 +220,24 @@
                             <action selector="reset:" target="a1R-tO-5DS" id="MLa-5R-ois"/>
                         </connections>
                     </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full screen" paletteLabel="Full screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="IhZ-h8-P9r">
+                        <connections>
+                            <action selector="fullScreen:" target="a1R-tO-5DS" id="hcR-2Q-t0C"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="C53029BD-8EB4-49C3-9D27-47305EEFD3AA" label="Preferences" paletteLabel="Preferences" tag="-1" image="NSPreferencesGeneral" bordered="YES" sizingBehavior="auto" id="BhP-ze-i4B">
+                        <connections>
+                            <action selector="openControlPanel:" target="Voe-Tx-rLC" id="bNQ-Ac-xbi"/>
+                        </connections>
+                    </toolbarItem>
                 </allowedToolbarItems>
                 <defaultToolbarItems>
+                    <toolbarItem reference="qfq-nw-xyW"/>
                     <toolbarItem reference="Lzv-6U-ndk"/>
                     <toolbarItem reference="ghb-zP-ATY"/>
-                    <toolbarItem reference="qfq-nw-xyW"/>
-                    <toolbarItem reference="0ft-s6-skl"/>
+                    <toolbarItem reference="gjN-vZ-8ZT"/>
+                    <toolbarItem reference="IhZ-h8-P9r"/>
+                    <toolbarItem reference="BhP-ze-i4B"/>
                 </defaultToolbarItems>
             </toolbar>
             <connections>
@@ -227,8 +245,33 @@
             </connections>
             <point key="canvasLocation" x="82.5" y="463.5"/>
         </window>
+        <menu id="OJ2-Jj-caX">
+            <items>
+                <menuItem title="Start" id="paa-4S-J2M">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="startStop:" target="a1R-tO-5DS" id="61n-4n-3BG"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Reset" id="8bh-zu-GDe">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="reset:" target="a1R-tO-5DS" id="Ujf-hE-rZs"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Full Screen" id="Krw-qM-wcF">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="fullScreen:" target="a1R-tO-5DS" id="nC9-KZ-e7L"/>
+                    </connections>
+                </menuItem>
+            </items>
+            <point key="canvasLocation" x="-291" y="-120"/>
+        </menu>
     </objects>
     <resources>
+        <image name="NSEnterFullScreenTemplate" width="16" height="15"/>
+        <image name="NSPreferencesGeneral" width="32" height="32"/>
         <image name="backward.end.alt.fill" catalog="system" width="24" height="13"/>
         <image name="forward.frame.fill" catalog="system" width="17" height="13"/>
     </resources>

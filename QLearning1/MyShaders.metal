@@ -12,17 +12,20 @@ using namespace metal;
 // Shader for shapes, lines and polygons
 struct RasterizerData {
 	float4 position [[position]];
+	float4 color;
 };
 vertex RasterizerData vertexShader(uint vertexID [[vertex_id]],
 	constant vector_float2 *vertices [[buffer(IndexVertices)]],
+	constant vector_float4 *colors [[buffer(IndexColors)]],
+	constant uint *nv [[buffer(IndexNVforP)]],
 	constant vector_float4 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerData out = {{0.,0.,0.,1.}};
     out.position.xy = (vertices[vertexID] + geomFactor->xy) / geomFactor->zw * 2. - 1.;
+    out.color = (*nv == 0)? *colors : colors[vertexID / *nv];
     return out;
 }
-fragment float4 fragmentShader(RasterizerData in [[stage_in]],
-	constant vector_float4 *rgba [[buffer(IndexColor)]]) {
-    return *rgba;
+fragment float4 fragmentShader(RasterizerData in [[stage_in]]) {
+    return in.color;
 }
 // Shader for texture
 struct RasterizerDataTex {

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
 		23214956295C6980001A40D3 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23214954295C6980001A40D3 /* ControlPanel.xib */; };
 		232521712956BB7900159F30 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521702956BB7900159F30 /* AppDelegate.m */; };
 		232521732956BB7A00159F30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 232521722956BB7A00159F30 /* Assets.xcassets */; };
@@ -18,6 +19,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		23214955295C6980001A40D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
 		2325216C2956BB7900159F30 /* QLearning1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QLearning1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2325216F2956BB7900159F30 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -30,6 +32,7 @@
 		232521802956BBF700159F30 /* Agent.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Agent.m; sourceTree = "<group>"; };
 		232521822956C38D00159F30 /* Display.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Display.h; sourceTree = "<group>"; };
 		232521832956C38D00159F30 /* Display.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Display.m; sourceTree = "<group>"; };
+		23363EE6295F12540005A64D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		233DF0A0295B109C00F9F20C /* MyShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = MyShaders.metal; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -48,6 +51,7 @@
 		232521632956BB7900159F30 = {
 			isa = PBXGroup;
 			children = (
+				23363EE6295F12540005A64D /* README.md */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
 				2325216D2956BB7900159F30 /* Products */,
 			);
@@ -77,6 +81,7 @@
 				232521792956BB7A00159F30 /* QLearning1.entitlements */,
 				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
 				237780B3295BF81100789534 /* VecTypes.h */,
+				230F43A8296028AA006513E2 /* Credits.rtf */,
 			);
 			path = QLearning1;
 			sourceTree = "<group>";
@@ -141,6 +146,7 @@
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
+				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -298,11 +304,11 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -324,11 +330,11 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
 				LD_RUNPATH_SEARCH_PATHS = (

@@ -75,6 +75,11 @@ typedef struct {
 		(mem.reward + Gamma * maxQ - QTable[mem.y][mem.x][mem.action]) * Alpha;
 }
 - (void)oneStep {
+	if (x == GoalP[0] && y == GoalP[1]) {
+		T += (T1 - T) * CoolingRate;
+		[self restart];
+		return;
+	}
 	int action = [self policy];
 	int newx = x + Move[action][0];
 	int newy = y + Move[action][1];
@@ -85,9 +90,6 @@ typedef struct {
 	if (mem.count > MemSize) [mem removeObjectsInRange:(NSRange){0, mem.count - MemSize}];
 	for (int i = 0; i < MemTrials; i ++)
 		[self learn:mem[lrand48() % mem.count].memoryValue];
-	if (newx == GoalP[0] && newy == GoalP[1]) {
-		if (T > T1) T -= (T - T1) * CoolingRate;
-		[self restart];
-	} else { x = newx; y = newy; }
+	x = newx; y = newy;
 }
 @end

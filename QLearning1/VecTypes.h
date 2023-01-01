@@ -11,11 +11,12 @@
 // Input data indices for vertex shaders
 enum {
 	IndexVertices,
+	IndexColors,
+	IndexNVforP,
 	IndexGeomFactor
 };
 // Input data indices for fragment shaders
 enum {
-	IndexColor,
 	IndexTexture
 };
 
