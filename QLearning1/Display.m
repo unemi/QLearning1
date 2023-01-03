@@ -10,7 +10,7 @@
 #import "AppDelegate.h"
 #import "VecTypes.h"
 #define NV_GRID ((NGridW + NGridH - 2) * 2)
-#define NTHREADS 8
+#define NTHREADS 16
 
 typedef struct {
   vector_float2 p, v, f;
@@ -95,6 +95,7 @@ static void particle_step(Particle *p) {
 	NSLock *vxBufLock, *ptclLock;
 	vector_uint2 viewportSize;
 	vector_float4 geomFactor;
+	float maxSpeed;
 	int nPtcls;
 	Particle *particles;
 }
@@ -179,8 +180,8 @@ static NSColor *color_with_comp(CGFloat *comp) {
 		particles = newPTCLs; nPtcls = NParticles;
 		colBuf = newColBuf;
 		vxBuf = newVxBuf;
-		[self setupParticleColors];
 		[self setupVertices];
+		[self setupParticleColors];
 	} @catch (id x) {}
 	[vxBufLock unlock];
 	[ptclLock unlock];
@@ -237,6 +238,11 @@ static NSColor *color_with_comp(CGFloat *comp) {
 	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		[self setupSymbolTex];
+		self->view.needsDisplay = YES;
+	}];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"colorParticles"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		[self setupParticleColors];
 		self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"nParticles"
@@ -309,26 +315,34 @@ static float grade_to_hue(float grade) {
 	}
 	return 5./6.;
 }
+static vector_float4 ptcl_hsb_color(void) {
+	CGFloat h, s, b, a;
+	[colParticles getHue:&h saturation:&s brightness:&b alpha:&a];
+	return (vector_float4){h, s, b, a};
+}
+static vector_float4 ptcl_rgb_color(Particle *p, vector_float4 hsba, float maxSpeed) {
+	return hsb_to_rgb((vector_float4){(ptclColorMode == PTCLangleColor)?
+			fmodf(atan2f(p->v.y, p->v.x) / (2 * M_PI) + hsba.x + 1.f, 1.f) :
+			grade_to_hue(simd_length(p->v) / maxSpeed),
+		(hsba.y + .1) * .5, hsba.z, hsba.w});
+}
+static vector_float2 particle_size(Particle *p) {
+	vector_float2 sz = (vector_float2){
+		TileSize * StrokeLength / 2., TileSize * StrokeWidth / 2.};
+	if (LifeSpan - p->life < 10) sz *= (LifeSpan - p->life) / 9.;
+	return sz;
+}
 - (void)setupParticleColors {
 	if (colBuf == nil) return;
-	vector_float4 *colors = colBuf.contents, agentHSB = {1., 1., 1., 1.};
-	CGFloat c[4];
-	[colParticles getHue:c saturation:c+1 brightness:c+2 alpha:c+3];
-	for (int i = 0; i < 4; i ++) agentHSB[i] = (float)c[i];
+	vector_float4 *colors = colBuf.contents, ptclHSB = ptcl_hsb_color();
 	for (int i = 0; i < NTHREADS; i ++) {
 		Particle *pStart = particles + i * nPtcls / NTHREADS;
 		vector_float4 *colorsStart = colors + i * nPtcls / NTHREADS;
 		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
 			nPtcls - nPtcls * (NTHREADS - 1) / NTHREADS;
 		[opeQue addOperationWithBlock:^{
-			for (int j = 0; j < unit; j ++) {
-				Particle *p = pStart + j;
-				colorsStart[j] = hsb_to_rgb((vector_float4){
-					(ptclColorMode == PTCLangleColor)?
-						fmodf(atan2f(p->v.y, p->v.x) / (2 * M_PI) + agentHSB.x + 1.f, 1.f) :
-						grade_to_hue(simd_length(p->v) / MaxSpeed / TileSize),
-						(agentHSB.y + .1) * .5, agentHSB.z, agentHSB.w});
-			}
+			for (int j = 0; j < unit; j ++)
+				colorsStart[j] = ptcl_rgb_color(pStart + j, ptclHSB, self->maxSpeed);
 		}];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
@@ -336,47 +350,49 @@ static float grade_to_hue(float grade) {
 - (void)setupVertices {
 	int nVpL = (int)(vxBuf.length / sizeof(vector_float2) / nPtcls);
 	vector_float2 *lines = vxBuf.contents;
+	float mxSpd[NTHREADS];
+	memset(mxSpd, 0, sizeof(mxSpd));
 	for (int i = 0; i < NTHREADS; i ++) {
 		Particle *pStart = particles + i * nPtcls / NTHREADS;
 		vector_float2 *lineStart = lines + i * nPtcls / NTHREADS * nVpL;
+		float *mxSpdP = mxSpd + i;
 		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
 			nPtcls - nPtcls * (NTHREADS - 1) / NTHREADS;
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++) {
 				Particle *p = pStart + j;
-				float len = TileSize * StrokeLength / 2.,
-					weight = TileSize * StrokeWidth / 2.;
-				if (LifeSpan - p->life < 10) {
-					float a = (LifeSpan - p->life) / 9.;
-					len *= a; weight *= a;
-				}
+				float spd = simd_length(p->v);
+				if (*mxSpdP < spd) *mxSpdP = spd;
+				vector_float2 sz = particle_size(p);
 				switch (nVpL) {
 					case 6: {
 						simd_float3x3 trs = trans_matrix(p);
 						vector_float2 *vp = lineStart + j * nVpL;
-						vp[0] = simd_mul(trs, (simd_float3){len, weight, 1.}).xy;
-						vp[1] = simd_mul(trs, (simd_float3){-len, weight, 1.}).xy;
-						vp[2] = simd_mul(trs, (simd_float3){len, -weight, 1.}).xy;
-						vp[3] = simd_mul(trs, (simd_float3){-len, -weight, 1.}).xy;
+						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
+						vp[1] = simd_mul(trs, (simd_float3){-sz.x, sz.y, 1.}).xy;
+						vp[2] = simd_mul(trs, (simd_float3){sz.x, -sz.y, 1.}).xy;
+						vp[3] = simd_mul(trs, (simd_float3){-sz.x, -sz.y, 1.}).xy;
 						vp[4] = vp[2]; vp[5] = vp[1];
 					} break;
 					case 3: {
 						simd_float3x3 trs = trans_matrix(p);
 						vector_float2 *vp = lineStart + j * nVpL;
-						vp[0] = simd_mul(trs, (simd_float3){len, weight, 1.}).xy;
-						vp[1] = simd_mul(trs, (simd_float3){-len, 0., 1.}).xy;
-						vp[2] = simd_mul(trs, (simd_float3){len, -weight, 1.}).xy;
+						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
+						vp[1] = simd_mul(trs, (simd_float3){-sz.x, 0., 1.}).xy;
+						vp[2] = simd_mul(trs, (simd_float3){sz.x, -sz.y, 1.}).xy;
 					} break;
 					case 2: {
 						float v = simd_length(p->v);
 						vector_float2 *vp = lineStart + j * nVpL;
-						vp[0] = p->p + p->v / v * len;
-						vp[1] = p->p - p->v / v * len;
+						vp[0] = p->p + p->v / v * sz.x;
+						vp[1] = p->p - p->v / v * sz.x;
 					}}
 			}
 		}];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
+	maxSpeed = fmaxf(mxSpd[0], TileSize * .005);
+	for (int i = 1; i < NTHREADS; i ++) if (maxSpeed < mxSpd[i]) maxSpeed = mxSpd[i];
 }
 - (void)reset {
 	if (particles != NULL) {
@@ -485,7 +501,7 @@ static float grade_to_hue(float grade) {
 	[rndrEnc endEncoding];
 	[cmdBuf presentDrawable:view.currentDrawable];
 	[cmdBuf commit];
-	[cmdBuf waitUntilCompleted];
+//	[cmdBuf waitUntilCompleted];
 	[vxBufLock unlock];
 }
 - (void)oneStep {
@@ -505,11 +521,175 @@ static float grade_to_hue(float grade) {
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
 	[vxBufLock lock];
-	[self setupParticleColors];
 	[self setupVertices];
+	[self setupParticleColors];
 	[vxBufLock unlock];
 	[ptclLock unlock];
 	NSView *v = view;
 	dispatch_async(dispatch_get_main_queue(), ^{ v.needsDisplay = YES; });
+}
+//
+- (Agent *)agent { return agent; }
+- (Particle *)particles { return particles; }
+- (int)nParticles { return nPtcls; }
+@end
+
+@implementation MyViewForCG {
+	Display *display;
+	NSBitmapImageRep *imgCache;
+}
+- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp {
+	if (!(self = [super initWithFrame:frameRect])) return nil;
+	display = disp;
+	return self;
+}
+static void draw_symbol(NSString *str, NSDictionary *attr, int p[2]) {
+	NSSize size = [str sizeWithAttributes:attr];
+	[str drawAtPoint:(NSPoint){
+		p[0] * TileSize + (TileSize - size.width) / 2.,
+		p[1] * TileSize + (TileSize - size.height) / 2.} withAttributes:attr];
+}
+static NSPoint trans_point(simd_float3x3 trs, float x, float y) {
+	simd_float3 p = simd_mul(trs, (simd_float3){x, y, 1.});
+	return (NSPoint){p.x, p.y};
+}
+static void set_particle_path(Particle *p, NSBezierPath *path) {
+	vector_float2 sz = particle_size(p);
+	[path removeAllPoints];
+	switch (ptclDrawMethod) {
+		case PTCLbyLines: {
+			vector_float2 vv = p->v / simd_length(p->v) * sz.x, pp = p->p - vv;
+			[path moveToPoint:(NSPoint){pp.x, pp.y}];
+			pp = p->p + p->v / simd_length(p->v) * sz.x;
+			[path lineToPoint:(NSPoint){pp.x, pp.y}];
+		} break;
+		case PTCLbyTriangles: {
+			simd_float3x3 trs = trans_matrix(p);
+			[path moveToPoint:trans_point(trs, sz.x, sz.y)];
+			[path lineToPoint:trans_point(trs, -sz.x, 0.)];
+			[path lineToPoint:trans_point(trs, sz.x, -sz.y)];
+		} break;
+		case PTCLbyRectangles: {
+			simd_float3x3 trs = trans_matrix(p);
+			[path moveToPoint:trans_point(trs, sz.x, sz.y)];
+			[path lineToPoint:trans_point(trs, -sz.x, sz.y)];
+			[path lineToPoint:trans_point(trs, -sz.x, -sz.y)];
+			[path lineToPoint:trans_point(trs, sz.x, -sz.y)];
+		}
+	}
+}
+static void draw_particle(NSColor *color, NSBezierPath *path) {
+	if (ptclDrawMethod == PTCLbyLines) {
+		[color setStroke];
+		[path stroke];
+	} else {
+		[color setFill];
+		[path fill];
+	}
+}
+- (void)drawByCoreGraphics {
+	NSSize pSize = self.bounds.size;
+	CGFloat whRate = pSize.width / pSize.height;
+	BOOL rotate = NO;
+	if (whRate < 1.) {
+		whRate = 1. / whRate;
+		rotate = YES;
+		CGFloat d = pSize.width; pSize.width = pSize.height; pSize.height = d;
+	}
+	NSPoint offset = {0., 0.};
+	CGFloat scale = 1.;
+	if (whRate > (CGFloat)NGridW / NGridH) {
+		scale = pSize.height / (NGridH * TileSize);
+		offset.x = (pSize.width - NGridW * TileSize * scale) / 2.;
+	} else {
+		scale = pSize.width / (NGridW * TileSize);
+		offset.y = (pSize.height - NGridH * TileSize * scale) / 2.;
+	}
+	[[NSColor colorWithWhite:0. alpha:0.] setFill];
+	[NSBezierPath fillRect:self.bounds];
+	NSAffineTransform *trans = NSAffineTransform.transform;
+	if (rotate) {
+		[trans rotateByDegrees:90.];
+		[trans translateXBy:0. yBy:-pSize.height];
+	}
+	[trans scaleBy:scale];
+	[trans translateXBy:offset.x yBy:offset.y];
+	[trans concat];
+	// background
+	[colBackground setFill];
+	[NSBezierPath fillRect:(NSRect){0., 0., NGridW * TileSize, NGridH * TileSize}];
+	// Obstacles
+	NSBezierPath *path = NSBezierPath.new;
+	NSRect obstRect = {0., 0., TileSize, TileSize};
+	for (int i = 0; i < NObstacles; i ++) {
+		obstRect.origin = (NSPoint){ObsP[i][0] * TileSize, ObsP[i][1] * TileSize};
+		[path appendBezierPathWithRect:obstRect];
+	}
+	[colObstacles setFill];
+	[path fill];
+	// Agent
+	int ix, iy;
+	[display.agent getPositionX:&ix Y:&iy];
+	[colAgent setFill];
+	[[NSBezierPath bezierPathWithOvalInRect:(NSRect)
+		{(ix + .05) * TileSize, (iy + .05) * TileSize, TileSize * .9, TileSize * .9}] fill];
+	// Symbols
+	NSDictionary *attr = @{NSFontAttributeName:[NSFont userFontOfSize:TileSize / 2],
+		NSForegroundColorAttributeName:colSymbols};
+	draw_symbol(@"S", attr, StartP);
+	draw_symbol(@"G", attr, GoalP);
+	// Grid lines
+	[path removeAllPoints];
+	for (int i = 1; i < NGridH; i ++) {
+		[path moveToPoint:(NSPoint){0., i * TileSize}];
+		[path relativeLineToPoint:(NSPoint){NGridW * TileSize, 0}];
+	}
+	for (int i = 1; i < NGridW; i ++) {
+		[path moveToPoint:(NSPoint){i * TileSize, 0.}];
+		[path relativeLineToPoint:(NSPoint){0., NGridH * TileSize}];
+	}
+	[colGridLines setStroke];
+	[path stroke];
+	// Particles
+	Particle *particles = display.particles;
+	int np = display.nParticles;
+	float maxSpeed = TileSize * .005;
+	switch (ptclColorMode) {
+		case PTCLconstColor:
+		for (int i = 0; i < np; i ++) {
+			set_particle_path(particles + i, path);
+			draw_particle(colParticles, path);
+		} break;
+		case PTCLspeedColor:
+		for (int i = 0; i < np; i ++) {
+			float spd = simd_length(particles[i].v);
+			if (maxSpeed < spd) maxSpeed = spd;
+		}
+		case PTCLangleColor: {
+			vector_float4 ptclHSB = ptcl_hsb_color();
+			for (int i = 0; i < np; i ++) {
+				Particle *p = particles + i;
+				set_particle_path(p, path);
+				vector_float4 vc = ptcl_rgb_color(p, ptclHSB, maxSpeed);
+				draw_particle([NSColor colorWithRed:vc.x green:vc.y blue:vc.z alpha:vc.w], path);
+			}
+		}
+	}
+}
+- (void)drawRect:(NSRect)rect {
+	if ([NSGraphicsContext.currentContext.attributes
+		[NSGraphicsContextRepresentationFormatAttributeName]
+		isEqualToString:NSGraphicsContextPDFFormat]) [self drawByCoreGraphics];
+	else {
+		if (imgCache == nil) {
+			imgCache = [self bitmapImageRepForCachingDisplayInRect:self.bounds];
+			NSGraphicsContext *orgCtx = NSGraphicsContext.currentContext;
+			NSGraphicsContext.currentContext =
+				[NSGraphicsContext graphicsContextWithBitmapImageRep:imgCache];
+			[self drawByCoreGraphics];
+			NSGraphicsContext.currentContext = orgCtx;
+		}
+		[imgCache draw];
+	}
 }
 @end

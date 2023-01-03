@@ -52,7 +52,7 @@ ColVarInfo ColVars[] = {
 	{ @"colorAgent", &colAgent, nil, 0 },
 	{ @"colorGridLines", &colGridLines, nil, 0 },
 	{ @"colorSymbols", &colSymbols, nil, ShouldPostNotification },
-	{ @"colorParticles", &colParticles, nil, 0 },
+	{ @"colorParticles", &colParticles, nil, ShouldPostNotification },
 	{ nil }
 };
 static void for_all_int_vars(void (^block)(IntVarInfo *p)) {
@@ -141,6 +141,26 @@ static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
 		[self.view enterFullScreenMode:screen
 			withOptions:@{NSFullScreenModeAllScreens:@NO}];
 	} else [self.view exitFullScreenModeWithOptions:nil];
+}
+- (IBAction)print:(id)sender {
+	NSPrintInfo *prInfo = NSPrintInfo.sharedPrintInfo;
+	NSRect pb = prInfo.imageablePageBounds;
+	NSSize pSize = prInfo.paperSize;
+	prInfo.topMargin = pSize.height - NSMaxY(pb);
+	prInfo.bottomMargin = pb.origin.y;
+	prInfo.leftMargin = pb.origin.x;
+	prInfo.rightMargin = pSize.width - NSMaxX(pb);
+	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb display:display];
+	NSPrintOperation *prOpe = [NSPrintOperation printOperationWithView:view printInfo:prInfo];
+	[prOpe runOperation];
+}
+- (IBAction)copy:(id)sender {
+	NSRect frame = {0., 0., NGridW * TileSize, NGridH * TileSize};
+	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame display:display];
+	NSData *data = [view dataWithPDFInsideRect:frame];
+	NSPasteboard *pb = NSPasteboard.generalPasteboard;
+	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];
+	[pb setData:data forType:NSPasteboardTypePDF];
 }
 - (void)windowWillClose:(NSNotification *)notification {
 	if (notification.object == self.view.window)

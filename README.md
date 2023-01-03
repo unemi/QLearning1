@@ -7,4 +7,4 @@ Thanks to Metal framework to utilize GPU power, it runs more than 100,000 partic
 smoothly on Apple M1/M2 machines. 
 
 ---
-Dec. 30, 2022.
+Created Dec. 30, 2022, Modified Jan. 3, 2023.

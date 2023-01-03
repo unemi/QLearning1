@@ -27,4 +27,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)oneStep;
 @end
 
+@interface MyViewForCG : NSView
+- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp;
+@end
+
 NS_ASSUME_NONNULL_END

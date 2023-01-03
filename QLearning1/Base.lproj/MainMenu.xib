@@ -75,6 +75,39 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Run/View" id="bxb-iI-qZU">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
+                        <items>
+                            <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
+                                <connections>
+                                    <action selector="startStop:" target="a1R-tO-5DS" id="MSe-Wp-XmC"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
+                                <connections>
+                                    <action selector="reset:" target="a1R-tO-5DS" id="orW-XT-a4T"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
+                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
+                                <connections>
+                                    <action selector="fullScreen:" target="a1R-tO-5DS" id="XE6-Oo-rdx"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Page Setup ..." keyEquivalent="P" id="9Ey-dF-YVl">
+                                <connections>
+                                    <action selector="runPageLayout:" target="-1" id="h0v-8X-XJA"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Print" keyEquivalent="p" id="DEr-WN-rDI">
+                                <connections>
+                                    <action selector="print:" target="a1R-tO-5DS" id="sKO-nG-2ob"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="Edit" id="5QF-Oa-p0T">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Edit" id="W48-6f-4Dl">
@@ -105,12 +138,6 @@
                                     <action selector="paste:" target="-1" id="UvS-8e-Qdg"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Paste and Match Style" keyEquivalent="V" id="WeT-3V-zwk">
-                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
-                                <connections>
-                                    <action selector="pasteAsPlainText:" target="-1" id="cEh-KX-wJQ"/>
-                                </connections>
-                            </menuItem>
                             <menuItem title="Delete" id="pa3-QI-u2k">
                                 <modifierMask key="keyEquivalentModifierMask"/>
                                 <connections>
@@ -120,29 +147,6 @@
                             <menuItem title="Select All" keyEquivalent="a" id="Ruw-6m-B2m">
                                 <connections>
                                     <action selector="selectAll:" target="-1" id="VNm-Mi-diN"/>
-                                </connections>
-                            </menuItem>
-                        </items>
-                    </menu>
-                </menuItem>
-                <menuItem title="Run/View" id="bxb-iI-qZU">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
-                        <items>
-                            <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
-                                <connections>
-                                    <action selector="startStop:" target="a1R-tO-5DS" id="MSe-Wp-XmC"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
-                                <connections>
-                                    <action selector="reset:" target="a1R-tO-5DS" id="orW-XT-a4T"/>
-                                </connections>
-                            </menuItem>
-                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
-                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
-                                <connections>
-                                    <action selector="fullScreen:" target="a1R-tO-5DS" id="XE6-Oo-rdx"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -168,13 +172,6 @@
                                     <action selector="performZoom:" target="-1" id="MhG-UO-OiS"/>
                                 </connections>
                             </menuItem>
-                            <menuItem isSeparatorItem="YES" id="1DL-rZ-b5y"/>
-                            <menuItem title="Bring All to Front" id="WAw-KW-2ma">
-                                <modifierMask key="keyEquivalentModifierMask"/>
-                                <connections>
-                                    <action selector="arrangeInFront:" target="-1" id="aj2-2r-dUX"/>
-                                </connections>
-                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>
@@ -193,11 +190,11 @@
             </items>
             <point key="canvasLocation" x="104" y="-38"/>
         </menu>
-        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" toolbarStyle="expanded" id="QvC-M9-y7g">
+        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" tabbingMode="disallowed" toolbarStyle="expanded" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="335" y="390" width="900" height="600"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1800" height="1125"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
             <view key="contentView" id="EiT-Mj-1SZ" customClass="MyMTKView">
                 <rect key="frame" x="0.0" y="0.0" width="900" height="600"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
@@ -207,7 +204,6 @@
             </view>
             <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="avF-sr-rj5">
                 <allowedToolbarItems>
-                    <toolbarItem implicitItemIdentifier="NSToolbarPrintItem" id="0ft-s6-skl"/>
                     <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="gjN-vZ-8ZT"/>
                     <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="qfq-nw-xyW"/>
                     <toolbarItem implicitItemIdentifier="2F685F69-59DB-4D4E-811E-BA40BE27BE1C" label="Start" paletteLabel="Start" tag="-1" image="forward.frame.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="Lzv-6U-ndk">
@@ -230,6 +226,11 @@
                             <action selector="openControlPanel:" target="Voe-Tx-rLC" id="bNQ-Ac-xbi"/>
                         </connections>
                     </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="B579AE39-D9E9-40D2-ACCE-86FDCE353DA8" label="Print" paletteLabel="Print" tag="-1" image="printer" catalog="system" bordered="YES" sizingBehavior="auto" id="gAt-Db-TGc">
+                        <connections>
+                            <action selector="print:" target="a1R-tO-5DS" id="Ybp-jN-IEd"/>
+                        </connections>
+                    </toolbarItem>
                 </allowedToolbarItems>
                 <defaultToolbarItems>
                     <toolbarItem reference="qfq-nw-xyW"/>
@@ -238,6 +239,7 @@
                     <toolbarItem reference="gjN-vZ-8ZT"/>
                     <toolbarItem reference="IhZ-h8-P9r"/>
                     <toolbarItem reference="BhP-ze-i4B"/>
+                    <toolbarItem reference="gAt-Db-TGc"/>
                 </defaultToolbarItems>
             </toolbar>
             <connections>
@@ -274,5 +276,6 @@
         <image name="NSPreferencesGeneral" width="32" height="32"/>
         <image name="backward.end.alt.fill" catalog="system" width="24" height="13"/>
         <image name="forward.frame.fill" catalog="system" width="17" height="13"/>
+        <image name="printer" catalog="system" width="18" height="16"/>
     </resources>
 </document>
