@@ -21,8 +21,16 @@
         <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
         <viewController id="a1R-tO-5DS" customClass="MyViewController">
             <connections>
+                <outlet property="fullScreenItem" destination="IhZ-h8-P9r" id="0uj-US-bAa"/>
+                <outlet property="goalCntDgt" destination="KVt-ww-Otg" id="9oR-YR-wXQ"/>
+                <outlet property="goalCntItem" destination="P0X-4o-iS1" id="7R2-jI-6fM"/>
+                <outlet property="goalCntView" destination="uwq-XZ-0Kj" id="0t3-Ke-SuE"/>
+                <outlet property="recordView" destination="4EA-Zq-jdE" id="LkS-uU-DoT"/>
                 <outlet property="startStopItem" destination="Lzv-6U-ndk" id="zuu-R7-3t5"/>
-                <outlet property="view" destination="EiT-Mj-1SZ" id="vBi-nN-TV0"/>
+                <outlet property="stepsDgt" destination="MmC-xA-UFI" id="wMc-Ge-dJc"/>
+                <outlet property="stepsItem" destination="NDm-hH-S2U" id="W5W-v2-7qd"/>
+                <outlet property="stepsView" destination="UiD-WU-hD3" id="USC-gl-LLL"/>
+                <outlet property="view" destination="MOQ-1S-cD8" id="OY5-7u-Ltj"/>
             </connections>
         </viewController>
         <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
@@ -193,13 +201,23 @@
         <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" tabbingMode="disallowed" toolbarStyle="expanded" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="900" height="600"/>
+            <rect key="contentRect" x="335" y="390" width="960" height="540"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
-            <view key="contentView" id="EiT-Mj-1SZ" customClass="MyMTKView">
-                <rect key="frame" x="0.0" y="0.0" width="900" height="600"/>
+            <view key="contentView" id="EiT-Mj-1SZ" customClass="MyContentView">
+                <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
                 <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                <subviews>
+                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="MOQ-1S-cD8" customClass="MTKView">
+                        <rect key="frame" x="0.0" y="0.0" width="810" height="540"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                    </customView>
+                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="4EA-Zq-jdE" customClass="RecordView">
+                        <rect key="frame" x="810" y="0.0" width="150" height="540"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
+                    </customView>
+                </subviews>
                 <connections>
-                    <outlet property="myMenu" destination="OJ2-Jj-caX" id="Mv3-00-nGQ"/>
+                    <outlet property="menu" destination="OJ2-Jj-caX" id="Dm2-rr-8KL"/>
                 </connections>
             </view>
             <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="avF-sr-rj5">
@@ -216,7 +234,7 @@
                             <action selector="reset:" target="a1R-tO-5DS" id="MLa-5R-ois"/>
                         </connections>
                     </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full screen" paletteLabel="Full screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="IhZ-h8-P9r">
+                    <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full Screen On" paletteLabel="Full Screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="IhZ-h8-P9r">
                         <connections>
                             <action selector="fullScreen:" target="a1R-tO-5DS" id="hcR-2Q-t0C"/>
                         </connections>
@@ -231,8 +249,13 @@
                             <action selector="print:" target="a1R-tO-5DS" id="Ybp-jN-IEd"/>
                         </connections>
                     </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="DE6FFF5D-6246-4B23-9BF0-26142BCF07C5" label="" paletteLabel="Steps" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="NDm-hH-S2U"/>
+                    <toolbarItem implicitItemIdentifier="08115387-E67F-4F25-AFFD-E29C8E16272C" label="" paletteLabel="Goals" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="P0X-4o-iS1"/>
                 </allowedToolbarItems>
                 <defaultToolbarItems>
+                    <toolbarItem reference="gjN-vZ-8ZT"/>
+                    <toolbarItem reference="NDm-hH-S2U"/>
+                    <toolbarItem reference="P0X-4o-iS1"/>
                     <toolbarItem reference="qfq-nw-xyW"/>
                     <toolbarItem reference="Lzv-6U-ndk"/>
                     <toolbarItem reference="ghb-zP-ATY"/>
@@ -245,7 +268,7 @@
             <connections>
                 <outlet property="delegate" destination="a1R-tO-5DS" id="Fqx-nf-x01"/>
             </connections>
-            <point key="canvasLocation" x="82.5" y="463.5"/>
+            <point key="canvasLocation" x="7" y="463"/>
         </window>
         <menu id="OJ2-Jj-caX">
             <items>
@@ -270,6 +293,66 @@
             </items>
             <point key="canvasLocation" x="-291" y="-120"/>
         </menu>
+        <customView id="UiD-WU-hD3">
+            <rect key="frame" x="0.0" y="0.0" width="103" height="19"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <subviews>
+                <textField verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="MmC-xA-UFI">
+                    <rect key="frame" x="40" y="3" width="4" height="13"/>
+                    <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" selectable="YES" allowsUndo="NO" sendsActionOnEndEditing="YES" state="on" usesSingleLineMode="YES" id="chR-kr-g89">
+                        <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="nip-p3-n5c"/>
+                        <font key="font" size="11" name="Menlo-Regular"/>
+                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="lhJ-MS-WjV">
+                    <rect key="frame" x="-2" y="3" width="38" height="14"/>
+                    <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" title="Steps:" id="GEh-bz-IQI">
+                        <font key="font" metaFont="smallSystem"/>
+                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+            </subviews>
+            <constraints>
+                <constraint firstItem="MmC-xA-UFI" firstAttribute="leading" secondItem="lhJ-MS-WjV" secondAttribute="trailing" constant="8" symbolic="YES" id="CLZ-MQ-RnV"/>
+                <constraint firstItem="lhJ-MS-WjV" firstAttribute="leading" secondItem="UiD-WU-hD3" secondAttribute="leading" id="Ejz-Mw-gjT"/>
+                <constraint firstItem="MmC-xA-UFI" firstAttribute="bottom" secondItem="lhJ-MS-WjV" secondAttribute="bottom" id="GiF-2R-BTw"/>
+                <constraint firstItem="lhJ-MS-WjV" firstAttribute="top" secondItem="UiD-WU-hD3" secondAttribute="top" constant="2" id="uP4-2K-EOI"/>
+            </constraints>
+            <point key="canvasLocation" x="-289.5" y="-33.5"/>
+        </customView>
+        <customView id="uwq-XZ-0Kj">
+            <rect key="frame" x="0.0" y="0.0" width="103" height="19"/>
+            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+            <subviews>
+                <textField verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KVt-ww-Otg">
+                    <rect key="frame" x="39" y="3" width="4" height="13"/>
+                    <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" selectable="YES" allowsUndo="NO" sendsActionOnEndEditing="YES" state="on" usesSingleLineMode="YES" id="DKE-GJ-Y5g">
+                        <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="Lxt-FA-C9B"/>
+                        <font key="font" size="11" name="Menlo-Regular"/>
+                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="bNE-w2-gBq">
+                    <rect key="frame" x="-2" y="3" width="37" height="14"/>
+                    <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" title="Goals:" id="AME-RP-ugf">
+                        <font key="font" metaFont="smallSystem"/>
+                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                    </textFieldCell>
+                </textField>
+            </subviews>
+            <constraints>
+                <constraint firstItem="bNE-w2-gBq" firstAttribute="top" secondItem="uwq-XZ-0Kj" secondAttribute="top" constant="2" id="IcF-o8-Aqe"/>
+                <constraint firstItem="KVt-ww-Otg" firstAttribute="leading" secondItem="bNE-w2-gBq" secondAttribute="trailing" constant="8" symbolic="YES" id="OLn-aE-uke"/>
+                <constraint firstItem="bNE-w2-gBq" firstAttribute="leading" secondItem="uwq-XZ-0Kj" secondAttribute="leading" id="WTG-GV-FHx"/>
+                <constraint firstItem="KVt-ww-Otg" firstAttribute="bottom" secondItem="bNE-w2-gBq" secondAttribute="bottom" id="ifx-sV-XIm"/>
+            </constraints>
+            <point key="canvasLocation" x="-290" y="26"/>
+        </customView>
     </objects>
     <resources>
         <image name="NSEnterFullScreenTemplate" width="16" height="15"/>

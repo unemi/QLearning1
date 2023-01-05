@@ -8,6 +8,8 @@
 
 /* Begin PBXBuildFile section */
 		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
+		2318A51E296697030025CCFB /* RecordView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A51D296697030025CCFB /* RecordView.m */; };
+		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
 		23214956295C6980001A40D3 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23214954295C6980001A40D3 /* ControlPanel.xib */; };
 		232521712956BB7900159F30 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521702956BB7900159F30 /* AppDelegate.m */; };
 		232521732956BB7A00159F30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 232521722956BB7A00159F30 /* Assets.xcassets */; };
@@ -20,6 +22,10 @@
 
 /* Begin PBXFileReference section */
 		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
+		2318A51C296697030025CCFB /* RecordView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RecordView.h; sourceTree = "<group>"; };
+		2318A51D296697030025CCFB /* RecordView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RecordView.m; sourceTree = "<group>"; };
+		2318A51F2966E2AE0025CCFB /* MyViewForCG.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyViewForCG.h; sourceTree = "<group>"; };
+		2318A5202966E2AE0025CCFB /* MyViewForCG.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyViewForCG.m; sourceTree = "<group>"; };
 		23214955295C6980001A40D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
 		2325216C2956BB7900159F30 /* QLearning1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QLearning1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2325216F2956BB7900159F30 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -70,10 +76,14 @@
 			children = (
 				2325216F2956BB7900159F30 /* AppDelegate.h */,
 				232521702956BB7900159F30 /* AppDelegate.m */,
+				2318A51C296697030025CCFB /* RecordView.h */,
+				2318A51D296697030025CCFB /* RecordView.m */,
 				2325217F2956BBF700159F30 /* Agent.h */,
 				232521802956BBF700159F30 /* Agent.m */,
 				232521822956C38D00159F30 /* Display.h */,
 				232521832956C38D00159F30 /* Display.m */,
+				2318A51F2966E2AE0025CCFB /* MyViewForCG.h */,
+				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
 				232521722956BB7A00159F30 /* Assets.xcassets */,
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				23214954295C6980001A40D3 /* ControlPanel.xib */,
@@ -159,9 +169,11 @@
 			files = (
 				232521812956BBF700159F30 /* Agent.m in Sources */,
 				232521782956BB7A00159F30 /* main.m in Sources */,
+				2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */,
 				232521842956C38D00159F30 /* Display.m in Sources */,
 				233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */,
 				232521712956BB7900159F30 /* AppDelegate.m in Sources */,
+				2318A51E296697030025CCFB /* RecordView.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -304,7 +316,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -330,7 +342,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;

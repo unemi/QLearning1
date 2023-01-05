@@ -74,11 +74,11 @@ typedef struct {
 	QTable[mem.y][mem.x][mem.action] +=
 		(mem.reward + Gamma * maxQ - QTable[mem.y][mem.x][mem.action]) * Alpha;
 }
-- (void)oneStep {
+- (BOOL)oneStep {
 	if (x == GoalP[0] && y == GoalP[1]) {
 		T += (T1 - T) * CoolingRate;
 		[self restart];
-		return;
+		return YES;
 	}
 	int action = [self policy];
 	int newx = x + Move[action][0];
@@ -91,5 +91,6 @@ typedef struct {
 	for (int i = 0; i < MemTrials; i ++)
 		[self learn:mem[lrand48() % mem.count].memoryValue];
 	x = newx; y = newy;
+	return NO;
 }
 @end

@@ -10,6 +10,9 @@
 #import "AppDelegate.h"
 #import "Agent.h"
 #import "Display.h"
+#import "RecordView.h"
+#import "MyViewForCG.h"
+
 int Move[4][2] = {{0,1},{1,0},{0,-1},{-1,0}}; // up, right, down, left
 int ObsP[NObstacles][2] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
 int FieldP[NGridW * NGridH - NObstacles][2];
@@ -21,6 +24,8 @@ static NSString *scrForFullScr = @"Screen the main window placed", *scrForFullSc
 static NSString *keyScrForFullScr = @"screenForFullScreenMode";
 static PTCLColorMode ptclColorModeFD;
 static PTCLDrawMethod ptclDrawMethodFD;
+static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
+static NSImage *imgFullScreenOn, *imgFullScreenOff;
 enum {
 	ShouldPostNotification = 1,
 	ShouldRedrawScreen = 2
@@ -55,32 +60,58 @@ ColVarInfo ColVars[] = {
 	{ @"colorParticles", &colParticles, nil, ShouldPostNotification },
 	{ nil }
 };
-static void for_all_int_vars(void (^block)(IntVarInfo *p)) {
-	for (NSInteger i = 0; IntVars[i].key != nil; i ++) block(&IntVars[i]);
+#define MAX_STEPS (UIntegerVars[0].v)
+#define MAX_GOALCNT (UIntegerVars[1].v)
+UIntegerVarInfo UIntegerVars[] = {
+	{ @"maxSteps", 8000 },
+	{ @"maxGoalCount", 60 },
+	{ nil }
+};
+#define START_WIDTH_FULL_SCR (BoolVars[0].v)
+#define RECORD_IMAGES (BoolVars[1].v)
+BoolVarInfo BoolVars[] = {
+	{ @"startWithFullScreenMode", NO },
+	{ @"recordFinalImage", NO, NO, ShouldPostNotification },
+	{ nil }
+};
+
+#define DEF_FOR_ALL_PROC(name,type,table) \
+static void name(void (^block)(type *p)) {\
+	for (NSInteger i = 0; table[i].key != nil; i ++) block(&table[i]);\
 }
-static void for_all_float_vars(void (^block)(FloatVarInfo *p)) {
-	for (NSInteger i = 0; FloatVars[i].key != nil; i ++) block(&FloatVars[i]);
+DEF_FOR_ALL_PROC(for_all_int_vars, IntVarInfo, IntVars)
+DEF_FOR_ALL_PROC(for_all_float_vars, FloatVarInfo, FloatVars)
+DEF_FOR_ALL_PROC(for_all_uint_vars, UIntegerVarInfo, UIntegerVars)
+DEF_FOR_ALL_PROC(for_all_bool_vars, BoolVarInfo, BoolVars)
+DEF_FOR_ALL_PROC(for_all_color_vars, ColVarInfo, ColVars)
+
+//NSUInteger tm0 = current_time_us();
+//NSUInteger tm1 = current_time_us();
+//printf("%ld\n", tm1-tm0);
+unsigned long current_time_us(void) {
+	static long startTime = -1;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	if (startTime < 0) startTime = tv.tv_sec;
+	return (tv.tv_sec - startTime) * 1000000L + tv.tv_usec;
 }
-static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
-	for (NSInteger i = 0; ColVars[i].key != nil; i ++) block(&ColVars[i]);
+void in_main_thread(void (^block)(void)) {
+	if (NSThread.isMainThread) block();
+	else dispatch_async(dispatch_get_main_queue(), block);
 }
 
-
-@interface MyMTKView : MTKView {
-	IBOutlet NSMenu *myMenu;
-}
+@interface MyContentView : NSView
 @end
-@implementation MyMTKView
+@implementation MyContentView
 // pressing ESC key to exit from full screen mode. 
 - (void)keyDown:(NSEvent *)event {
-	if (event.keyCode == 53 && self.isInFullScreenMode)
+	if (event.keyCode == 53 && self.inFullScreenMode)
 		[self exitFullScreenModeWithOptions:nil];
 	else [super keyDown:event];
 }
-- (void)mouseDown:(NSEvent *)event {
-	if (event.buttonNumber == 2 || event.modifierFlags & NSEventModifierFlagControl)
-		[NSMenu popUpContextMenu:myMenu withEvent:event forView:self];
-	[super mouseDown:event];
+- (void)drawRect:(NSRect)rect {
+	[NSColor.blackColor setFill];
+	[NSBezierPath fillRect:rect];
 }
 @end
 
@@ -89,7 +120,45 @@ static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
 	Display *display;
 	CGFloat interval;
 	BOOL running;
-	IBOutlet NSToolbarItem *startStopItem;
+	NSUInteger steps, goalCount;
+	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem,
+		*stepsItem, *goalCntItem;
+	IBOutlet NSView *stepsView, *goalCntView;
+	IBOutlet NSTextField *stepsDgt, *goalCntDgt;
+	IBOutlet RecordView *recordView;
+}
+- (void)adjustForRecordView:(NSNotification *)note {
+	NSRect vFrame = self.view.superview.frame, wFrame = self.view.window.frame;
+	NSSize vSize = vFrame.size;
+	CGFloat widthToBe = (RECORD_IMAGES? 16. / 9. : (CGFloat)NGridW / NGridH) * vSize.height;
+	if (wFrame.size.width != widthToBe) {
+		NSRect orgFrm = self.view.frame;
+		wFrame.size.width += widthToBe - vSize.width;
+		wFrame.origin.x -= (widthToBe - vSize.width) / 2.;
+		[self.view.window setFrame:wFrame display:YES];
+		[self.view setFrame:orgFrm];
+	}
+	recordView.hidden = !RECORD_IMAGES;
+}
+- (void)adjustViewFrame:(NSNotification *)note {
+	NSView *cView = (NSView *)note.object;
+	NSSize cSize = cView.frame.size;
+	CGFloat cAspect = cSize.width / cSize.height,
+		iAspect = RECORD_IMAGES? 16. / 9. : (CGFloat)NGridW / NGridH;
+	NSRect vFrame = (cAspect == iAspect)? (NSRect){0., 0., cSize} :
+		(cAspect > iAspect)?
+			(NSRect){(cSize.width - cSize.height * iAspect) / 2., 0.,
+				cSize.height * iAspect, cSize.height} :
+			(NSRect){0., (cSize.height - cSize.width / iAspect) / 2.,
+				cSize.width, cSize.width / iAspect};
+	if (RECORD_IMAGES) {
+		NSRect rFrame = vFrame;
+		vFrame.size.width = vFrame.size.height * NGridW / NGridH;
+		rFrame.size.width -= vFrame.size.width;
+		rFrame.origin.x += vFrame.size.width;
+		[recordView setFrame:rFrame];
+	}
+	[self.view setFrame:vFrame];
 }
 - (void)viewDidLoad {
 	[super viewDidLoad];
@@ -105,21 +174,48 @@ static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
 	interval = 1. / 60.;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)self.view agent:agent];
+	imgFullScreenOn = [NSImage imageNamed:@"NSEnterFullScreenTemplate"];
+	imgFullScreenOff = [NSImage imageNamed:@"NSExitFullScreenTemplate"];
+	stepsItem.view = stepsView;
+	goalCntItem.view = goalCntView;
+//	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
+	[NSNotificationCenter.defaultCenter addObserver:self
+		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
+	[NSNotificationCenter.defaultCenter addObserver:self
+		selector:@selector(adjustViewFrame:)
+		name:NSViewFrameDidChangeNotification object:self.view.superview];
 }
+- (void)showSteps { stepsDgt.integerValue = steps; }
+- (void)showGoalCount { goalCntDgt.integerValue = goalCount; }
 - (void)loopThread {
 	while (running) {
 		NSDate *time0 = NSDate.date;
-		[agent oneStep];
+		if ([agent oneStep]) {
+			goalCount ++;
+			in_main_thread(^{ [self showGoalCount]; });
+		}
+		steps ++;
+		in_main_thread(^{ [self showSteps]; });
 		[display oneStep];
 		NSTimeInterval timeRemain = interval + time0.timeIntervalSinceNow
 			- (1./52. - 1./60.);
 		if (timeRemain > 0.) usleep(timeRemain * 1e6);
+		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
+		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT))
+			in_main_thread(^{ [self reset:nil]; });
 	}
 }
 - (IBAction)reset:(id)sender {
+	if (RECORD_IMAGES && goalCount > 0)
+		[recordView addImage:display];
 	[agent reset];
 	[agent restart];
 	[display reset];
+	steps = goalCount = 0;
+	in_main_thread(^{
+		[self showSteps];
+		[self showGoalCount];
+	});
 }
 - (IBAction)startStop:(id)sender {
 	if ((running = !running)) {
@@ -133,14 +229,21 @@ static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
 	}
 }
 - (IBAction)fullScreen:(id)sender {
-	if (!self.view.inFullScreenMode) {
+	NSView *view = self.view.superview;
+	if (!view.inFullScreenMode) {
 		NSScreen *screen = self.view.window.screen;
 		if (scrForFullScr != nil) for (NSScreen *scr in NSScreen.screens)
 			if ([scrForFullScr isEqualToString:scr.localizedName])
 				{ screen = scr; break; }
-		[self.view enterFullScreenMode:screen
+		[view enterFullScreenMode:screen
 			withOptions:@{NSFullScreenModeAllScreens:@NO}];
-	} else [self.view exitFullScreenModeWithOptions:nil];
+		fullScreenItem.label = labelFullScreenOff;
+		fullScreenItem.image = imgFullScreenOff;
+	} else {
+		[view exitFullScreenModeWithOptions:nil];
+		fullScreenItem.label = labelFullScreenOn;
+		fullScreenItem.image = imgFullScreenOn;
+	}
 }
 - (IBAction)print:(id)sender {
 	NSPrintInfo *prInfo = NSPrintInfo.sharedPrintInfo;
@@ -162,17 +265,19 @@ static void for_all_color_vars(void (^block)(ColVarInfo *p)) {
 	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];
 	[pb setData:data forType:NSPasteboardTypePDF];
 }
+// Window Delegate
 - (void)windowWillClose:(NSNotification *)notification {
 	if (notification.object == self.view.window)
 		[NSApp terminate:nil];
 }
+// Menu item validation
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
 	SEL action = menuItem.action;
 	if (action == @selector(startStop:))
 		menuItem.title = running? @"Stop" : @"Start";
 	else if (action == @selector(fullScreen:))
-		menuItem.title = self.view.isInFullScreenMode?
-			@"Exit from Full Screen" : @"Full Screen";
+		menuItem.title = self.view.superview.inFullScreenMode?
+			labelFullScreenOff : labelFullScreenOn;
 	return YES;
 }
 @end
@@ -193,15 +298,14 @@ static void setup_screen_menu(NSPopUpButton *popup) {
 		[popup addItemWithTitle:scrForFullScrFD];
 		for (NSScreen *scr in screens)
 			[popup addItemWithTitle:scr.localizedName];
-		dispatch_async(dispatch_get_main_queue(), ^{
+		in_main_thread(^{
 			NSMenuItem *item = [popup itemWithTitle:scrForFullScr];
 			if (item != nil) [popup selectItem:item];
 			else [popup selectItemAtIndex:0];
 		});
 	} else if (screens.count == 1) {
 		[popup addItemWithTitle:screens[0].localizedName];
-		dispatch_async(dispatch_get_main_queue(),
-			^{ [popup selectItemAtIndex:0]; });
+		in_main_thread(^{ [popup selectItemAtIndex:0]; });
 	}
 	popup.enabled = (screens.count > 1);
 }
@@ -219,12 +323,15 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	IBOutlet NSTextField *dgtT0, *dgtT1, *dgtCoolingRate, *dgtInitQValue, *dgtGamma, *dgtAlpha,
 		*dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;
 	IBOutlet NSButton *btnDrawByRects, *btnDrawByTriangles, *btnDrawByLines,
-		*btnColConst, *btnColAngle, *btnColSpeed, *btnRevertToFD;
+		*btnColConst, *btnColAngle, *btnColSpeed,
+		*cboxStartFullScr, *cboxRecordImages, *btnRevertToFD;
 	IBOutlet NSPopUpButton *screenPopUp;
+	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt;
 	NSArray<NSColorWell *> *colWels;
-	NSArray<NSTextField *> *ivDgts, *fvDgts;
-	NSArray<NSButton *> *colBtns, *dmBtns;
-	int FDBTCol, FDBTInt, FDBTFloat, FDBTDc, FDBTDm, FDBTFulScr; 
+	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts;
+	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns;
+	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
+		FDBTDm, FDBTFulScr;
 	UInt64 FDBits;
 }
 - (NSString *)windowNibName { return @"ControlPanel"; }
@@ -232,6 +339,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for (NSColorWell *cwl in colWels) cwl.color = *ColVars[cwl.tag].v;
 	for (NSTextField *dgt in ivDgts) dgt.intValue = *IntVars[dgt.tag].v;
 	for (NSTextField *dgt in fvDgts) dgt.floatValue = *FloatVars[dgt.tag].v;
+	for (NSTextField *dgt in uvDgts) dgt.integerValue = UIntegerVars[dgt.tag].v;
+	for (NSButton *btn in boolVBtns) btn.state = BoolVars[btn.tag].v;
 	for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
 	for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
 	dgtStrokeWidth.enabled = (ptclDrawMethod != PTCLbyLines);
@@ -251,6 +360,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	ivDgts = @[dgtMemSize, dgtMemTrials, dgtNParticles, dgtLifeSpan];
 	fvDgts = @[dgtT0, dgtT1, dgtCoolingRate, dgtInitQValue, dgtGamma, dgtAlpha,
 		dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed];
+	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
+	boolVBtns = @[cboxStartFullScr, cboxRecordImages];
 	colBtns = @[btnColConst, btnColAngle, btnColSpeed];
 	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
 	NSInteger bit = 0, tag = 0;
@@ -277,6 +388,22 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		dgt.target = self;
 		dgt.action = @selector(changeFloatValue:);
 		dgt.tag = tag ++; bit ++;
+	}
+	tag = 0;
+	FDBTUInt = (int)bit;
+	for (NSTextField *dgt in uvDgts) {
+		if (UIntegerVars[tag].v != UIntegerVars[tag].fd) FDBits |= 1 << bit;
+		dgt.target = self;
+		dgt.action = @selector(changeUIntegerValue:);
+		dgt.tag = tag ++; bit ++;
+	}
+	tag = 0;
+	FDBTBool = (int)bit;
+	for (NSButton *btn in boolVBtns) {
+		if (BoolVars[tag].v != BoolVars[tag].fd) FDBits |= 1 << bit;
+		btn.target = self;
+		btn.action = @selector(switchBoolValue:);
+		btn.tag = tag ++; bit ++;
 	}
 	tag = 0;
 	FDBTDc = (int)bit;
@@ -316,7 +443,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	}];
 	*var = newValue;
 	[self checkFDBits:FDBTCol + (int)colWl.tag
-		cond:newValUlong == col_to_ulong(ColVars[colWl.tag].fd)];
+		cond:newValUlong == col_to_ulong(info->fd)];
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		(info->flag & ShouldPostNotification)? info->key : keyShouldRedraw object:NSApp];
 }
@@ -330,7 +457,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		[dgt sendAction:dgt.action to:target];
 	}];
 	*var = newValue;
-	[self checkFDBits:FDBTInt + dgt.tag cond:newValue == IntVars[dgt.tag].fd];
+	[self checkFDBits:FDBTInt + dgt.tag cond:newValue == info->fd];
 	if (info->flag & ShouldPostNotification)
 		[NSNotificationCenter.defaultCenter postNotificationName:
 			info->key object:NSApp userInfo:@{keyOldValue:@(orgValue)}];
@@ -345,9 +472,34 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		[dgt sendAction:dgt.action to:target];
 	}];
 	*var = newValue;
-	[self checkFDBits:FDBTFloat + dgt.tag cond:newValue == FloatVars[dgt.tag].fd];
+	[self checkFDBits:FDBTFloat + dgt.tag cond:newValue == info->fd];
 	if (info->flag & ShouldRedrawScreen) [NSNotificationCenter.defaultCenter
 		postNotificationName:keyShouldRedraw object:NSApp];
+}
+- (IBAction)changeUIntegerValue:(NSTextField *)dgt {
+	UIntegerVarInfo *info = &UIntegerVars[dgt.tag];
+	NSUInteger newValue = dgt.integerValue, orgValue = info->v;
+	if (orgValue == newValue) return;
+	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+		dgt.integerValue = orgValue;
+		[dgt sendAction:dgt.action to:target];
+	}];
+	info->v = newValue;
+	[self checkFDBits:FDBTUInt + dgt.tag cond:newValue == info->fd];
+}
+- (IBAction)switchBoolValue:(NSButton *)btn {
+	BoolVarInfo *info = &BoolVars[btn.tag];
+	BOOL newValue = btn.state, orgValue = info->v;
+	if (newValue == orgValue) return;
+	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+		btn.state = orgValue;
+		[btn sendAction:btn.action to:target];
+	}];
+	info->v = newValue;
+	[self checkFDBits:FDBTBool + btn.tag cond:newValue == info->fd];
+	if (info->flag & ShouldPostNotification)
+		[NSNotificationCenter.defaultCenter postNotificationName:
+			info->key object:NSApp userInfo:nil];
 }
 - (IBAction)chooseColorMode:(NSButton *)btn {
 	PTCLColorMode newValue = (PTCLColorMode)btn.tag;
@@ -395,6 +547,12 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for_all_float_vars(^(FloatVarInfo *p) {
 		if (*p->v != p->fd) md[p->key] = @(p->fd);
 	});
+	for_all_uint_vars(^(UIntegerVarInfo *p) {
+		if (p->v != p->fd) md[p->key] = @(p->fd);
+	});
+	for_all_bool_vars(^(BoolVarInfo *p) {
+		if (p->v != p->fd) md[p->key] = @(p->fd);
+	});
 	for_all_color_vars(^(ColVarInfo *p) {
 		if (col_to_ulong(*p->v) != col_to_ulong(p->fd)) md[p->key] = p->fd;
 	});
@@ -426,6 +584,22 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		if (newValue == p->fd || *p->v == p->fd)
 			*fbP |= 1 << (self->FDBTFloat + (p - FloatVars));
 		*p->v = newValue;
+	});
+	for_all_uint_vars(^(UIntegerVarInfo *p) {
+		NSNumber *num = dict[p->key]; if (num == nil) return;
+		NSUInteger newValue = num.integerValue; if (p->v == newValue) return;
+		orgValues[p->key] = @(p->v);
+		if (newValue == p->fd || p->v == p->fd)
+			*fbP |= 1 << (self->FDBTUInt + (p - UIntegerVars));
+		p->v = newValue;
+	});
+	for_all_bool_vars(^(BoolVarInfo *p) {
+		NSNumber *num = dict[p->key]; if (num == nil) return;
+		BOOL newValue = num.boolValue; if (p->v == newValue) return;
+		orgValues[p->key] = @(p->v);
+		if (newValue == p->fd || p->v == p->fd)
+			*fbP |= 1 << (self->FDBTBool + (p - BoolVars));
+		p->v = newValue;
 	});
 	for_all_color_vars(^(ColVarInfo *p) {
 		NSColor *newCol = dict[p->key]; if (newCol == nil) return;
@@ -497,11 +671,19 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for_all_int_vars(^(IntVarInfo *p) {
 		p->fd = *p->v;
 		NSNumber *nm = [ud objectForKey:p->key];
-		if (nm != nil) *p->v = (int)[ud integerForKey:p->key]; });
+		if (nm != nil) *p->v = nm.intValue; });
 	for_all_float_vars(^(FloatVarInfo *p) {
 		p->fd = *p->v;
 		NSNumber *nm = [ud objectForKey:p->key];
-		if (nm != nil) *p->v = [ud floatForKey:p->key]; });
+		if (nm != nil) *p->v = nm.floatValue; });
+	for_all_uint_vars(^(UIntegerVarInfo *p) {
+		p->fd = p->v;
+		NSNumber *nm = [ud objectForKey:p->key];
+		if (nm != nil) p->v = nm.integerValue; });
+	for_all_bool_vars(^(BoolVarInfo *p) {
+		p->fd = p->v;
+		NSNumber *nm = [ud objectForKey:p->key];
+		if (nm != nil) p->v = nm.boolValue; });
 	for_all_color_vars(^(ColVarInfo *p) {
 		p->fd = *p->v;
 		NSString *str = [ud stringForKey:p->key];
@@ -527,7 +709,11 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
 	NSColorPanel.sharedColorPanel.showsAlpha = YES;
+}
+- (void)applicationDidFinishLaunching:(NSNotification *)notification {
 	[viewController reset:nil];
+	if (START_WIDTH_FULL_SCR) [viewController fullScreen:nil];
+	else [viewController adjustForRecordView:nil];
 }
 - (void)applicationWillTerminate:(NSNotification *)notification {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
@@ -537,6 +723,12 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for_all_float_vars(^(FloatVarInfo *p) {
 		if (*p->v == p->fd) [ud removeObjectForKey:p->key];
 		else [ud setFloat:*p->v forKey:p->key]; });
+	for_all_uint_vars(^(UIntegerVarInfo *p) {
+		if (p->v == p->fd) [ud removeObjectForKey:p->key];
+		else [ud setInteger:p->v forKey:p->key]; });
+	for_all_bool_vars(^(BoolVarInfo *p) {
+		if (p->v == p->fd) [ud removeObjectForKey:p->key];
+		else [ud setBool:p->v forKey:p->key]; });
 	for_all_color_vars(^(ColVarInfo *p) {
 		NSUInteger rgba = col_to_ulong(*p->v);
 		if (rgba != col_to_ulong(p->fd)) {

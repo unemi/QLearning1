@@ -18,7 +18,7 @@ extern vector_float4 QTable[NGridH][NGridW];
 - (void)getPositionX:(int *)xp Y:(int *)yp;
 - (void)reset;
 - (void)restart;
-- (void)oneStep;
+- (BOOL)oneStep;
 @end
 
 NS_ASSUME_NONNULL_END

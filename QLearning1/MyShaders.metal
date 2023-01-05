@@ -18,9 +18,9 @@ vertex RasterizerData vertexShader(uint vertexID [[vertex_id]],
 	constant vector_float2 *vertices [[buffer(IndexVertices)]],
 	constant vector_float4 *colors [[buffer(IndexColors)]],
 	constant uint *nv [[buffer(IndexNVforP)]],
-	constant vector_float4 *geomFactor [[buffer(IndexGeomFactor)]]) {
+	constant vector_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerData out = {{0.,0.,0.,1.}};
-    out.position.xy = (vertices[vertexID] + geomFactor->xy) / geomFactor->zw * 2. - 1.;
+    out.position.xy = vertices[vertexID] / geomFactor->xy * 2. - 1.;
     out.color = (*nv == 0)? *colors : colors[vertexID / *nv];
     return out;
 }
@@ -34,9 +34,9 @@ struct RasterizerDataTex {
 };
 vertex RasterizerDataTex vertexShaderTex(uint vertexID [[vertex_id]],
 	constant vector_float2 *vertices [[buffer(IndexVertices)]],
-	constant vector_float4 *geomFactor [[buffer(IndexGeomFactor)]]) {
+	constant vector_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerDataTex out = {{0.,0.,0.,1.}, {0.,0.}};
-    out.position.xy = (vertices[vertexID] + geomFactor->xy) / geomFactor->zw * 2. - 1.;
+    out.position.xy = vertices[vertexID] / geomFactor->xy * 2. - 1.;
     out.textureCoordinate = float2(vertexID % 2, 1 - vertexID / 2);
     return out;
 }

@@ -18,11 +18,15 @@
 typedef struct { NSString *key; int *v, fd, flag; } IntVarInfo;
 typedef struct { NSString *key; float *v, fd; int flag; } FloatVarInfo;
 typedef struct { NSString *key; NSColor * __strong *v, *fd; int flag; } ColVarInfo;
+typedef struct { NSString *key; NSUInteger v, fd; } UIntegerVarInfo;
+typedef struct { NSString *key; BOOL v, fd; int flag; } BoolVarInfo;
 extern int Move[4][2], ObsP[NObstacles][2],
 	FieldP[NGridW * NGridH - NObstacles][2], Obstacles[NGridH][NGridW],
 	StartP[2], GoalP[2];
 extern NSString *keyOldValue, *keyShouldRedraw;
 extern NSString *keyColorMode, *keyDrawMethod;
+extern unsigned long current_time_us(void);
+extern void in_main_thread(void (^block)(void));
 
 @interface ControlPanel : NSWindowController <NSWindowDelegate>
 @property (readonly) NSUndoManager *undoManager;
