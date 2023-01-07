@@ -18,6 +18,9 @@
 		232521812956BBF700159F30 /* Agent.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521802956BBF700159F30 /* Agent.m */; };
 		232521842956C38D00159F30 /* Display.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521832956C38D00159F30 /* Display.m */; };
 		233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 233DF0A0295B109C00F9F20C /* MyShaders.metal */; };
+		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
+		234090D92969025D008CC72D /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 234090D72969025D008CC72D /* MainWindow.xib */; };
+		234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 234090DB296937CF008CC72D /* MetalKit.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,9 +41,16 @@
 		232521802956BBF700159F30 /* Agent.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Agent.m; sourceTree = "<group>"; };
 		232521822956C38D00159F30 /* Display.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Display.h; sourceTree = "<group>"; };
 		232521832956C38D00159F30 /* Display.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Display.m; sourceTree = "<group>"; };
+		2330B0E6296972A100F87CEC /* Samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Samples; sourceTree = "<group>"; };
+		2330B0E7296972E600F87CEC /* Images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Images; path = QLearning1/Images; sourceTree = "<group>"; };
 		23363EE6295F12540005A64D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		233DF0A0295B109C00F9F20C /* MyShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = MyShaders.metal; sourceTree = "<group>"; };
+		234090D52969025D008CC72D /* MainWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainWindow.h; sourceTree = "<group>"; };
+		234090D62969025D008CC72D /* MainWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainWindow.m; sourceTree = "<group>"; };
+		234090D72969025D008CC72D /* MainWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainWindow.xib; sourceTree = "<group>"; };
+		234090DB296937CF008CC72D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
+		23FDEFDC2967CA2700C6C1E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,6 +58,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -59,7 +70,10 @@
 			children = (
 				23363EE6295F12540005A64D /* README.md */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
+				2330B0E6296972A100F87CEC /* Samples */,
+				2330B0E7296972E600F87CEC /* Images */,
 				2325216D2956BB7900159F30 /* Products */,
+				234090DA296937CF008CC72D /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -74,8 +88,11 @@
 		2325216E2956BB7900159F30 /* QLearning1 */ = {
 			isa = PBXGroup;
 			children = (
+				23FDEFDC2967CA2700C6C1E2 /* Info.plist */,
 				2325216F2956BB7900159F30 /* AppDelegate.h */,
 				232521702956BB7900159F30 /* AppDelegate.m */,
+				234090D52969025D008CC72D /* MainWindow.h */,
+				234090D62969025D008CC72D /* MainWindow.m */,
 				2318A51C296697030025CCFB /* RecordView.h */,
 				2318A51D296697030025CCFB /* RecordView.m */,
 				2325217F2956BBF700159F30 /* Agent.h */,
@@ -85,6 +102,7 @@
 				2318A51F2966E2AE0025CCFB /* MyViewForCG.h */,
 				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
 				232521722956BB7A00159F30 /* Assets.xcassets */,
+				234090D72969025D008CC72D /* MainWindow.xib */,
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				23214954295C6980001A40D3 /* ControlPanel.xib */,
 				232521772956BB7A00159F30 /* main.m */,
@@ -94,6 +112,14 @@
 				230F43A8296028AA006513E2 /* Credits.rtf */,
 			);
 			path = QLearning1;
+			sourceTree = "<group>";
+		};
+		234090DA296937CF008CC72D /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				234090DB296937CF008CC72D /* MetalKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -154,6 +180,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
+				234090D92969025D008CC72D /* MainWindow.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
@@ -171,6 +198,7 @@
 				232521782956BB7A00159F30 /* main.m in Sources */,
 				2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */,
 				232521842956C38D00159F30 /* Display.m in Sources */,
+				234090D82969025D008CC72D /* MainWindow.m in Sources */,
 				233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */,
 				232521712956BB7900159F30 /* AppDelegate.m in Sources */,
 				2318A51E296697030025CCFB /* RecordView.m in Sources */,
@@ -316,10 +344,12 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QLearning1/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022, 2023.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -327,6 +357,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.QLearning1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
@@ -342,10 +373,12 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 4;
+				CURRENT_PROJECT_VERSION = 6;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = QLearning1/Info.plist;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022, 2023.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -353,6 +386,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.QLearning1;
 				PRODUCT_NAME = "$(TARGET_NAME)";

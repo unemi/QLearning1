@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
+        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner" customClass="MainWindow">
+            <connections>
+                <outlet property="fullScreenItem" destination="7YG-rz-idg" id="jUR-kR-pEe"/>
+                <outlet property="infoText" destination="i2C-GJ-HIg" id="XvH-o0-NCf"/>
+                <outlet property="infoTextItem" destination="utH-CR-QoE" id="zZk-MK-ars"/>
+                <outlet property="recordView" destination="p63-HC-fUX" id="H27-9q-dHJ"/>
+                <outlet property="startStopItem" destination="JEb-1J-SwZ" id="z2w-tD-lac"/>
+                <outlet property="view" destination="40r-tp-viX" id="5rm-cd-Y6h"/>
+                <outlet property="window" destination="GIJ-S5-3zk" id="DXm-T6-00f"/>
+            </connections>
+        </customObject>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
+        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" tabbingMode="disallowed" toolbarStyle="expanded" id="GIJ-S5-3zk">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
+            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
+            <rect key="contentRect" x="335" y="390" width="960" height="540"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
+            <view key="contentView" id="xAg-fM-7Js" customClass="MyContentView">
+                <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
+                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
+                <subviews>
+                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="40r-tp-viX" customClass="MTKView">
+                        <rect key="frame" x="0.0" y="0.0" width="810" height="540"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <subviews>
+                            <textField hidden="YES" horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="i2C-GJ-HIg">
+                                <rect key="frame" x="18" y="492" width="322" height="28"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" title="99,999 steps 999 goals" id="wyi-2q-Ire">
+                                    <font key="font" size="24" name="Menlo-Regular"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                        </subviews>
+                    </customView>
+                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="p63-HC-fUX" customClass="RecordView">
+                        <rect key="frame" x="810" y="0.0" width="150" height="540"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
+                    </customView>
+                </subviews>
+                <connections>
+                    <outlet property="mainWindow" destination="-2" id="tzM-LP-37w"/>
+                    <outlet property="menu" destination="jH0-aO-Uox" id="aSq-Gj-OOJ"/>
+                </connections>
+            </view>
+            <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" centeredItem="utH-CR-QoE" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="j5e-1S-7be">
+                <allowedToolbarItems>
+                    <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="Ydd-da-QT8"/>
+                    <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="evG-RI-wuo"/>
+                    <toolbarItem implicitItemIdentifier="2F685F69-59DB-4D4E-811E-BA40BE27BE1C" label="Start" paletteLabel="Start" tag="-1" image="forward.frame.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="JEb-1J-SwZ">
+                        <connections>
+                            <action selector="startStop:" target="-2" id="DQ8-GE-wrv"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="D58BBDA3-71A7-49C4-89C4-AD721AA499E9" label="Reset" paletteLabel="Reset" tag="-1" image="backward.end.alt.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="d57-WY-s7I">
+                        <connections>
+                            <action selector="reset:" target="-2" id="Yic-il-cyu"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full Screen On" paletteLabel="Full Screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="7YG-rz-idg">
+                        <connections>
+                            <action selector="fullScreen:" target="-2" id="X6I-aL-sHE"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="C53029BD-8EB4-49C3-9D27-47305EEFD3AA" label="Preferences" paletteLabel="Preferences" tag="-1" image="NSPreferencesGeneral" bordered="YES" sizingBehavior="auto" id="hIp-ad-9nf">
+                        <connections>
+                            <action selector="openControlPanel:" target="-1" id="knK-B7-9H5"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="B579AE39-D9E9-40D2-ACCE-86FDCE353DA8" label="Print" paletteLabel="Print" tag="-1" image="printer" catalog="system" bordered="YES" sizingBehavior="auto" id="h3D-Fs-PgR">
+                        <connections>
+                            <action selector="printScene:" target="-2" id="oBG-2o-6hz"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="08115387-E67F-4F25-AFFD-E29C8E16272C" label="" paletteLabel="Steps and goals" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="utH-CR-QoE"/>
+                </allowedToolbarItems>
+                <defaultToolbarItems>
+                    <toolbarItem reference="Ydd-da-QT8"/>
+                    <toolbarItem reference="utH-CR-QoE"/>
+                    <toolbarItem reference="evG-RI-wuo"/>
+                    <toolbarItem reference="JEb-1J-SwZ"/>
+                    <toolbarItem reference="d57-WY-s7I"/>
+                    <toolbarItem reference="Ydd-da-QT8"/>
+                    <toolbarItem reference="7YG-rz-idg"/>
+                    <toolbarItem reference="hIp-ad-9nf"/>
+                    <toolbarItem reference="h3D-Fs-PgR"/>
+                </defaultToolbarItems>
+            </toolbar>
+            <connections>
+                <outlet property="delegate" destination="-2" id="r2Y-oR-Vwg"/>
+            </connections>
+            <point key="canvasLocation" x="7" y="463"/>
+        </window>
+        <menu id="jH0-aO-Uox">
+            <items>
+                <menuItem title="Start" id="oRw-Sm-gPU">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="startStop:" target="-2" id="WRW-z9-zGg"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Reset" id="iv2-tj-859">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="reset:" target="-2" id="SSh-Cd-r8I"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Full Screen" id="wos-p6-v0J">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="fullScreen:" target="-2" id="7Pp-Nv-Wfa"/>
+                    </connections>
+                </menuItem>
+            </items>
+            <point key="canvasLocation" x="-409" y="35"/>
+        </menu>
+    </objects>
+    <resources>
+        <image name="NSEnterFullScreenTemplate" width="16" height="15"/>
+        <image name="NSPreferencesGeneral" width="32" height="32"/>
+        <image name="backward.end.alt.fill" catalog="system" width="24" height="13"/>
+        <image name="forward.frame.fill" catalog="system" width="17" height="13"/>
+        <image name="printer" catalog="system" width="18" height="16"/>
+    </resources>
+</document>

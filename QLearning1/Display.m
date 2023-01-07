@@ -10,7 +10,7 @@
 #import "AppDelegate.h"
 #import "VecTypes.h"
 #define NV_GRID ((NGridW + NGridH - 2) * 2)
-#define NTHREADS 16
+#define NTHREADS nCores
 
 int NParticles = 120000, LifeSpan = 80;
 float Mass = 2., Friction = 0.9, StrokeLength = 0.2, StrokeWidth = .01, MaxSpeed = 0.05;
@@ -18,12 +18,32 @@ NSColor *colBackground, *colObstacles, *colAgent,
 	*colGridLines, *colSymbols, *colParticles;
 PTCLColorMode ptclColorMode = PTCLconstColor;
 PTCLDrawMethod ptclDrawMethod = PTCLbyLines;
-
+NSInteger nCores;
+static NSColor *color_with_comp(CGFloat *comp) {
+	return [NSColor colorWithColorSpace:NSColorSpace.genericRGBColorSpace
+		components:comp count:4];
+}
+void init_default_colors(void) {
+	colBackground = color_with_comp((CGFloat []){0., 0., 0., 1.});
+	colObstacles = color_with_comp((CGFloat []){.3, .3, .3, 1.});
+	colAgent = color_with_comp((CGFloat []){.3, .3, .3, 1.});
+	colGridLines = color_with_comp((CGFloat []){.5, .5, .5, 1.});
+	colSymbols = color_with_comp((CGFloat []){.7, .7, .7, 1.});
+	colParticles = color_with_comp((CGFloat []){1., 1., 1., .1});
+}
 vector_float4 col_to_vec(NSColor * _Nonnull col) {
 	CGFloat c[4] = {0, 0, 0, 1};
 	[[col colorUsingColorSpace:NSColorSpace.genericRGBColorSpace]
 		getComponents:c];
 	return (vector_float4){c[0], c[1], c[2], c[3]};
+}
+void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
+	void (^ _Nonnull block)(NSBitmapImageRep * _Nonnull bm)) {
+	NSGraphicsContext *orgCtx = NSGraphicsContext.currentContext;
+	NSGraphicsContext.currentContext =
+		[NSGraphicsContext graphicsContextWithBitmapImageRep:imgRep];
+	block(imgRep);
+	NSGraphicsContext.currentContext = orgCtx;
 }
 static float particle_addF(Particle *p, int ix, int iy) {
 	if (ix < 0 || ix >= NGridW || iy < 0 || iy >= NGridH || Obstacles[iy][ix] != 0) return 0.;
@@ -83,7 +103,6 @@ static void particle_step(Particle *p) {
 	NSOperationQueue *opeQue;
 	id<MTLRenderPipelineState> shapePSO, texPSO;
 	id<MTLCommandQueue> commandQueue;
-	id<MTLRenderCommandEncoder> rndrEnc;
 	id<MTLTexture> StrSTex, StrGTex;
 	id<MTLBuffer> vxBuf, colBuf;
 	NSMutableDictionary *symbolAttr;
@@ -101,6 +120,11 @@ static void particle_step(Particle *p) {
 		isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
 		bitmapFormat:NSBitmapFormatThirtyTwoBitLittleEndian
 		bytesPerRow:pixW * 4 bitsPerPixel:32];
+	draw_in_bitmap(imgRep, ^(NSBitmapImageRep *bm) {
+		[[NSColor colorWithWhite:0. alpha:0.] setFill];
+		[NSBezierPath fillRect:(NSRect){0, 0, bm.pixelsWide, bm.pixelsHigh}];
+		[str drawAtPoint:(NSPoint){0., 0.} withAttributes:attr];
+	});
 	NSGraphicsContext *grCtx = NSGraphicsContext.currentContext;
 	NSGraphicsContext.currentContext =
 		[NSGraphicsContext graphicsContextWithBitmapImageRep:imgRep];
@@ -123,10 +147,6 @@ static void particle_step(Particle *p) {
 	symbolAttr[NSForegroundColorAttributeName] = colSymbols;
 	StrSTex = [self texFromStr:@"S" attribute:symbolAttr];
 	StrGTex = [self texFromStr:@"G" attribute:symbolAttr];
-}
-static NSColor *color_with_comp(CGFloat *comp) {
-	return [NSColor colorWithColorSpace:NSColorSpace.genericRGBColorSpace
-		components:comp count:4];
 }
 - (Particle *)adjustPtclMemory {
 	Particle *newMem = particles;
@@ -182,6 +202,7 @@ static NSColor *color_with_comp(CGFloat *comp) {
 }
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
 	if (!(self = [super init])) return nil;
+	nCores = NSProcessInfo.processInfo.activeProcessorCount;
 	vxBufLock = NSLock.new;
 	ptclLock = NSLock.new;
 	opeQue = NSOperationQueue.new;
@@ -196,6 +217,9 @@ static NSColor *color_with_comp(CGFloat *comp) {
 	view.sampleCount = smplCnt;
 	[self mtkView:view drawableSizeWillChange:view.drawableSize];
 	view.delegate = self;
+#ifdef DEBUG
+	NSLog(@"%ld CPUs, Sample count = %ld", nCores, smplCnt);
+#endif
 
 	NSError *error;
 	MTLRenderPipelineDescriptor *pplnStDesc = MTLRenderPipelineDescriptor.new;
@@ -217,13 +241,6 @@ static NSColor *color_with_comp(CGFloat *comp) {
 	texPSO = [device newRenderPipelineStateWithDescriptor:pplnStDesc error:&error];
 	NSAssert(texPSO, @"Failed to create pipeline state for texture: %@", error);
 	commandQueue = device.newCommandQueue;
-
-	colBackground = color_with_comp((CGFloat []){0., 0., 0., 1.});
-	colObstacles = color_with_comp((CGFloat []){.3, .3, .3, 1.});
-	colAgent = color_with_comp((CGFloat []){.3, .3, .3, 1.});
-	colGridLines = color_with_comp((CGFloat []){.5, .5, .5, 1.});
-	colSymbols = color_with_comp((CGFloat []){.7, .7, .7, 1.});
-	colParticles = color_with_comp((CGFloat []){1., 1., 1., .1});
 
 	[NSNotificationCenter.defaultCenter addObserverForName:keyShouldRedraw
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
@@ -368,7 +385,7 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		Particle *pStart = particles + i * nPtcls / NTHREADS;
 		vector_float4 *colorsStart = colors + i * nPtcls / NTHREADS;
 		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
-			nPtcls - nPtcls * (NTHREADS - 1) / NTHREADS;
+			nPtcls - (int)(nPtcls * (NTHREADS - 1) / NTHREADS);
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++)
 				colorsStart[j] = ptcl_rgb_color(pStart + j, ptclHSB, self->maxSpeed);
@@ -386,7 +403,7 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		vector_float2 *lineStart = lines + i * nPtcls / NTHREADS * nVpL;
 		float *mxSpdP = mxSpd + i;
 		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
-			nPtcls - nPtcls * (NTHREADS - 1) / NTHREADS;
+			nPtcls - (int)(nPtcls * (NTHREADS - 1) / NTHREADS);
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++) {
 				Particle *p = pStart + j;
@@ -440,20 +457,24 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size {
     viewportSize.x = size.width;
     viewportSize.y = size.height;
+#ifdef DEBUG
+	NSLog(@"Drawable size = %.1f x %.1f", size.width, size.height);
+#endif
 }
-- (void)setColor:(vector_float4)rgba {
-	[rndrEnc setVertexBytes:&rgba length:sizeof(rgba) atIndex:IndexColors];
+typedef id<MTLRenderCommandEncoder> RCE;
+static void set_color(RCE rce, vector_float4 rgba) {
+	[rce setVertexBytes:&rgba length:sizeof(rgba) atIndex:IndexColors];
 }
-- (void)fillRect:(NSRect)rect {
+static void fill_rect(RCE rce, NSRect rect) {
 	vector_float2 vertices[4] = {
 		{NSMinX(rect), NSMinY(rect)},{NSMaxX(rect), NSMinY(rect)},
 		{NSMinX(rect), NSMaxY(rect)},{NSMaxX(rect), NSMaxY(rect)}};
 	uint nv = 0;
-	[rndrEnc setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
-	[rndrEnc setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
-	[rndrEnc drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+	[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
+	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
+	[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 }
-- (void)fillCircleAtCenter:(vector_float2)center radius:(float)radius nEdges:(int)nEdges {
+static void fill_circle_at(RCE rce, vector_float2 center, float radius, int nEdges) {
 	int nVertices = nEdges * 2 + 1;
 	vector_float2 vx[nVertices];
 	for (int i = 0; i < nVertices; i ++) vx[i] = center;
@@ -461,63 +482,61 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		float th = i * M_PI * 2. / nEdges;
 		vx[i * 2] += (vector_float2){cosf(th) * radius, sinf(th) * radius};
 	}
-	[rndrEnc setVertexBytes:vx length:sizeof(vx) atIndex:IndexVertices];
-	[rndrEnc drawPrimitives:MTLPrimitiveTypeTriangleStrip
-		vertexStart:0 vertexCount:nVertices];		
+	[rce setVertexBytes:vx length:sizeof(vx) atIndex:IndexVertices];
+	[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip
+		vertexStart:0 vertexCount:nVertices];
 }
-- (void)drawTexture:(id<MTLTexture>)tex at:(int *)tilePosition {
-	[rndrEnc setFragmentTexture:tex atIndex:IndexTexture];
-	CGFloat w = (CGFloat)StrSTex.width / view.sampleCount,
-		h = (CGFloat)StrSTex.height / view.sampleCount;
-	[self fillRect:(NSRect){
+static void draw_texture(RCE rce, id<MTLTexture> tex,
+	int *tilePosition, NSUInteger sampleCount) {
+	[rce setFragmentTexture:tex atIndex:IndexTexture];
+	CGFloat w = (CGFloat)tex.width / sampleCount,
+		h = (CGFloat)tex.height / sampleCount;
+	fill_rect(rce, (NSRect){
 		tilePosition[0] * TileSize + (TileSize - w) / 2.,
-		tilePosition[1] * TileSize + (TileSize - h) / 2., w, h}];
+		tilePosition[1] * TileSize + (TileSize - h) / 2., w, h});
 }
-- (void)drawInMTKView:(nonnull MTKView *)view {
-	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
-	cmdBuf.label = @"MyCommand";
+- (void)drawScene:(nonnull MTKView *)view commandBuffer:(id<MTLCommandBuffer>)cmdBuf {
 	MTLRenderPassDescriptor *rndrPasDesc = view.currentRenderPassDescriptor;
 	if(rndrPasDesc == nil) return;
-	rndrEnc = [cmdBuf renderCommandEncoderWithDescriptor:rndrPasDesc];
-	rndrEnc.label = @"MyRenderEncoder";
-	[rndrEnc setViewport:(MTLViewport){0., 0., viewportSize.x, viewportSize.y, 0., 1. }];
+	RCE rce = [cmdBuf renderCommandEncoderWithDescriptor:rndrPasDesc];
+	rce.label = @"MyRenderEncoder";
+	[rce setViewport:(MTLViewport){0., 0., viewportSize.x, viewportSize.y, 0., 1. }];
 	vector_float2 geomFactor = {PTCLMaxX, PTCLMaxY};
-	[rndrEnc setVertexBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexGeomFactor];
-	[rndrEnc setRenderPipelineState:shapePSO];
+	[rce setVertexBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexGeomFactor];
+	[rce setRenderPipelineState:shapePSO];
 	// background
-	self.color = col_to_vec(colBackground);
-	[self fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
+	set_color(rce, col_to_vec(colBackground));
+	fill_rect(rce, (NSRect){0., 0., PTCLMaxX, PTCLMaxY});
 	// Agent
 	int ix, iy;
 	[agent getPositionX:&ix Y:&iy];
-	self.color = col_to_vec(colAgent);
-	[self fillCircleAtCenter:(vector_float2){(ix + .5) * TileSize, (iy + .5) * TileSize}
-		radius:TileSize * 0.45 nEdges:32];
+	set_color(rce, col_to_vec(colAgent));
+	fill_circle_at(rce,
+		(vector_float2){(ix + .5) * TileSize, (iy + .5) * TileSize}, TileSize * 0.45, 32);
 	// String "S" and "G"
 	if (StrSTex == nil) [self setupSymbolTex];
-	[rndrEnc setRenderPipelineState:texPSO];
-	[self drawTexture:StrSTex at:StartP];
-	[self drawTexture:StrGTex at:GoalP];
+	[rce setRenderPipelineState:texPSO];
+	draw_texture(rce, StrSTex, StartP, view.sampleCount);
+	draw_texture(rce, StrGTex, GoalP, view.sampleCount);
 	// particles
-	[rndrEnc setRenderPipelineState:shapePSO];
+	[rce setRenderPipelineState:shapePSO];
 	uint nv = 0, nVertices = (vxBuf == NULL)? 0 :
 		(uint)(vxBuf.length / sizeof(vector_float2));
 	if (colBuf != nil) {
 		nv = nVertices / nPtcls;
-		[rndrEnc setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
-	} else self.color = col_to_vec(colParticles);
-	[rndrEnc setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
-	[vxBufLock lock];
-	[rndrEnc setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
-	[rndrEnc drawPrimitives:(ptclDrawMethod == PTCLbyLines)?
+		[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
+	} else set_color(rce, col_to_vec(colParticles));
+	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
+	[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
+	[rce drawPrimitives:(ptclDrawMethod == PTCLbyLines)?
 		MTLPrimitiveTypeLine : MTLPrimitiveTypeTriangle
 		vertexStart:0 vertexCount:nVertices];		
 	// Obstables
-	self.color = col_to_vec(colObstacles);
-	for (int i = 0; i < NObstacles; i ++) [self fillRect:(NSRect)
-		{ObsP[i][0] * TileSize, ObsP[i][1] * TileSize, TileSize, TileSize}];
+	set_color(rce, col_to_vec(colObstacles));
+	for (int i = 0; i < NObstacles; i ++) fill_rect(rce, (NSRect)
+		{ObsP[i][0] * TileSize, ObsP[i][1] * TileSize, TileSize, TileSize});
 	// grid lines
-	self.color = col_to_vec(colGridLines);
+	set_color(rce, col_to_vec(colGridLines));
 	vector_float2 vertices[NV_GRID], *vp = vertices;
 	for (int i = 1; i < NGridH; i ++, vp += 2) {
 		vp[0] = (vector_float2){0., TileSize * i};
@@ -527,14 +546,16 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		vp[0] = (vector_float2){TileSize * i, 0.};
 		vp[1] = (vector_float2){TileSize * i, PTCLMaxY};
 	}
-	[rndrEnc setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
-	[rndrEnc drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:NV_GRID];
-//
-	[rndrEnc endEncoding];
+	[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
+	[rce drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:NV_GRID];
+	[rce endEncoding];
+}
+- (void)drawInMTKView:(nonnull MTKView *)view {
+	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
+	cmdBuf.label = @"MyCommand";
+	[self drawScene:view commandBuffer:cmdBuf];
 	[cmdBuf presentDrawable:view.currentDrawable];
 	[cmdBuf commit];
-//	[cmdBuf waitUntilCompleted];
-	[vxBufLock unlock];
 }
 - (void)oneStep {
 	[ptclLock lock];
@@ -559,6 +580,49 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 	[ptclLock unlock];
 	NSView *v = view;
 	in_main_thread(^{ v.needsDisplay = YES; });
+}
+- (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)sclFactor
+	drawBlock:(void (^)(NSBitmapImageRep *bm))block {
+	view.framebufferOnly = NO;
+	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
+	cmdBuf.label = @"OffScreenCommand";
+	[self drawScene:view commandBuffer:cmdBuf];
+	id<MTLTexture> tex = view.currentDrawable.texture;
+	NSAssert(tex, @"Failed to get texture from MTKView.");
+	NSUInteger texW = tex.width, texH = tex.height;
+	id<MTLBuffer> buf = [tex.device newBufferWithLength:texW * texH * 4
+		options:MTLResourceStorageModeShared];
+	NSAssert(buf, @"Failed to create buffer for %ld bytes.", texW * texH * 4);
+	id<MTLBlitCommandEncoder> blitEnc = cmdBuf.blitCommandEncoder;
+	[blitEnc copyFromTexture:tex sourceSlice:0 sourceLevel:0
+		sourceOrigin:(MTLOrigin){0, 0, 0} sourceSize:(MTLSize){texW, texH, 1}
+		toBuffer:buf destinationOffset:0
+		destinationBytesPerRow:texW * 4 destinationBytesPerImage:texW * texH * 4];
+	[blitEnc endEncoding];
+	[cmdBuf commit];
+	[cmdBuf waitUntilCompleted];
+	view.framebufferOnly = YES;
+
+	NSUInteger wide = ceil(size.width * sclFactor), high = ceil(size.height * sclFactor);
+	NSBitmapImageRep *srcImgRep = [NSBitmapImageRep.alloc initWithBitmapDataPlanes:
+		(unsigned char *[]){buf.contents} pixelsWide:texW pixelsHigh:texH bitsPerSample:8
+		samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
+		bytesPerRow:texW * 4 bitsPerPixel:32],
+		*dstImgRep = [NSBitmapImageRep.alloc initWithBitmapDataPlanes:NULL
+		pixelsWide:wide pixelsHigh:high bitsPerSample:8 samplesPerPixel:4
+		hasAlpha:YES isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
+		bytesPerRow:wide * 4 bitsPerPixel:32];
+	dstImgRep.size = size;
+	draw_in_bitmap(dstImgRep, ^(NSBitmapImageRep * _Nonnull bm) {
+		[srcImgRep drawInRect:(NSRect){0., 0., bm.size}];
+		if (block != nil) block(bm);
+	});
+	// BGRA -> RGBA
+	unsigned char *bytes = dstImgRep.bitmapData;
+	for (NSInteger i = 0; i < wide * high; i ++, bytes += 4) {
+		unsigned char c = bytes[0]; bytes[0] = bytes[2]; bytes[2] = c;
+	}
+	return dstImgRep;
 }
 //
 - (Agent *)agent { return agent; }

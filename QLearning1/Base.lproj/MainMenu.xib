@@ -1,38 +1,18 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <deployment identifier="macosx"/>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
-        <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
-        <customObject id="-2" userLabel="File's Owner" customClass="NSApplication">
-            <connections>
-                <outlet property="delegate" destination="Voe-Tx-rLC" id="GzC-gU-4Uq"/>
-            </connections>
-        </customObject>
+        <customObject id="-2" userLabel="File's Owner"/>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
-        <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <customObject id="Voe-Tx-rLC" customClass="AppDelegate">
+        <customObject id="-3" userLabel="Application" customClass="NSObject">
             <connections>
-                <outlet property="viewController" destination="a1R-tO-5DS" id="zF9-Rk-QRb"/>
+                <outlet property="delegate" destination="Voe-Tx-rLC" id="z7a-uk-ruN"/>
             </connections>
         </customObject>
+        <customObject id="Voe-Tx-rLC" customClass="AppDelegate"/>
         <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
-        <viewController id="a1R-tO-5DS" customClass="MyViewController">
-            <connections>
-                <outlet property="fullScreenItem" destination="IhZ-h8-P9r" id="0uj-US-bAa"/>
-                <outlet property="goalCntDgt" destination="KVt-ww-Otg" id="9oR-YR-wXQ"/>
-                <outlet property="goalCntItem" destination="P0X-4o-iS1" id="7R2-jI-6fM"/>
-                <outlet property="goalCntView" destination="uwq-XZ-0Kj" id="0t3-Ke-SuE"/>
-                <outlet property="recordView" destination="4EA-Zq-jdE" id="LkS-uU-DoT"/>
-                <outlet property="startStopItem" destination="Lzv-6U-ndk" id="zuu-R7-3t5"/>
-                <outlet property="stepsDgt" destination="MmC-xA-UFI" id="wMc-Ge-dJc"/>
-                <outlet property="stepsItem" destination="NDm-hH-S2U" id="W5W-v2-7qd"/>
-                <outlet property="stepsView" destination="UiD-WU-hD3" id="USC-gl-LLL"/>
-                <outlet property="view" destination="MOQ-1S-cD8" id="OY5-7u-Ltj"/>
-            </connections>
-        </viewController>
         <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
             <items>
                 <menuItem title="QLearning1" id="1Xt-HY-uBw">
@@ -83,34 +63,39 @@
                         </items>
                     </menu>
                 </menuItem>
-                <menuItem title="Run/View" id="bxb-iI-qZU">
+                <menuItem title="File" id="mjG-U3-dt2">
                     <modifierMask key="keyEquivalentModifierMask"/>
-                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
+                    <menu key="submenu" title="File" id="7Fa-df-rCH">
                         <items>
-                            <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
+                            <menuItem title="Import ..." keyEquivalent="i" id="iPH-RO-rK6">
                                 <connections>
-                                    <action selector="startStop:" target="a1R-tO-5DS" id="MSe-Wp-XmC"/>
+                                    <action selector="importSettings:" target="-1" id="Tp0-D6-gTz"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
+                            <menuItem title="Export ..." keyEquivalent="e" id="PDT-Dh-mqI">
                                 <connections>
-                                    <action selector="reset:" target="a1R-tO-5DS" id="orW-XT-a4T"/>
+                                    <action selector="exportSettings:" target="-1" id="2DC-hb-jec"/>
                                 </connections>
                             </menuItem>
-                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
-                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
+                            <menuItem title="Factory Defaults" keyEquivalent="R" id="hgL-3u-osx">
                                 <connections>
-                                    <action selector="fullScreen:" target="a1R-tO-5DS" id="XE6-Oo-rdx"/>
+                                    <action selector="revertToFactoryDefault:" target="-1" id="06z-Yo-4qR"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Page Setup ..." keyEquivalent="P" id="9Ey-dF-YVl">
+                            <menuItem title="Close" keyEquivalent="w" id="2ul-Dn-cvC">
                                 <connections>
-                                    <action selector="runPageLayout:" target="-1" id="h0v-8X-XJA"/>
+                                    <action selector="performClose:" target="-1" id="12s-FX-Z3C"/>
                                 </connections>
                             </menuItem>
-                            <menuItem title="Print" keyEquivalent="p" id="DEr-WN-rDI">
+                            <menuItem isSeparatorItem="YES" id="1pH-Qp-57i"/>
+                            <menuItem title="Page Setup…" keyEquivalent="P" id="rot-dZ-CfI">
                                 <connections>
-                                    <action selector="print:" target="a1R-tO-5DS" id="sKO-nG-2ob"/>
+                                    <action selector="runPageLayout:" target="-1" id="ftr-Tv-EzM"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Print…" keyEquivalent="p" id="gaY-4S-SLa">
+                                <connections>
+                                    <action selector="printScene:" target="-1" id="Lac-Mg-G06"/>
                                 </connections>
                             </menuItem>
                         </items>
@@ -160,15 +145,33 @@
                         </items>
                     </menu>
                 </menuItem>
+                <menuItem title="Run/View" id="bxb-iI-qZU">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
+                        <items>
+                            <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
+                                <connections>
+                                    <action selector="startStop:" target="-1" id="7CK-Am-bKY"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
+                                <connections>
+                                    <action selector="reset:" target="-1" id="aXZ-gH-Qks"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
+                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
+                                <connections>
+                                    <action selector="fullScreen:" target="-1" id="MZ7-3k-UZc"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
                 <menuItem title="Window" id="ZdA-1B-AUm">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <menu key="submenu" title="Window" systemMenu="window" id="5wG-Y5-fbK">
                         <items>
-                            <menuItem title="Close" keyEquivalent="w" id="kJk-gk-BM5">
-                                <connections>
-                                    <action selector="performClose:" target="-1" id="LfK-73-Z1B"/>
-                                </connections>
-                            </menuItem>
                             <menuItem title="Minimize" keyEquivalent="m" id="piK-se-B3g">
                                 <connections>
                                     <action selector="performMiniaturize:" target="-1" id="zmx-ya-dPB"/>
@@ -198,167 +201,5 @@
             </items>
             <point key="canvasLocation" x="104" y="-38"/>
         </menu>
-        <window title="QLearning1" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" tabbingMode="disallowed" toolbarStyle="expanded" id="QvC-M9-y7g">
-            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
-            <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="960" height="540"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
-            <view key="contentView" id="EiT-Mj-1SZ" customClass="MyContentView">
-                <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
-                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                <subviews>
-                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="MOQ-1S-cD8" customClass="MTKView">
-                        <rect key="frame" x="0.0" y="0.0" width="810" height="540"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                    </customView>
-                    <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="4EA-Zq-jdE" customClass="RecordView">
-                        <rect key="frame" x="810" y="0.0" width="150" height="540"/>
-                        <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
-                    </customView>
-                </subviews>
-                <connections>
-                    <outlet property="menu" destination="OJ2-Jj-caX" id="Dm2-rr-8KL"/>
-                </connections>
-            </view>
-            <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="avF-sr-rj5">
-                <allowedToolbarItems>
-                    <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="gjN-vZ-8ZT"/>
-                    <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="qfq-nw-xyW"/>
-                    <toolbarItem implicitItemIdentifier="2F685F69-59DB-4D4E-811E-BA40BE27BE1C" label="Start" paletteLabel="Start" tag="-1" image="forward.frame.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="Lzv-6U-ndk">
-                        <connections>
-                            <action selector="startStop:" target="a1R-tO-5DS" id="SS6-Lf-8Tp"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="D58BBDA3-71A7-49C4-89C4-AD721AA499E9" label="Reset" paletteLabel="Reset" tag="-1" image="backward.end.alt.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="ghb-zP-ATY">
-                        <connections>
-                            <action selector="reset:" target="a1R-tO-5DS" id="MLa-5R-ois"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full Screen On" paletteLabel="Full Screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="IhZ-h8-P9r">
-                        <connections>
-                            <action selector="fullScreen:" target="a1R-tO-5DS" id="hcR-2Q-t0C"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="C53029BD-8EB4-49C3-9D27-47305EEFD3AA" label="Preferences" paletteLabel="Preferences" tag="-1" image="NSPreferencesGeneral" bordered="YES" sizingBehavior="auto" id="BhP-ze-i4B">
-                        <connections>
-                            <action selector="openControlPanel:" target="Voe-Tx-rLC" id="bNQ-Ac-xbi"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="B579AE39-D9E9-40D2-ACCE-86FDCE353DA8" label="Print" paletteLabel="Print" tag="-1" image="printer" catalog="system" bordered="YES" sizingBehavior="auto" id="gAt-Db-TGc">
-                        <connections>
-                            <action selector="print:" target="a1R-tO-5DS" id="Ybp-jN-IEd"/>
-                        </connections>
-                    </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="DE6FFF5D-6246-4B23-9BF0-26142BCF07C5" label="" paletteLabel="Steps" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="NDm-hH-S2U"/>
-                    <toolbarItem implicitItemIdentifier="08115387-E67F-4F25-AFFD-E29C8E16272C" label="" paletteLabel="Goals" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="P0X-4o-iS1"/>
-                </allowedToolbarItems>
-                <defaultToolbarItems>
-                    <toolbarItem reference="gjN-vZ-8ZT"/>
-                    <toolbarItem reference="NDm-hH-S2U"/>
-                    <toolbarItem reference="P0X-4o-iS1"/>
-                    <toolbarItem reference="qfq-nw-xyW"/>
-                    <toolbarItem reference="Lzv-6U-ndk"/>
-                    <toolbarItem reference="ghb-zP-ATY"/>
-                    <toolbarItem reference="gjN-vZ-8ZT"/>
-                    <toolbarItem reference="IhZ-h8-P9r"/>
-                    <toolbarItem reference="BhP-ze-i4B"/>
-                    <toolbarItem reference="gAt-Db-TGc"/>
-                </defaultToolbarItems>
-            </toolbar>
-            <connections>
-                <outlet property="delegate" destination="a1R-tO-5DS" id="Fqx-nf-x01"/>
-            </connections>
-            <point key="canvasLocation" x="7" y="463"/>
-        </window>
-        <menu id="OJ2-Jj-caX">
-            <items>
-                <menuItem title="Start" id="paa-4S-J2M">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                    <connections>
-                        <action selector="startStop:" target="a1R-tO-5DS" id="61n-4n-3BG"/>
-                    </connections>
-                </menuItem>
-                <menuItem title="Reset" id="8bh-zu-GDe">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                    <connections>
-                        <action selector="reset:" target="a1R-tO-5DS" id="Ujf-hE-rZs"/>
-                    </connections>
-                </menuItem>
-                <menuItem title="Full Screen" id="Krw-qM-wcF">
-                    <modifierMask key="keyEquivalentModifierMask"/>
-                    <connections>
-                        <action selector="fullScreen:" target="a1R-tO-5DS" id="nC9-KZ-e7L"/>
-                    </connections>
-                </menuItem>
-            </items>
-            <point key="canvasLocation" x="-291" y="-120"/>
-        </menu>
-        <customView id="UiD-WU-hD3">
-            <rect key="frame" x="0.0" y="0.0" width="103" height="19"/>
-            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-            <subviews>
-                <textField verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="MmC-xA-UFI">
-                    <rect key="frame" x="40" y="3" width="4" height="13"/>
-                    <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" selectable="YES" allowsUndo="NO" sendsActionOnEndEditing="YES" state="on" usesSingleLineMode="YES" id="chR-kr-g89">
-                        <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="nip-p3-n5c"/>
-                        <font key="font" size="11" name="Menlo-Regular"/>
-                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="lhJ-MS-WjV">
-                    <rect key="frame" x="-2" y="3" width="38" height="14"/>
-                    <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" title="Steps:" id="GEh-bz-IQI">
-                        <font key="font" metaFont="smallSystem"/>
-                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-            </subviews>
-            <constraints>
-                <constraint firstItem="MmC-xA-UFI" firstAttribute="leading" secondItem="lhJ-MS-WjV" secondAttribute="trailing" constant="8" symbolic="YES" id="CLZ-MQ-RnV"/>
-                <constraint firstItem="lhJ-MS-WjV" firstAttribute="leading" secondItem="UiD-WU-hD3" secondAttribute="leading" id="Ejz-Mw-gjT"/>
-                <constraint firstItem="MmC-xA-UFI" firstAttribute="bottom" secondItem="lhJ-MS-WjV" secondAttribute="bottom" id="GiF-2R-BTw"/>
-                <constraint firstItem="lhJ-MS-WjV" firstAttribute="top" secondItem="UiD-WU-hD3" secondAttribute="top" constant="2" id="uP4-2K-EOI"/>
-            </constraints>
-            <point key="canvasLocation" x="-289.5" y="-33.5"/>
-        </customView>
-        <customView id="uwq-XZ-0Kj">
-            <rect key="frame" x="0.0" y="0.0" width="103" height="19"/>
-            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-            <subviews>
-                <textField verticalHuggingPriority="750" textCompletion="NO" translatesAutoresizingMaskIntoConstraints="NO" id="KVt-ww-Otg">
-                    <rect key="frame" x="39" y="3" width="4" height="13"/>
-                    <textFieldCell key="cell" controlSize="small" scrollable="YES" lineBreakMode="clipping" selectable="YES" allowsUndo="NO" sendsActionOnEndEditing="YES" state="on" usesSingleLineMode="YES" id="DKE-GJ-Y5g">
-                        <numberFormatter key="formatter" formatterBehavior="default10_4" numberStyle="decimal" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="2000000000" maximumFractionDigits="3" id="Lxt-FA-C9B"/>
-                        <font key="font" size="11" name="Menlo-Regular"/>
-                        <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-                <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="bNE-w2-gBq">
-                    <rect key="frame" x="-2" y="3" width="37" height="14"/>
-                    <textFieldCell key="cell" controlSize="small" lineBreakMode="clipping" title="Goals:" id="AME-RP-ugf">
-                        <font key="font" metaFont="smallSystem"/>
-                        <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                        <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                    </textFieldCell>
-                </textField>
-            </subviews>
-            <constraints>
-                <constraint firstItem="bNE-w2-gBq" firstAttribute="top" secondItem="uwq-XZ-0Kj" secondAttribute="top" constant="2" id="IcF-o8-Aqe"/>
-                <constraint firstItem="KVt-ww-Otg" firstAttribute="leading" secondItem="bNE-w2-gBq" secondAttribute="trailing" constant="8" symbolic="YES" id="OLn-aE-uke"/>
-                <constraint firstItem="bNE-w2-gBq" firstAttribute="leading" secondItem="uwq-XZ-0Kj" secondAttribute="leading" id="WTG-GV-FHx"/>
-                <constraint firstItem="KVt-ww-Otg" firstAttribute="bottom" secondItem="bNE-w2-gBq" secondAttribute="bottom" id="ifx-sV-XIm"/>
-            </constraints>
-            <point key="canvasLocation" x="-290" y="26"/>
-        </customView>
     </objects>
-    <resources>
-        <image name="NSEnterFullScreenTemplate" width="16" height="15"/>
-        <image name="NSPreferencesGeneral" width="32" height="32"/>
-        <image name="backward.end.alt.fill" catalog="system" width="24" height="13"/>
-        <image name="forward.frame.fill" catalog="system" width="17" height="13"/>
-        <image name="printer" catalog="system" width="18" height="16"/>
-    </resources>
 </document>

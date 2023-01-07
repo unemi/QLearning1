@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>colorParticles</key>
+	<string>FDFFAA19</string>
+	<key>maxSteps</key>
+	<integer>6000</integer>
+	<key>nParticles</key>
+	<integer>240000</integer>
+	<key>ptclColorMode</key>
+	<integer>1</integer>
+	<key>ptclDrawMethod</key>
+	<integer>0</integer>
+	<key>ptclLength</key>
+	<real>0.15999999642372131</real>
+	<key>recordFinalImage</key>
+	<true/>
+	<key>screenForFullScreenMode</key>
+	<string>LG ULTRAFINE</string>
+	<key>startWithFullScreenMode</key>
+	<true/>
+</dict>
+</plist>

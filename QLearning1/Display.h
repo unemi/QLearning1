@@ -22,7 +22,10 @@ extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 	* _Nonnull colSymbols, * _Nonnull colParticles;
 extern PTCLColorMode ptclColorMode;
 extern PTCLDrawMethod ptclDrawMethod;
+extern void init_default_colors(void);
 extern vector_float4 col_to_vec(NSColor * _Nonnull col);
+extern void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
+	void (^ _Nonnull block)(NSBitmapImageRep * _Nonnull bm));
 extern vector_float4 ptcl_hsb_color(void);
 extern vector_float4 ptcl_rgb_color(Particle * _Nonnull p, vector_float4 hsba, float maxSpeed);
 extern vector_float2 particle_size(Particle * _Nonnull p);
@@ -34,6 +37,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (instancetype)initWithView:(MTKView *)view agent:(Agent *)a;
 - (void)reset;
 - (void)oneStep;
+- (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)scaleFactor
+	drawBlock:(void (^)(NSBitmapImageRep *bm))block;
 - (Agent *)agent;
 - (Particle *)particles;
 - (int)nParticles;

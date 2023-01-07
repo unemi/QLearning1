@@ -154,22 +154,17 @@ static void draw_particle(NSColor *color, NSBezierPath *path) {
 	[path stroke];
 	[NSGraphicsContext restoreGraphicsState];
 }
-- (NSBitmapImageRep *)bitmapImageChache:( void (^_Nullable)(NSView *))block {
-	NSBitmapImageRep *bm = [self bitmapImageRepForCachingDisplayInRect:self.bounds];
-	NSGraphicsContext *orgCtx = NSGraphicsContext.currentContext;
-	NSGraphicsContext.currentContext =
-		[NSGraphicsContext graphicsContextWithBitmapImageRep:bm];
-	[self drawByCoreGraphics];
-	if (block != nil) block(self);
-	NSGraphicsContext.currentContext = orgCtx;
-	return bm;
-}
 - (void)drawRect:(NSRect)rect {
 	if ([NSGraphicsContext.currentContext.attributes
 		[NSGraphicsContextRepresentationFormatAttributeName]
 		isEqualToString:NSGraphicsContextPDFFormat]) [self drawByCoreGraphics];
 	else {
-		if (imgCache == nil) imgCache = [self bitmapImageChache:nil];
+		if (imgCache == nil) {
+			imgCache = [self bitmapImageRepForCachingDisplayInRect:self.bounds];
+			draw_in_bitmap(imgCache, ^(NSBitmapImageRep * _Nonnull bm) {
+				[self drawByCoreGraphics];
+			});
+		}
 		[imgCache draw];
 	}
 }

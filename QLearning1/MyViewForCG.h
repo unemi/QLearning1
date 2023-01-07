@@ -11,7 +11,6 @@ NS_ASSUME_NONNULL_BEGIN
 @class Display;
 @interface MyViewForCG : NSView
 - (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp;
-- (NSBitmapImageRep *)bitmapImageChache:(void (^_Nullable)(NSView *))block;
 @end
 
 NS_ASSUME_NONNULL_END
