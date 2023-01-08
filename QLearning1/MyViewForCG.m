@@ -40,13 +40,13 @@ static void set_particle_path(Particle *p, NSBezierPath *path) {
 			[path lineToPoint:(NSPoint){pp.x, pp.y}];
 		} break;
 		case PTCLbyTriangles: {
-			simd_float3x3 trs = trans_matrix(p);
+			simd_float3x3 trs = particle_tr_mx(p);
 			[path moveToPoint:trans_point(trs, sz.x, sz.y)];
 			[path lineToPoint:trans_point(trs, -sz.x, 0.)];
 			[path lineToPoint:trans_point(trs, sz.x, -sz.y)];
 		} break;
 		case PTCLbyRectangles: {
-			simd_float3x3 trs = trans_matrix(p);
+			simd_float3x3 trs = particle_tr_mx(p);
 			[path moveToPoint:trans_point(trs, sz.x, sz.y)];
 			[path lineToPoint:trans_point(trs, -sz.x, sz.y)];
 			[path lineToPoint:trans_point(trs, -sz.x, -sz.y)];
@@ -55,13 +55,64 @@ static void set_particle_path(Particle *p, NSBezierPath *path) {
 	}
 }
 static void draw_particle(NSColor *color, NSBezierPath *path) {
-	if (ptclDrawMethod == PTCLbyLines) {
-		[color setStroke];
-		[path stroke];
-	} else {
-		[color setFill];
+	if (ptclDrawMethod == PTCLbyLines) { [color setStroke]; [path stroke]; }
+	else { [color setFill]; [path fill]; }
+}
+static NSColor *col_from_vec(vector_float4 vc) {
+	return [NSColor colorWithRed: vc.x green:vc.y blue:vc.z alpha:vc.w];
+}
+- (void)drawParticles {
+	NSBezierPath *path = NSBezierPath.new;
+	Particle *particles = display.particles;
+	int np = display.nPtcls;
+	float maxSpeed = TileSize * .005;
+	switch (ptclColorMode) {
+		case PTCLconstColor:
+		for (int i = 0; i < np; i ++) {
+			set_particle_path(particles + i, path);
+			draw_particle(colParticles, path);
+		} break;
+		case PTCLspeedColor:
+		for (int i = 0; i < np; i ++) {
+			float spd = simd_length(particles[i].v);
+			if (maxSpeed < spd) maxSpeed = spd;
+		}
+		case PTCLangleColor: {
+			vector_float4 ptclHSB = ptcl_hsb_color();
+			for (int i = 0; i < np; i ++) {
+				Particle *p = particles + i;
+				set_particle_path(p, path);
+				draw_particle(col_from_vec(ptcl_rgb_color(p, ptclHSB, maxSpeed)), path);
+		}}}
+}
+- (void)drawVectors:(NSInteger)n {
+	static int vIndices[] = {1, 5, 8, 6, 7, 2};
+	NSBezierPath *path = NSBezierPath.new;
+	for (NSInteger i = 0; i < n; i ++) {
+		vector_float2 *vec = display.arrowVec + i * NVERTICES_ARROW;
+		[path removeAllPoints];
+		[path moveToPoint:(NSPoint){vec[0].x, vec[0].y}];
+		for (NSInteger j = 0; j < 6; j ++) {
+			vector_float2 v = vec[vIndices[j]];
+			[path lineToPoint:(NSPoint){v.x, v.y}];
+		}
+		[path closePath];
+		[col_from_vec(display.arrowCol[i]) setFill];
 		[path fill];
 	}
+}
+static void draw_equ(NSString *name, NSPoint p) {
+	[NSGraphicsContext saveGraphicsState];
+	NSAffineTransform *trsMx = NSAffineTransform.transform;
+	[trsMx translateXBy:TileSize * (p.x + .1) yBy:TileSize * (p.y - .1)];
+	[trsMx rotateByRadians:M_PI / -2.];
+	[trsMx concat];
+	NSImage *img = [NSImage imageNamed:name];
+	NSRect imgRect = {0., 0, TileSize * 2.8, };
+	imgRect.size.height = imgRect.size.width * img.size.height / img.size.width;
+	imgRect.origin.y = (TileSize * 0.8 - imgRect.size.height) / 2.;
+	[img drawInRect:imgRect];
+	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawByCoreGraphics {
 	[NSGraphicsContext saveGraphicsState];
@@ -106,33 +157,14 @@ static void draw_particle(NSColor *color, NSBezierPath *path) {
 		NSForegroundColorAttributeName:colSymbols};
 	draw_symbol(@"S", attr, StartP);
 	draw_symbol(@"G", attr, GoalP);
-	// Particles
-	NSBezierPath *path = NSBezierPath.new;
-	Particle *particles = display.particles;
-	int np = display.nParticles;
-	float maxSpeed = TileSize * .005;
-	switch (ptclColorMode) {
-		case PTCLconstColor:
-		for (int i = 0; i < np; i ++) {
-			set_particle_path(particles + i, path);
-			draw_particle(colParticles, path);
-		} break;
-		case PTCLspeedColor:
-		for (int i = 0; i < np; i ++) {
-			float spd = simd_length(particles[i].v);
-			if (maxSpeed < spd) maxSpeed = spd;
-		}
-		case PTCLangleColor: {
-			vector_float4 ptclHSB = ptcl_hsb_color();
-			for (int i = 0; i < np; i ++) {
-				Particle *p = particles + i;
-				set_particle_path(p, path);
-				vector_float4 vc = ptcl_rgb_color(p, ptclHSB, maxSpeed);
-				draw_particle([NSColor colorWithRed:vc.x green:vc.y blue:vc.z alpha:vc.w], path);
-			}
-		}
+	// Particles, Vectors, or Q Values
+	switch (display.displayMode) {
+		case DispParticle: [self drawParticles]; break;
+		case DispVector: [self drawVectors:N_VECTORS]; break;
+		case DispQValues: [self drawVectors:NActiveGrids * NActs];
 	}
 	// Obstacles
+	NSBezierPath *path = NSBezierPath.new;
 	NSRect obstRect = {0., 0., TileSize, TileSize};
 	for (int i = 0; i < NObstacles; i ++) {
 		obstRect.origin = (NSPoint){ObsP[i][0] * TileSize, ObsP[i][1] * TileSize};
@@ -152,6 +184,9 @@ static void draw_particle(NSColor *color, NSBezierPath *path) {
 	}
 	[colGridLines setStroke];
 	[path stroke];
+	// Equations
+	draw_equ(@"equationL", (NSPoint){2., 5.});
+	draw_equ(@"equationP", (NSPoint){7., 6.});
 	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawRect:(NSRect)rect {

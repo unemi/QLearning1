@@ -8,9 +8,10 @@
     <objects>
         <customObject id="-2" userLabel="File's Owner" customClass="MainWindow">
             <connections>
+                <outlet property="dispModePopUp" destination="sCT-kh-uF1" id="X3B-g6-k0T"/>
                 <outlet property="fullScreenItem" destination="7YG-rz-idg" id="jUR-kR-pEe"/>
                 <outlet property="infoText" destination="i2C-GJ-HIg" id="XvH-o0-NCf"/>
-                <outlet property="infoTextItem" destination="utH-CR-QoE" id="zZk-MK-ars"/>
+                <outlet property="infoTextItem" destination="L5M-iH-cou" id="W7E-s2-qEU"/>
                 <outlet property="recordView" destination="p63-HC-fUX" id="H27-9q-dHJ"/>
                 <outlet property="startStopItem" destination="JEb-1J-SwZ" id="z2w-tD-lac"/>
                 <outlet property="view" destination="40r-tp-viX" id="5rm-cd-Y6h"/>
@@ -49,11 +50,11 @@
                     </customView>
                 </subviews>
                 <connections>
-                    <outlet property="mainWindow" destination="-2" id="tzM-LP-37w"/>
+                    <outlet property="mainWindow" destination="-2" id="YEX-44-hLZ"/>
                     <outlet property="menu" destination="jH0-aO-Uox" id="aSq-Gj-OOJ"/>
                 </connections>
             </view>
-            <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" centeredItem="utH-CR-QoE" autosavesConfiguration="NO" displayMode="iconAndLabel" sizeMode="regular" id="j5e-1S-7be">
+            <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" allowsUserCustomization="NO" displayMode="iconAndLabel" sizeMode="regular" id="j5e-1S-7be">
                 <allowedToolbarItems>
                     <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="Ydd-da-QT8"/>
                     <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="evG-RI-wuo"/>
@@ -82,12 +83,45 @@
                             <action selector="printScene:" target="-2" id="oBG-2o-6hz"/>
                         </connections>
                     </toolbarItem>
-                    <toolbarItem implicitItemIdentifier="08115387-E67F-4F25-AFFD-E29C8E16272C" label="" paletteLabel="Steps and goals" tag="-1" bordered="YES" sizingBehavior="auto" autovalidates="NO" id="utH-CR-QoE"/>
+                    <toolbarItem implicitItemIdentifier="6BC467AA-DDB0-4917-B6D4-07448990EDFF" label="" paletteLabel="Steps and goals" sizingBehavior="auto" id="L5M-iH-cou">
+                        <nil key="toolTip"/>
+                        <textField key="view" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="pDp-vQ-Nm3" customClass="TextFieldForToolBarItem">
+                            <rect key="frame" x="0.0" y="14" width="105" height="16"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <textFieldCell key="cell" lineBreakMode="clipping" title="0 steps, 0 goals" id="bfR-aR-hPs">
+                                <font key="font" usesAppearanceFont="YES"/>
+                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                            </textFieldCell>
+                        </textField>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="9948C689-4AF9-446A-A6C0-6AC6BEE85524" label="Display mode" paletteLabel="Display mode" title="Particles" sizingBehavior="auto" id="Fb2-fq-TgE">
+                        <nil key="toolTip"/>
+                        <popUpButton key="view" verticalHuggingPriority="750" id="sCT-kh-uF1">
+                            <rect key="frame" x="0.0" y="14" width="107" height="30"/>
+                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <popUpButtonCell key="cell" type="roundTextured" title="Particles" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" selectedItem="MQc-4z-Jwh" id="CxM-PH-dWg">
+                                <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                <font key="font" metaFont="system"/>
+                                <menu key="menu" id="Olb-AH-y8R">
+                                    <items>
+                                        <menuItem title="Particles" state="on" id="MQc-4z-Jwh"/>
+                                        <menuItem title="Vector Field" tag="1" id="FGk-Qc-3wr"/>
+                                        <menuItem title="Q Values" tag="2" id="qTv-si-4UD"/>
+                                    </items>
+                                </menu>
+                            </popUpButtonCell>
+                            <connections>
+                                <action selector="chooseDisplayMode:" target="-2" id="Sde-Ou-JXx"/>
+                            </connections>
+                        </popUpButton>
+                    </toolbarItem>
                 </allowedToolbarItems>
                 <defaultToolbarItems>
                     <toolbarItem reference="Ydd-da-QT8"/>
-                    <toolbarItem reference="utH-CR-QoE"/>
+                    <toolbarItem reference="L5M-iH-cou"/>
                     <toolbarItem reference="evG-RI-wuo"/>
+                    <toolbarItem reference="Fb2-fq-TgE"/>
                     <toolbarItem reference="JEb-1J-SwZ"/>
                     <toolbarItem reference="d57-WY-s7I"/>
                     <toolbarItem reference="Ydd-da-QT8"/>
@@ -103,10 +137,10 @@
         </window>
         <menu id="jH0-aO-Uox">
             <items>
-                <menuItem title="Start" id="oRw-Sm-gPU">
+                <menuItem title="Start" id="zOG-Ge-Sag">
                     <modifierMask key="keyEquivalentModifierMask"/>
                     <connections>
-                        <action selector="startStop:" target="-2" id="WRW-z9-zGg"/>
+                        <action selector="startStop:" target="-2" id="Wmn-M4-eom"/>
                     </connections>
                 </menuItem>
                 <menuItem title="Reset" id="iv2-tj-859">
@@ -121,9 +155,34 @@
                         <action selector="fullScreen:" target="-2" id="7Pp-Nv-Wfa"/>
                     </connections>
                 </menuItem>
+                <menuItem isSeparatorItem="YES" id="BHw-dw-JD2"/>
+                <menuItem title="Particles" id="oRw-Sm-gPU">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="chooseDisplayMode:" target="-2" id="2sg-p0-2Md"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Vector Field" tag="1" id="5Ao-RL-aSk">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="chooseDisplayMode:" target="-2" id="g4X-eK-UDv"/>
+                    </connections>
+                </menuItem>
+                <menuItem title="Q Values" tag="2" id="zma-CC-HAh">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="chooseDisplayMode:" target="-2" id="tgd-k9-Dx8"/>
+                    </connections>
+                </menuItem>
             </items>
             <point key="canvasLocation" x="-409" y="35"/>
         </menu>
+        <menuItem title="Particles" id="PQV-Bs-fQq">
+            <modifierMask key="keyEquivalentModifierMask"/>
+            <connections>
+                <action selector="chooseDisplayMode:" target="-2" id="ocP-vf-l4m"/>
+            </connections>
+        </menuItem>
     </objects>
     <resources>
         <image name="NSEnterFullScreenTemplate" width="16" height="15"/>

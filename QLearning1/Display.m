@@ -45,6 +45,14 @@ void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
 	block(imgRep);
 	NSGraphicsContext.currentContext = orgCtx;
 }
+static NSBitmapImageRep *create_rgb_bitmap(NSUInteger pixW, NSUInteger pixH,
+	unsigned char * _Nullable * _Nullable planes) {
+	return [NSBitmapImageRep.alloc initWithBitmapDataPlanes:planes
+		pixelsWide:pixW pixelsHigh:pixH bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
+		isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
+		bitmapFormat:NSBitmapFormatThirtyTwoBitLittleEndian
+		bytesPerRow:pixW * 4 bitsPerPixel:32];
+}
 static float particle_addF(Particle *p, int ix, int iy) {
 	if (ix < 0 || ix >= NGridW || iy < 0 || iy >= NGridH || Obstacles[iy][ix] != 0) return 0.;
 	float w = powf(ix + .5 - p->p.x / TileSize, 2.) + powf(iy + .5 - p->p.y / TileSize, 2);
@@ -75,7 +83,7 @@ static void particle_force(Particle *p) {
 	}
 }
 static void particle_reset(Particle *p, BOOL isRandom) {
-	int *fp = FieldP[lrand48() % (NGridW * NGridH - NObstacles)];
+	int *fp = FieldP[lrand48() % NActiveGrids];
 	p->p = (vector_float2){(fp[0] + drand48()) * TileSize, (fp[1] + drand48()) * TileSize};
 	particle_force(p);
 	float v = simd_length(p->f);
@@ -99,39 +107,22 @@ static void particle_step(Particle *p) {
 }
 @implementation Display {
 	MTKView *view;
-	Agent *agent;
 	NSOperationQueue *opeQue;
 	id<MTLRenderPipelineState> shapePSO, texPSO;
 	id<MTLCommandQueue> commandQueue;
-	id<MTLTexture> StrSTex, StrGTex;
+	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex;
 	id<MTLBuffer> vxBuf, colBuf;
 	NSMutableDictionary *symbolAttr;
 	NSLock *vxBufLock, *ptclLock;
 	vector_uint2 viewportSize;
 	float maxSpeed;
-	int nPtcls;
-	Particle *particles;
 }
-- (id<MTLTexture>)texFromStr:(NSString *)str attribute:(NSDictionary *)attr {
-	NSSize size = [str sizeWithAttributes:attr];
-	NSInteger pixW = ceil(size.width), pixH = ceil(size.height);
-	NSBitmapImageRep *imgRep = [NSBitmapImageRep.alloc initWithBitmapDataPlanes:NULL
-		pixelsWide:pixW pixelsHigh:pixH bitsPerSample:8 samplesPerPixel:4 hasAlpha:YES
-		isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
-		bitmapFormat:NSBitmapFormatThirtyTwoBitLittleEndian
-		bytesPerRow:pixW * 4 bitsPerPixel:32];
-	draw_in_bitmap(imgRep, ^(NSBitmapImageRep *bm) {
-		[[NSColor colorWithWhite:0. alpha:0.] setFill];
-		[NSBezierPath fillRect:(NSRect){0, 0, bm.pixelsWide, bm.pixelsHigh}];
-		[str drawAtPoint:(NSPoint){0., 0.} withAttributes:attr];
-	});
-	NSGraphicsContext *grCtx = NSGraphicsContext.currentContext;
-	NSGraphicsContext.currentContext =
-		[NSGraphicsContext graphicsContextWithBitmapImageRep:imgRep];
-	[[NSColor colorWithWhite:0. alpha:0.] setFill];
-	[NSBezierPath fillRect:(NSRect){0, 0, pixW, pixH}];
-	[str drawAtPoint:(NSPoint){0., 0.} withAttributes:attr];
-	NSGraphicsContext.currentContext = grCtx;
+- (id<MTLTexture>)textureDrawnBy:(void (^)(NSBitmapImageRep *bm))block
+	size:(NSSize)size scaleFactor:(CGFloat)sclFctr {
+	NSInteger pixW = ceil(size.width * sclFctr), pixH = ceil(size.height * sclFctr);
+	NSBitmapImageRep *imgRep = create_rgb_bitmap(pixW, pixH, NULL);
+	imgRep.size = size;
+	draw_in_bitmap(imgRep, block);
 	MTLTextureDescriptor *texDesc = [MTLTextureDescriptor
 		texture2DDescriptorWithPixelFormat:view.colorPixelFormat
 		width:pixW height:pixH mipmapped:NO];
@@ -139,6 +130,26 @@ static void particle_step(Particle *p) {
 	[tex replaceRegion:MTLRegionMake2D(0, 0, pixW, pixH)
 		mipmapLevel:0 withBytes:imgRep.bitmapData bytesPerRow:imgRep.bytesPerRow];
 	return tex;
+}
+- (id<MTLTexture>)texFromStr:(NSString *)str attribute:(NSDictionary *)attr {
+	return [self textureDrawnBy:^(NSBitmapImageRep *bm) {
+		[[NSColor colorWithWhite:0. alpha:0.] setFill];
+		[NSBezierPath fillRect:(NSRect){0, 0, bm.size}];
+		[str drawAtPoint:(NSPoint){0., 0.} withAttributes:attr];
+	} size:[str sizeWithAttributes:attr] scaleFactor:1.];
+}
+- (id<MTLTexture>)texFromImageName:(NSString *)name {
+	NSImage *image = [NSImage imageNamed:name];
+	NSSize sz = image.size;
+	return [self textureDrawnBy:^(NSBitmapImageRep *bm) {
+		[[NSColor colorWithWhite:0. alpha:0.] setFill];
+		[NSBezierPath fillRect:(NSRect){0, 0, bm.size}];
+		NSAffineTransform *trs = NSAffineTransform.transform;
+		[trs translateXBy:0. yBy:sz.width];
+		[trs rotateByRadians:M_PI / -2.];
+		[trs concat];
+		[image drawInRect:(NSRect){0., 0., sz}];
+	} size:(NSSize){sz.height, sz.width} scaleFactor:300./72.];
 }
 - (void)setupSymbolTex {
 	if (symbolAttr == nil) symbolAttr = [NSMutableDictionary dictionaryWithObject:
@@ -149,12 +160,12 @@ static void particle_step(Particle *p) {
 	StrGTex = [self texFromStr:@"G" attribute:symbolAttr];
 }
 - (Particle *)adjustPtclMemory {
-	Particle *newMem = particles;
-	if (nPtcls != NParticles) {
-		newMem = realloc(particles, sizeof(Particle) * NParticles);
+	Particle *newMem = _particles;
+	if (_nPtcls != NParticles) {
+		newMem = realloc(_particles, sizeof(Particle) * NParticles);
 		if (newMem == NULL) @throw @0;
-		if (nPtcls < NParticles)
-			for (int i = nPtcls; i < NParticles; i ++)
+		if (_nPtcls < NParticles)
+			for (int i = _nPtcls; i < NParticles; i ++)
 				particle_reset(newMem + i, YES);
 	}
 	return newMem;
@@ -162,25 +173,33 @@ static void particle_step(Particle *p) {
 - (id<MTLBuffer>)adjustColBufferSize {
 	id<MTLBuffer> newColBuf = colBuf;
 	NSInteger nColBuf = (colBuf == nil)? 0 : colBuf.length / sizeof(vector_float4);
-	if (ptclColorMode != PTCLconstColor) {
-		if (nColBuf != NParticles) {
+	NSInteger newNC = (_displayMode == DispParticle)?
+			(ptclColorMode == PTCLconstColor)? 0 : NParticles :
+		(_displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs;
+	if (nColBuf != newNC) {
+		if (newNC > 0) {
 			newColBuf = [view.device newBufferWithLength:
-				sizeof(vector_float4) * NParticles options:MTLResourceStorageModeShared];
+				sizeof(vector_float4) * newNC options:MTLResourceStorageModeShared];
 			if (newColBuf == nil) @throw @1;
-		}
-	} else newColBuf = nil;
+		} else colBuf = newColBuf = nil;
+	}
 	return newColBuf;
 }
 - (id<MTLBuffer>)adjustVxBufferSize {
 	id<MTLBuffer> newVxBuf = vxBuf;
 	NSInteger nVertices = (vxBuf == nil)? 0 : vxBuf.length / sizeof(vector_float2);
-	int nV4Line = (ptclDrawMethod == PTCLbyRectangles)? 6 :
-		(ptclDrawMethod == PTCLbyTriangles)? 3 : 2;
-	int newNV = NParticles * nV4Line;
+	int newNV = (_displayMode == DispParticle)?
+		NParticles * ((ptclDrawMethod == PTCLbyRectangles)? 6 :
+			(ptclDrawMethod == PTCLbyTriangles)? 3 : 2) :
+		((_displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs) * NVERTICES_ARROW;
 	if (newNV != nVertices) {
 		newVxBuf = [view.device newBufferWithLength:
 			sizeof(vector_float2) * newNV options:MTLResourceStorageModeShared];
 		if (newVxBuf == nil) @throw @2;
+	}
+	if (_displayMode != DispParticle && _arrowVec == NULL) {
+		_arrowVec = malloc(sizeof(vector_float2) * N_VECTORS * NVERTICES_ARROW);
+		_arrowCol = malloc(sizeof(vector_float4) * N_VECTORS);
 	}
 	return newVxBuf;
 }
@@ -191,7 +210,7 @@ static void particle_step(Particle *p) {
 		Particle *newPTCLs = [self adjustPtclMemory];
 		id<MTLBuffer> newColBuf = [self adjustColBufferSize];
 		id<MTLBuffer> newVxBuf = [self adjustVxBufferSize];
-		particles = newPTCLs; nPtcls = NParticles;
+		_particles = newPTCLs; _nPtcls = NParticles;
 		colBuf = newColBuf;
 		vxBuf = newVxBuf;
 		[self setupVertices];
@@ -206,7 +225,7 @@ static void particle_step(Particle *p) {
 	vxBufLock = NSLock.new;
 	ptclLock = NSLock.new;
 	opeQue = NSOperationQueue.new;
-	agent = a;
+	_agent = a;
 	view = mtkView;
 	view.enableSetNeedsDisplay = YES;
 	view.paused = YES;
@@ -266,8 +285,8 @@ static void particle_step(Particle *p) {
 		NSNumber *oldValue = note.userInfo[keyOldValue];
 		if (oldValue == nil) return;
 		int orgVal = oldValue.intValue;
-		for (int i = 0; i < self->nPtcls; i ++)
-			self->particles[i].life = self->particles[i].life * LifeSpan / orgVal;
+		for (int i = 0; i < self.nPtcls; i ++)
+			self.particles[i].life = self.particles[i].life * LifeSpan / orgVal;
 		self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:keyColorMode
@@ -294,7 +313,7 @@ static void particle_step(Particle *p) {
 	}];
 	return self;
 }
-simd_float3x3 trans_matrix(Particle *p) {
+simd_float3x3 particle_tr_mx(Particle *p) {
 	float th = atan2f(p->v.y, p->v.x);
 	return (simd_float3x3){
 		(simd_float3){cosf(th), sinf(th), 0.},
@@ -382,10 +401,10 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 	if (colBuf == nil) return;
 	vector_float4 *colors = colBuf.contents, ptclHSB = ptcl_hsb_color();
 	for (int i = 0; i < NTHREADS; i ++) {
-		Particle *pStart = particles + i * nPtcls / NTHREADS;
-		vector_float4 *colorsStart = colors + i * nPtcls / NTHREADS;
-		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
-			nPtcls - (int)(nPtcls * (NTHREADS - 1) / NTHREADS);
+		Particle *pStart = _particles + i * _nPtcls / NTHREADS;
+		vector_float4 *colorsStart = colors + i * _nPtcls / NTHREADS;
+		int unit = (i < NTHREADS - 1)? _nPtcls / NTHREADS :
+			_nPtcls - (int)(_nPtcls * (NTHREADS - 1) / NTHREADS);
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++)
 				colorsStart[j] = ptcl_rgb_color(pStart + j, ptclHSB, self->maxSpeed);
@@ -394,16 +413,16 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 	[opeQue waitUntilAllOperationsAreFinished];
 }
 - (void)setupVertices {
-	int nVpL = (int)(vxBuf.length / sizeof(vector_float2) / nPtcls);
+	int nVpL = (int)(vxBuf.length / sizeof(vector_float2) / _nPtcls);
 	vector_float2 *lines = vxBuf.contents;
 	float mxSpd[NTHREADS];
 	memset(mxSpd, 0, sizeof(mxSpd));
 	for (int i = 0; i < NTHREADS; i ++) {
-		Particle *pStart = particles + i * nPtcls / NTHREADS;
-		vector_float2 *lineStart = lines + i * nPtcls / NTHREADS * nVpL;
+		Particle *pStart = _particles + i * _nPtcls / NTHREADS;
+		vector_float2 *lineStart = lines + i * _nPtcls / NTHREADS * nVpL;
 		float *mxSpdP = mxSpd + i;
-		int unit = (i < NTHREADS - 1)? nPtcls / NTHREADS :
-			nPtcls - (int)(nPtcls * (NTHREADS - 1) / NTHREADS);
+		int unit = (i < NTHREADS - 1)? _nPtcls / NTHREADS :
+			_nPtcls - (int)(_nPtcls * (NTHREADS - 1) / NTHREADS);
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++) {
 				Particle *p = pStart + j;
@@ -412,7 +431,7 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 				vector_float2 sz = particle_size(p);
 				switch (nVpL) {
 					case 6: {
-						simd_float3x3 trs = trans_matrix(p);
+						simd_float3x3 trs = particle_tr_mx(p);
 						vector_float2 *vp = lineStart + j * nVpL;
 						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
 						vp[1] = simd_mul(trs, (simd_float3){-sz.x, sz.y, 1.}).xy;
@@ -421,7 +440,7 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 						vp[4] = vp[2]; vp[5] = vp[1];
 					} break;
 					case 3: {
-						simd_float3x3 trs = trans_matrix(p);
+						simd_float3x3 trs = particle_tr_mx(p);
 						vector_float2 *vp = lineStart + j * nVpL;
 						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
 						vp[1] = simd_mul(trs, (simd_float3){-sz.x, 0., 1.}).xy;
@@ -440,11 +459,98 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 	maxSpeed = fmaxf(mxSpd[0], TileSize * .005);
 	for (int i = 1; i < NTHREADS; i ++) if (maxSpeed < mxSpd[i]) maxSpeed = mxSpd[i];
 }
+static void set_arrow_shape(vector_float2 *v, simd_float3x3 *trs) {
+	static vector_float3 v3[NVERTICES_ARROW] = {
+		{-1., AR_TAIL_Y, 1.}, {-1., -AR_TAIL_Y, 1.}, {AR_HEAD_X, AR_TAIL_Y, 1.},
+		{-1., -AR_TAIL_Y, 1.}, {AR_HEAD_X, AR_TAIL_Y, 1.}, {AR_HEAD_X, -AR_TAIL_Y, 1.},
+		{1., 0., 1.}, {AR_HEAD_X, 1., 1.}, {AR_HEAD_X, -1., 1.}
+	};
+	for (int i = 0; i < NVERTICES_ARROW; i ++)
+		v[i] = simd_mul(*trs, v3[i]).xy;
+}
+- (void)setupArrowsForVecFld {
+	vector_float4 vec[N_VECTORS];
+	Particle ptcl;
+	for (int i = 0, vIdx = 0; i < NActiveGrids; i ++) {
+		int ix = FieldP[i][0], iy = FieldP[i][1];
+		for (int j = 0; j < N_VECTOR_GRID; j ++)
+		for (int k = 0; k < N_VECTOR_GRID; k ++, vIdx ++) {
+			vec[vIdx].x = ptcl.p.x = (ix + (k + .5) / N_VECTOR_GRID) * TileSize;
+			vec[vIdx].y = ptcl.p.y = (iy + (j + .5) / N_VECTOR_GRID) * TileSize;
+			particle_force(&ptcl);
+			vec[vIdx].z = simd_length(ptcl.f);
+			vec[vIdx].w = atan2f(ptcl.f.y, ptcl.f.x);
+		}
+	}
+	float maxV = -1e10;
+	for (int i = 0; i < N_VECTORS; i ++)
+		if (maxV < vec[i].z) maxV = vec[i].z;
+	vector_float4 bgCol = col_to_vec(colBackground),
+		maxCol = (simd_reduce_add(bgCol.rgb) > 1.5)?
+			(vector_float4){0., 0., 0., 1.} : (vector_float4){1., 1., 1., 1.};
+	for (int i = 0; i < N_VECTORS; i ++) {
+		vector_float2 cs = {cosf(vec[i].w), sinf(vec[i].w)};
+		cs *= (float)TileSize / N_VECTOR_GRID / 2.;
+		simd_float3x3 trs = {
+			(simd_float3){cs.x, cs.y, 0.},
+			(simd_float3){-cs.y * .5, cs.x * .5, 0.},
+			(simd_float3){vec[i].x, vec[i].y, 1.}};
+		set_arrow_shape(_arrowVec + i * NVERTICES_ARROW, &trs);
+		float grade = vec[i].z / maxV;
+		_arrowCol[i] = bgCol * (1. - grade) + maxCol * grade;
+	}
+}
+- (void)setupArrowsForQValues {
+	float minQ = 1e10, maxQ = -1e10;
+	for (int i = 0; i < NActiveGrids; i ++) {
+		vector_float4 Q = QTable[FieldP[i][1]][FieldP[i][0]];
+		float minq = simd_reduce_min(Q), maxq = simd_reduce_max(Q);
+		if (minQ > minq) minQ = minq;
+		if (maxQ < maxq) maxQ = maxq;
+	}
+	float (^getGrade)(float) = ((maxQ - minQ) < 1.)?
+		(minQ < 0.)? ^(float q) { return q - minQ; } : ^(float q) { return q; } :
+		(minQ < 0.)? ^(float q) { return (q - minQ) / (maxQ - minQ); } :
+			^(float q) { return q / maxQ; };
+	vector_float4 bgCol = col_to_vec(colBackground),
+		maxCol = (simd_reduce_add(bgCol.rgb) > 1.5)?
+			(vector_float4){0., 0., 0., 1.} : (vector_float4){1., 1., 1., 1.};
+	for (int i = 0, vIdx = 0; i < NActiveGrids; i ++) {
+		int ix = FieldP[i][0], iy = FieldP[i][1];
+		vector_float4 Q = QTable[iy][ix];
+		vector_float2 center = {(ix + .5) * TileSize, (iy + .5) * TileSize};
+		for (int j = 0; j < NActs; j ++, vIdx ++) {
+			float th = (1 - j) * M_PI / 2.;
+			vector_float2 cs = {cosf(th), sinf(th)}; cs *= TileSize / 6.;
+			simd_float3x3 trs = {
+				(simd_float3){cs.x, cs.y, 0.},
+				(simd_float3){-cs.y, cs.x, 0.},
+				(simd_float3){center.x + cs.x * 2., center.y + cs.y * 2., 1.}};
+			set_arrow_shape(_arrowVec + vIdx * NVERTICES_ARROW, &trs);
+			float grade = getGrade(Q[j]);
+			_arrowCol[vIdx] = bgCol * (1. - grade) + maxCol * grade;
+		}
+	}
+}
+- (void)setDisplayMode:(DisplayMode)newMode {
+	if (_displayMode == newMode) return;
+	_displayMode = newMode;
+	[self adjustColBufferSize];
+	[self adjustVxBufferSize];
+	switch (_displayMode) {
+		case DispParticle:
+		[self setupVertices];
+		[self setupParticleColors]; break;
+		case DispVector: [self setupArrowsForVecFld]; break;
+		case DispQValues: [self setupArrowsForQValues];
+	}
+	view.needsDisplay = YES;
+}
 - (void)reset {
-	if (particles != NULL) {
+	if (_particles != NULL) {
 		[ptclLock lock];
-		for (int i = 0; i < nPtcls; i ++)
-			particle_reset(particles + i, YES);
+		for (int i = 0; i < _nPtcls; i ++)
+			particle_reset(_particles + i, YES);
 		[vxBufLock lock];
 		if (ptclColorMode != PTCLconstColor)
 			[self setupParticleColors];
@@ -495,6 +601,25 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 		tilePosition[0] * TileSize + (TileSize - w) / 2.,
 		tilePosition[1] * TileSize + (TileSize - h) / 2., w, h});
 }
+static void draw_equtex(RCE rce, id<MTLTexture> tex,
+	int *tileP, NSUInteger sampleCount) {
+	[rce setFragmentTexture:tex atIndex:IndexTexture];
+	NSRect rect = {(tileP[0] + .1) * TileSize, (tileP[1] + .1) * TileSize,
+		TileSize * .8, TileSize * 2.8};
+	CGFloat newW = rect.size.height * tex.width / tex.height;
+	rect.origin.x += (rect.size.width - newW) / 2.;
+	rect.size.width = newW;
+	fill_rect(rce, rect);
+}
+- (void)setupArrows:(RCE)rce n:(int)n {
+	uint nv = NVERTICES_ARROW;
+	memcpy(vxBuf.contents, _arrowVec, sizeof(vector_float2) * n * nv);
+	memcpy(colBuf.contents, _arrowCol, sizeof(vector_float4) * n);
+	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
+	[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
+	[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
+	[rce drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:n * nv];
+}
 - (void)drawScene:(nonnull MTKView *)view commandBuffer:(id<MTLCommandBuffer>)cmdBuf {
 	MTLRenderPassDescriptor *rndrPasDesc = view.currentRenderPassDescriptor;
 	if(rndrPasDesc == nil) return;
@@ -509,7 +634,7 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	fill_rect(rce, (NSRect){0., 0., PTCLMaxX, PTCLMaxY});
 	// Agent
 	int ix, iy;
-	[agent getPositionX:&ix Y:&iy];
+	[_agent getPositionX:&ix Y:&iy];
 	set_color(rce, col_to_vec(colAgent));
 	fill_circle_at(rce,
 		(vector_float2){(ix + .5) * TileSize, (iy + .5) * TileSize}, TileSize * 0.45, 32);
@@ -518,19 +643,25 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	[rce setRenderPipelineState:texPSO];
 	draw_texture(rce, StrSTex, StartP, view.sampleCount);
 	draw_texture(rce, StrGTex, GoalP, view.sampleCount);
-	// particles
+	// particles, vectors, or Q values
 	[rce setRenderPipelineState:shapePSO];
-	uint nv = 0, nVertices = (vxBuf == NULL)? 0 :
-		(uint)(vxBuf.length / sizeof(vector_float2));
-	if (colBuf != nil) {
-		nv = nVertices / nPtcls;
-		[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
-	} else set_color(rce, col_to_vec(colParticles));
-	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
-	[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
-	[rce drawPrimitives:(ptclDrawMethod == PTCLbyLines)?
-		MTLPrimitiveTypeLine : MTLPrimitiveTypeTriangle
-		vertexStart:0 vertexCount:nVertices];		
+	switch (_displayMode) {
+		case DispParticle: {
+			uint nv = 0, nVertices = (vxBuf == NULL)? 0 :
+				(uint)(vxBuf.length / sizeof(vector_float2));
+			if (colBuf != nil) {
+				nv = nVertices / _nPtcls;
+				[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
+			} else set_color(rce, col_to_vec(colParticles));
+			[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
+			[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
+			[rce drawPrimitives:(ptclDrawMethod == PTCLbyLines)?
+				MTLPrimitiveTypeLine : MTLPrimitiveTypeTriangle
+				vertexStart:0 vertexCount:nVertices];
+		} break;
+		case DispVector: [self setupArrows:rce n:N_VECTORS]; break;
+		case DispQValues: [self setupArrows:rce n:NActiveGrids * NActs];
+	}
 	// Obstables
 	set_color(rce, col_to_vec(colObstacles));
 	for (int i = 0; i < NObstacles; i ++) fill_rect(rce, (NSRect)
@@ -548,6 +679,14 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	}
 	[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
 	[rce drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:NV_GRID];
+	// equations
+	if (equLTex == nil) {
+		equLTex = [self texFromImageName:@"equationL"];
+		equPTex = [self texFromImageName:@"equationP"];
+	}
+	[rce setRenderPipelineState:texPSO];
+	draw_equtex(rce, equLTex, (int []){2, 2}, view.sampleCount);
+	draw_equtex(rce, equPTex, (int []){7, 3}, view.sampleCount);
 	[rce endEncoding];
 }
 - (void)drawInMTKView:(nonnull MTKView *)view {
@@ -557,11 +696,11 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	[cmdBuf presentDrawable:view.currentDrawable];
 	[cmdBuf commit];
 }
-- (void)oneStep {
+- (void)oneStepForParticles {
 	[ptclLock lock];
-	NSInteger unit = nPtcls / NTHREADS;
-	for (int i = 0; i < nPtcls; i += unit) {
-		Particle *pStart = particles + i;
+	NSInteger unit = _nPtcls / NTHREADS;
+	for (int i = 0; i < _nPtcls; i += unit) {
+		Particle *pStart = _particles + i;
 		[opeQue addOperationWithBlock:^{
 			for (int j = 0; j < unit; j ++) {
 				Particle *p = pStart + j;
@@ -578,8 +717,14 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	[self setupParticleColors];
 	[vxBufLock unlock];
 	[ptclLock unlock];
-	NSView *v = view;
-	in_main_thread(^{ v.needsDisplay = YES; });
+}
+- (void)oneStep {
+	switch (_displayMode) {
+		case DispParticle: [self oneStepForParticles]; break;
+		case DispVector: [self setupArrowsForVecFld]; break;
+		case DispQValues: [self setupArrowsForQValues];
+	}
+	in_main_thread(^{ self->view.needsDisplay = YES; });
 }
 - (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)sclFactor
 	drawBlock:(void (^)(NSBitmapImageRep *bm))block {
@@ -604,14 +749,9 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	view.framebufferOnly = YES;
 
 	NSUInteger wide = ceil(size.width * sclFactor), high = ceil(size.height * sclFactor);
-	NSBitmapImageRep *srcImgRep = [NSBitmapImageRep.alloc initWithBitmapDataPlanes:
-		(unsigned char *[]){buf.contents} pixelsWide:texW pixelsHigh:texH bitsPerSample:8
-		samplesPerPixel:4 hasAlpha:YES isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
-		bytesPerRow:texW * 4 bitsPerPixel:32],
-		*dstImgRep = [NSBitmapImageRep.alloc initWithBitmapDataPlanes:NULL
-		pixelsWide:wide pixelsHigh:high bitsPerSample:8 samplesPerPixel:4
-		hasAlpha:YES isPlanar:NO colorSpaceName:NSCalibratedRGBColorSpace
-		bytesPerRow:wide * 4 bitsPerPixel:32];
+	NSBitmapImageRep *srcImgRep =
+		create_rgb_bitmap(texW, texH, (unsigned char *[]){buf.contents}),
+		*dstImgRep = create_rgb_bitmap(wide, high, NULL);
 	dstImgRep.size = size;
 	draw_in_bitmap(dstImgRep, ^(NSBitmapImageRep * _Nonnull bm) {
 		[srcImgRep drawInRect:(NSRect){0., 0., bm.size}];
@@ -624,8 +764,4 @@ static void draw_texture(RCE rce, id<MTLTexture> tex,
 	}
 	return dstImgRep;
 }
-//
-- (Agent *)agent { return agent; }
-- (Particle *)particles { return particles; }
-- (int)nParticles { return nPtcls; }
 @end

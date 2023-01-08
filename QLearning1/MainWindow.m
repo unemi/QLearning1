@@ -29,6 +29,7 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	BOOL running;
 	NSUInteger steps, goalCount;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem, *infoTextItem;
+	IBOutlet NSPopUpButton *dispModePopUp;
 	IBOutlet MTKView *view;
 	IBOutlet RecordView *recordView;
 	IBOutlet NSTextField *infoText;
@@ -80,13 +81,18 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	interval = 1. / 60.;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
-	infoTextItem.view = [TextFieldForToolBarItem labelWithString:@"0 steps, 0 goals"];
 //	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustViewFrame:)
 		name:NSViewFrameDidChangeNotification object:view.superview];
+	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
+		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		if (self->view.superview.inFullScreenMode)
+			[NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO block:
+				^(NSTimer * _Nonnull timer) { [NSCursor setHiddenUntilMouseMoves:YES];}];
+	}];
 	[view.window makeFirstResponder:self];
 	[self reset:nil];
 }
@@ -158,12 +164,15 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 		infoText.font = [NSFont fontWithName:@"Menlo Regular" size:
 			screen.frame.size.width / 1920. * 24.];
 		infoText.stringValue = self.infoText;
+		if (NSPointInRect(NSEvent.mouseLocation, screen.frame))
+			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
 		[cView exitFullScreenModeWithOptions:nil];
 		fullScreenItem.label = labelFullScreenOn;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
 		infoText.hidden = YES;
 		[self showSteps];
+		[NSCursor setHiddenUntilMouseMoves:NO];
 	}
 }
 - (IBAction)printScene:(id)sender {
@@ -186,7 +195,20 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];
 	[pb setData:data forType:NSPasteboardTypePDF];
 }
+- (IBAction)chooseDisplayMode:(id)sender {
+	NSInteger newMode;
+	if (sender == dispModePopUp) {
+		newMode = dispModePopUp.indexOfSelectedItem;
+	} else if ([sender isKindOfClass:NSMenuItem.class]) {
+		newMode = ((NSMenuItem *)sender).tag;
+		[dispModePopUp selectItemAtIndex:newMode];
+	} else return;
+	display.displayMode = (DisplayMode)newMode;
+}
 // Window Delegate
+- (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
+	return view.superview.inFullScreenMode? sender.frame.size : frameSize;
+}
 - (void)windowWillClose:(NSNotification *)notification {
 	if (notification.object == self.window)
 		[NSApp terminate:nil];
@@ -201,6 +223,8 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 			labelFullScreenOff : labelFullScreenOn;
 	else if (action == @selector(printScene:) && view.superview.inFullScreenMode)
 		return view.window.screen != self.window.screen;
+	else if (action == @selector(chooseDisplayMode:))
+		menuItem.state = (display.displayMode == menuItem.tag);
 	return YES;
 }
 @end
@@ -215,6 +239,11 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	if (event.keyCode == 53 && self.inFullScreenMode)
 		[mainWindow fullScreen:nil];
 	else [super keyDown:event];
+}
+- (void)mouseUp:(NSEvent *)event {
+	if (self.inFullScreenMode)
+		[NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO block:
+			^(NSTimer * _Nonnull timer) { [NSCursor setHiddenUntilMouseMoves:YES];}];
 }
 - (void)drawRect:(NSRect)rect {
 	[NSColor.blackColor setFill];

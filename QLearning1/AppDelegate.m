@@ -15,7 +15,7 @@
 
 int Move[4][2] = {{0,1},{1,0},{0,-1},{-1,0}}; // up, right, down, left
 int ObsP[NObstacles][2] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
-int FieldP[NGridW * NGridH - NObstacles][2];
+int FieldP[NActiveGrids][2];
 int Obstacles[NGridH][NGridW];
 int StartP[] = {0,3}, GoalP[] = {8,5};
 NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw";
@@ -182,9 +182,13 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	mainWindow = [MainWindow.alloc initWithWindow:nil];
 	[mainWindow showWindow:nil];
 	if (START_WIDTH_FULL_SCR) {
-		[mainWindow fullScreen:nil];
-		[NSTimer scheduledTimerWithTimeInterval:.5 target:mainWindow
-			selector:@selector(startStop:) userInfo:nil repeats:NO];
+		[NSTimer scheduledTimerWithTimeInterval:.1 repeats:NO
+			block:^(NSTimer * _Nonnull timer) {
+			[self->mainWindow fullScreen:nil];
+			[NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO
+				block:^(NSTimer * _Nonnull timer) {
+				[self->mainWindow startStop:nil]; }];
+		}];
 	} else [mainWindow adjustForRecordView:nil];
 }
 - (void)applicationWillTerminate:(NSNotification *)notification {

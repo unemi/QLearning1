@@ -11,6 +11,7 @@
 #define NGridW 9
 #define NGridH 6
 #define NObstacles 7
+#define NActiveGrids (NGridW*NGridH-NObstacles)
 #define TileSize 100
 #define PTCLMaxX (NGridW*TileSize)
 #define PTCLMaxY (NGridH*TileSize)
@@ -28,7 +29,7 @@ extern BoolVarInfo BoolVars[];
 #define RECORD_IMAGES (BoolVars[1].v)
 
 extern int Move[4][2], ObsP[NObstacles][2],
-	FieldP[NGridW * NGridH - NObstacles][2], Obstacles[NGridH][NGridW],
+	FieldP[NActiveGrids][2], Obstacles[NGridH][NGridW],
 	StartP[2], GoalP[2];
 extern NSString *keyOldValue, *keyShouldRedraw;
 extern NSString *keyColorMode, *keyDrawMethod;

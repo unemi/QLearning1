@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
+        <deployment identifier="macosx"/>
         <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
     </dependencies>
     <objects>
@@ -159,10 +160,28 @@
                                     <action selector="reset:" target="-1" id="aXZ-gH-Qks"/>
                                 </connections>
                             </menuItem>
-                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
                             <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
                                 <connections>
                                     <action selector="fullScreen:" target="-1" id="MZ7-3k-UZc"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
+                            <menuItem title="Particles" keyEquivalent="p" id="tzd-WL-wrU">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="DIa-Fv-KQL"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Vector Field" tag="1" keyEquivalent="v" id="lDd-S5-Tu5">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="TKG-fb-GAO"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Q Values" tag="2" keyEquivalent="q" id="A0a-eb-dZe">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="m3R-0f-YuK"/>
                                 </connections>
                             </menuItem>
                         </items>

@@ -17,6 +17,8 @@
 		232521782956BB7A00159F30 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521772956BB7A00159F30 /* main.m */; };
 		232521812956BBF700159F30 /* Agent.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521802956BBF700159F30 /* Agent.m */; };
 		232521842956C38D00159F30 /* Display.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521832956C38D00159F30 /* Display.m */; };
+		23297D89296AD1CC00178016 /* equationP.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D87296AD1CC00178016 /* equationP.pdf */; };
+		23297D8A296AD1CC00178016 /* equationL.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D88296AD1CC00178016 /* equationL.pdf */; };
 		233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 233DF0A0295B109C00F9F20C /* MyShaders.metal */; };
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
 		234090D92969025D008CC72D /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 234090D72969025D008CC72D /* MainWindow.xib */; };
@@ -41,8 +43,9 @@
 		232521802956BBF700159F30 /* Agent.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Agent.m; sourceTree = "<group>"; };
 		232521822956C38D00159F30 /* Display.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Display.h; sourceTree = "<group>"; };
 		232521832956C38D00159F30 /* Display.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Display.m; sourceTree = "<group>"; };
+		23297D87296AD1CC00178016 /* equationP.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationP.pdf; path = QLearning1/equationP.pdf; sourceTree = "<group>"; };
+		23297D88296AD1CC00178016 /* equationL.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationL.pdf; path = QLearning1/equationL.pdf; sourceTree = "<group>"; };
 		2330B0E6296972A100F87CEC /* Samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Samples; sourceTree = "<group>"; };
-		2330B0E7296972E600F87CEC /* Images */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Images; path = QLearning1/Images; sourceTree = "<group>"; };
 		23363EE6295F12540005A64D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		233DF0A0295B109C00F9F20C /* MyShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = MyShaders.metal; sourceTree = "<group>"; };
 		234090D52969025D008CC72D /* MainWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainWindow.h; sourceTree = "<group>"; };
@@ -69,9 +72,9 @@
 			isa = PBXGroup;
 			children = (
 				23363EE6295F12540005A64D /* README.md */,
+				23297D8B296AD1DF00178016 /* Images */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
 				2330B0E6296972A100F87CEC /* Samples */,
-				2330B0E7296972E600F87CEC /* Images */,
 				2325216D2956BB7900159F30 /* Products */,
 				234090DA296937CF008CC72D /* Frameworks */,
 			);
@@ -112,6 +115,15 @@
 				230F43A8296028AA006513E2 /* Credits.rtf */,
 			);
 			path = QLearning1;
+			sourceTree = "<group>";
+		};
+		23297D8B296AD1DF00178016 /* Images */ = {
+			isa = PBXGroup;
+			children = (
+				23297D88296AD1CC00178016 /* equationL.pdf */,
+				23297D87296AD1CC00178016 /* equationP.pdf */,
+			);
+			name = Images;
 			sourceTree = "<group>";
 		};
 		234090DA296937CF008CC72D /* Frameworks */ = {
@@ -183,7 +195,9 @@
 				234090D92969025D008CC72D /* MainWindow.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
+				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
+				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -344,7 +358,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -373,7 +387,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 6;
+				CURRENT_PROJECT_VERSION = 7;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
