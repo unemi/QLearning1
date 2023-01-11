@@ -28,6 +28,7 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	CGFloat interval;
 	BOOL running;
 	NSUInteger steps, goalCount;
+	NSSound *sndGoal, *sndBad, *sndGood;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem, *infoTextItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
 	IBOutlet MTKView *view;
@@ -95,6 +96,21 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	}];
 	[view.window makeFirstResponder:self];
 	[self reset:nil];
+/**Basso.aiff	Blow.aiff	Bottle.aiff	Frog.aiff	Funk.aiff
+Glass.aiff	Hero.aiff	Morse.aiff	Ping.aiff	Pop.aiff
+Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
+//	sndGoal = [NSSound soundNamed:@"Ping"];
+	sndGoal = [NSSound.alloc initWithContentsOfURL:
+		[NSBundle.mainBundle URLForResource:@"Ping" withExtension:@"aac"] byReference:NO];
+	sndBad = [NSSound.alloc initWithContentsOfURL:
+		[NSURL fileURLWithPath:
+@"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/Stingers/Cartoon Boing.caf"]
+		byReference:NO];
+	sndGood = [NSSound.alloc initWithContentsOfURL:
+		[NSURL fileURLWithPath:
+@"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/Stingers/Ethereal Accents.caf"]
+		byReference:NO];
+//	if (sndGoal == nil) NSLog(@"Failed to read sound file.");
 }
 - (NSString *)infoText {
 	return [NSString stringWithFormat:@"%@ steps, %ld goal%@",
@@ -112,7 +128,11 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 - (void)loopThread {
 	while (running) {
 		NSUInteger tm = current_time_us();
-		if ([agent oneStep]) goalCount ++;
+		if ([agent oneStep]) {
+			goalCount ++;
+			if (sndGoal.isPlaying) [sndGoal stop];
+			[sndGoal play];
+		}
 		steps ++;
 		in_main_thread(^{ [self showSteps]; });
 		[display oneStep];
@@ -126,6 +146,7 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 				[self reset:nil];
 				[self startStop:nil];
 			});
+			[((goalCount >= MAX_GOALCNT)? sndGood : sndBad) play];
 	}}
 }
 - (IBAction)reset:(id)sender {

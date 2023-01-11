@@ -9,10 +9,12 @@
 #import "Display.h"
 #import "AppDelegate.h"
 #import "Agent.h"
+#import "LogoDrawer.h"
 
 @implementation MyViewForCG {
 	Display *display;
 	NSBitmapImageRep *imgCache;
+	LogoDrawerCG *logoDrawer;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp {
 	if (!(self = [super initWithFrame:frameRect])) return nil;
@@ -101,17 +103,39 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		[path fill];
 	}
 }
-static void draw_equ(NSString *name, NSPoint p) {
+- (void)drawEqu:(NSString *)name at:(NSPoint)p {
+	NSImage *img = [NSImage imageNamed:name];
+	NSRect imgRect = {0., 0, TileSize * 2.8, };
+	NSSize imgSz = img.size;
+	imgRect.size.height = imgRect.size.width * imgSz.height / imgSz.width;
+	NSBitmapImageRep *imgRep = [self bitmapImageRepForCachingDisplayInRect:imgRect];
+	if (imgRep.bitsPerPixel != 32) {
+		error_msg(@"Bit per pixel of chache image is not 32.", nil);
+		return;
+	}
+NSLog(@"hasAlpha = %@, bitmapFormat = %lX",
+	imgRep.hasAlpha? @"YES" : @"NO", imgRep.bitmapFormat);
+	union { unsigned long ul; unsigned char c[4]; } c;
+	c.ul = EndianU32_NtoB(col_to_ulong(colSymbols));
+	draw_in_bitmap(imgRep, ^(NSBitmapImageRep * _Nonnull bm) {
+		[[NSColor colorWithWhite:0. alpha:0.] setFill];
+		[NSBezierPath fillRect:imgRect];
+		[img drawInRect:imgRect]; });
+	unsigned char *row = imgRep.bitmapData;
+	for (NSInteger iy = 0; iy < imgRep.pixelsHigh; iy ++, row += imgRep.bytesPerRow) {
+		unsigned char *bytes = row;
+		for (NSInteger ix = 0; ix < imgRep.pixelsWide; ix ++, bytes += 4) {
+			if (bytes[3] == 0) memset(bytes, 0, 4);
+			else for (NSInteger i = 0; i < 3; i ++) bytes[i] = c.c[i] * (bytes[3] / 255.);
+		}
+	}
 	[NSGraphicsContext saveGraphicsState];
 	NSAffineTransform *trsMx = NSAffineTransform.transform;
 	[trsMx translateXBy:TileSize * (p.x + .1) yBy:TileSize * (p.y - .1)];
 	[trsMx rotateByRadians:M_PI / -2.];
 	[trsMx concat];
-	NSImage *img = [NSImage imageNamed:name];
-	NSRect imgRect = {0., 0, TileSize * 2.8, };
-	imgRect.size.height = imgRect.size.width * img.size.height / img.size.width;
 	imgRect.origin.y = (TileSize * 0.8 - imgRect.size.height) / 2.;
-	[img drawInRect:imgRect];
+	[imgRep drawInRect:imgRect];
 	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawByCoreGraphics {
@@ -163,17 +187,8 @@ static void draw_equ(NSString *name, NSPoint p) {
 		case DispVector: [self drawVectors:N_VECTORS]; break;
 		case DispQValues: [self drawVectors:NActiveGrids * NActs];
 	}
-	// Obstacles
-	NSBezierPath *path = NSBezierPath.new;
-	NSRect obstRect = {0., 0., TileSize, TileSize};
-	for (int i = 0; i < NObstacles; i ++) {
-		obstRect.origin = (NSPoint){ObsP[i][0] * TileSize, ObsP[i][1] * TileSize};
-		[path appendBezierPathWithRect:obstRect];
-	}
-	[colObstacles setFill];
-	[path fill];
 	// Grid lines
-	[path removeAllPoints];
+	NSBezierPath *path = NSBezierPath.new;
 	for (int i = 1; i < NGridH; i ++) {
 		[path moveToPoint:(NSPoint){0., i * TileSize}];
 		[path relativeLineToPoint:(NSPoint){NGridW * TileSize, 0}];
@@ -184,9 +199,22 @@ static void draw_equ(NSString *name, NSPoint p) {
 	}
 	[colGridLines setStroke];
 	[path stroke];
+	// Obstacles
+	[path removeAllPoints];
+	NSRect obstRect = {0., 0., TileSize, TileSize};
+	for (int i = 0; i < NObstacles; i ++) {
+		obstRect.origin = (NSPoint){ObsP[i][0] * TileSize, ObsP[i][1] * TileSize};
+		[path appendBezierPathWithRect:obstRect];
+	}
+	[colObstacles setFill];
+	[path fill];
 	// Equations
-	draw_equ(@"equationL", (NSPoint){2., 5.});
-	draw_equ(@"equationP", (NSPoint){7., 6.});
+	[self drawEqu:@"equationL" at:(NSPoint){2., 5.}];
+	[self drawEqu:@"equationP" at:(NSPoint){7., 6.}];
+	// Project Logo
+	if (logoDrawer == nil) logoDrawer = LogoDrawerCG.new;
+	[colSymbols set];
+	[logoDrawer drawByCGinRect:(NSRect){5 * TileSize, TileSize, TileSize, TileSize}];
 	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawRect:(NSRect)rect {

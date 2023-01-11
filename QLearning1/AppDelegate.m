@@ -18,6 +18,7 @@ int ObsP[NObstacles][2] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
 int FieldP[NActiveGrids][2];
 int Obstacles[NGridH][NGridW];
 int StartP[] = {0,3}, GoalP[] = {8,5};
+NSString *keyCntlPnl = @"controlPanel";
 NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw";
 NSString *keyColorMode = @"ptclColorMode", *keyDrawMethod = @"ptclDrawMethod";
 static NSString *scrForFullScrFD;
@@ -54,7 +55,7 @@ ColVarInfo ColVars[] = {
 	{ @"colorObstacles", &colObstacles, nil, 0 },
 	{ @"colorAgent", &colAgent, nil, 0 },
 	{ @"colorGridLines", &colGridLines, nil, 0 },
-	{ @"colorSymbols", &colSymbols, nil, ShouldPostNotification },
+	{ @"colorSymbols", &colSymbols, nil, 0 },
 	{ @"colorParticles", &colParticles, nil, ShouldPostNotification },
 	{ nil }
 };
@@ -93,19 +94,24 @@ void in_main_thread(void (^block)(void)) {
 	if (NSThread.isMainThread) block();
 	else dispatch_async(dispatch_get_main_queue(), block);
 }
-void error_msg(NSError *error, NSWindow * _Nullable window) {
+void error_msg(NSObject *obj, NSWindow *window) {
 	NSAlert *alt = NSAlert.new;
 	alt.alertStyle = NSAlertStyleCritical;
-	alt.messageText = error.localizedDescription;
-	alt.informativeText = [NSString stringWithFormat:@"%@\n%@",
-		error.localizedFailureReason, error.localizedRecoverySuggestion];
+	if ([obj isKindOfClass:NSError.class]) {
+		NSError *error = (NSError *)obj;
+		alt.messageText = error.localizedDescription;
+		alt.informativeText = [NSString stringWithFormat:@"%@\n%@",
+			error.localizedFailureReason, error.localizedRecoverySuggestion];
+	} else if ([obj isKindOfClass:NSString.class])
+		alt.messageText = (NSString *)obj;
+	else alt.messageText = @"Unknown error.";
 	if (window == nil) [alt runModal];
 	else [alt beginSheetModalForWindow:window
 		completionHandler:^(NSModalResponse returnCode) {
 	}];
 }
 
-static NSUInteger col_to_ulong(NSColor *col) {
+NSUInteger col_to_ulong(NSColor *col) {
 	CGFloat c[4] = {0., 0., 0., 1.};
 	[[col colorUsingColorSpace:NSColorSpace.genericRGBColorSpace]
 		getComponents:c];
@@ -391,7 +397,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	[self checkFDBits:FDBTInt + dgt.tag cond:newValue == info->fd];
 	if (info->flag & ShouldPostNotification)
 		[NSNotificationCenter.defaultCenter postNotificationName:
-			info->key object:NSApp userInfo:@{keyOldValue:@(orgValue)}];
+			info->key object:NSApp userInfo:@{keyOldValue:@(orgValue), keyCntlPnl:self}];
 }
 - (IBAction)changeFloatValue:(NSTextField *)dgt {
 	FloatVarInfo *info = &FloatVars[dgt.tag];
@@ -429,8 +435,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	info->v = newValue;
 	[self checkFDBits:FDBTBool + btn.tag cond:newValue == info->fd];
 	if (info->flag & ShouldPostNotification)
-		[NSNotificationCenter.defaultCenter postNotificationName:
-			info->key object:NSApp userInfo:nil];
+		[NSNotificationCenter.defaultCenter
+			postNotificationName:info->key object:NSApp];
 }
 - (IBAction)chooseColorMode:(NSButton *)btn {
 	PTCLColorMode newValue = (PTCLColorMode)btn.tag;
@@ -441,8 +447,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	}];
 	ptclColorMode = newValue;
 	[self checkFDBits:FDBTDc cond:newValue == ptclColorModeFD];
-	[NSNotificationCenter.defaultCenter
-		postNotificationName:keyColorMode object:NSApp];
+	[NSNotificationCenter.defaultCenter postNotificationName:
+		keyColorMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
 - (IBAction)chooseDrawMethod:(NSButton *)btn {
 	PTCLDrawMethod newValue = (PTCLDrawMethod)btn.tag;
@@ -454,8 +460,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	ptclDrawMethod = newValue;
 	dgtStrokeWidth.enabled = (newValue != PTCLbyLines);
 	[self checkFDBits:FDBTDm cond:newValue == ptclDrawMethodFD];
-	[NSNotificationCenter.defaultCenter
-		postNotificationName:keyDrawMethod object:NSApp];
+	[NSNotificationCenter.defaultCenter postNotificationName:
+		keyDrawMethod object:NSApp userInfo:@{keyCntlPnl:self}];
 }
 - (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {
 	NSString *newValue = popUp.titleOfSelectedItem;
@@ -588,7 +594,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		[self setParamValuesFromDict:orgValues];
 	}];
 	for (NSString *key in postKeys) [NSNotificationCenter.defaultCenter
-		postNotificationName:key object:NSApp];
+		postNotificationName:key object:NSApp
+		userInfo:@{keyCntlPnl:self, keyOldValue:orgValues[key]}];
 	if (shouldRedraw) [NSNotificationCenter.defaultCenter
 		postNotificationName:keyShouldRedraw object:NSApp];
 }
@@ -653,6 +660,30 @@ static void displayReconfigCB(CGDirectDisplayID display,
 			error_msg(error, self.window);
 	}];
 }
+- (void)adjustNParticleDgt { // called when memory allocation failed.
+	dgtNParticles.integerValue = NParticles;
+	int idx;
+	for (idx = 0; IntVars[idx].key != nil; idx ++)
+		if (IntVars[idx].v == &NParticles) break;
+	[self checkFDBits:FDBTInt + idx cond:NParticles == IntVars[idx].fd];
+}
+- (void)adjustColorMode:(NSDictionary *)info { // called when buffer allocation failed.
+	NSNumber *num = info[keyOldValue];
+	if (num != nil) {
+		ptclColorMode = (PTCLColorMode)num.intValue;
+		for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
+		[self checkFDBits:FDBTDc cond:ptclColorMode == ptclColorModeFD];
+	} else [_undoManager undo];
+}
+- (void)adjustDrawMethod:(NSDictionary *)info { // called when buffer allocation failed.
+	NSNumber *num = info[keyOldValue];
+	if (num != nil) {
+		ptclDrawMethod = (PTCLDrawMethod)num.intValue;
+		for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
+		[self checkFDBits:FDBTDm cond:ptclDrawMethod == ptclDrawMethodFD];
+	} else [_undoManager undo];
+}
+//
 - (NSUndoManager *)windowWillReturnUndoManager:(NSWindow *)window {
 	return _undoManager;
 }

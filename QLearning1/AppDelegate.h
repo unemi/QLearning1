@@ -21,6 +21,7 @@ typedef struct { NSString *key; float *v, fd; int flag; } FloatVarInfo;
 typedef struct { NSString *key; NSColor * __strong *v, *fd; int flag; } ColVarInfo;
 typedef struct { NSString *key; NSUInteger v, fd; } UIntegerVarInfo;
 typedef struct { NSString *key; BOOL v, fd; int flag; } BoolVarInfo;
+extern IntVarInfo IntVars[];
 extern UIntegerVarInfo UIntegerVars[];
 extern BoolVarInfo BoolVars[];
 #define MAX_STEPS (UIntegerVars[0].v)
@@ -31,14 +32,20 @@ extern BoolVarInfo BoolVars[];
 extern int Move[4][2], ObsP[NObstacles][2],
 	FieldP[NActiveGrids][2], Obstacles[NGridH][NGridW],
 	StartP[2], GoalP[2];
+extern NSString *keyCntlPnl;
 extern NSString *keyOldValue, *keyShouldRedraw;
 extern NSString *keyColorMode, *keyDrawMethod;
 extern unsigned long current_time_us(void);
 extern void in_main_thread(void (^block)(void));
+extern void error_msg(NSObject *obj, NSWindow *window);
+extern NSUInteger col_to_ulong(NSColor *col);
 
 @interface ControlPanel : NSWindowController
 	<NSWindowDelegate, NSMenuItemValidation>
 @property (readonly) NSUndoManager *undoManager;
+- (void)adjustNParticleDgt;
+- (void)adjustColorMode:(NSDictionary *)info;
+- (void)adjustDrawMethod:(NSDictionary *)info;
 @end
 
 @interface AppDelegate : NSObject <NSApplicationDelegate>

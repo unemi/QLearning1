@@ -23,6 +23,8 @@
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
 		234090D92969025D008CC72D /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 234090D72969025D008CC72D /* MainWindow.xib */; };
 		234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 234090DB296937CF008CC72D /* MetalKit.framework */; };
+		234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */ = {isa = PBXBuildFile; fileRef = 234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */; };
+		2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */ = {isa = PBXBuildFile; fileRef = 2390BB6E296EC37700B4FB07 /* Ping.aac */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,7 +54,11 @@
 		234090D62969025D008CC72D /* MainWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainWindow.m; sourceTree = "<group>"; };
 		234090D72969025D008CC72D /* MainWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainWindow.xib; sourceTree = "<group>"; };
 		234090DB296937CF008CC72D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LogoDrawer.h; sourceTree = "<group>"; };
+		234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LogoDrawer.m; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
+		2390BB6E296EC37700B4FB07 /* Ping.aac */ = {isa = PBXFileReference; lastKnownFileType = file; path = Ping.aac; sourceTree = "<group>"; };
+		23DB3560296EAA2B0008D821 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		23FDEFDC2967CA2700C6C1E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -72,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				23363EE6295F12540005A64D /* README.md */,
+				2390BB6D296EC37700B4FB07 /* Sounds */,
 				23297D8B296AD1DF00178016 /* Images */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
 				2330B0E6296972A100F87CEC /* Samples */,
@@ -104,6 +111,8 @@
 				232521832956C38D00159F30 /* Display.m */,
 				2318A51F2966E2AE0025CCFB /* MyViewForCG.h */,
 				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
+				234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */,
+				234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */,
 				232521722956BB7A00159F30 /* Assets.xcassets */,
 				234090D72969025D008CC72D /* MainWindow.xib */,
 				232521742956BB7A00159F30 /* MainMenu.xib */,
@@ -129,9 +138,19 @@
 		234090DA296937CF008CC72D /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				23DB3560296EAA2B0008D821 /* AVFAudio.framework */,
 				234090DB296937CF008CC72D /* MetalKit.framework */,
 			);
 			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		2390BB6D296EC37700B4FB07 /* Sounds */ = {
+			isa = PBXGroup;
+			children = (
+				2390BB6E296EC37700B4FB07 /* Ping.aac */,
+			);
+			name = Sounds;
+			path = QLearning1/Sounds;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -192,6 +211,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
+				2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */,
 				234090D92969025D008CC72D /* MainWindow.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
@@ -214,6 +234,7 @@
 				232521842956C38D00159F30 /* Display.m in Sources */,
 				234090D82969025D008CC72D /* MainWindow.m in Sources */,
 				233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */,
+				234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */,
 				232521712956BB7900159F30 /* AppDelegate.m in Sources */,
 				2318A51E296697030025CCFB /* RecordView.m in Sources */,
 			);
@@ -291,7 +312,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.6;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
@@ -343,7 +364,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 12.6;
+				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = macosx;

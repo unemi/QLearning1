@@ -15,6 +15,7 @@ typedef struct {
   vector_float2 p, v, f;
   int life;
 } Particle;
+typedef id<MTLRenderCommandEncoder> RCE;
 
 #define N_VECTOR_GRID 5
 #define N_VECTORS (NActiveGrids*N_VECTOR_GRID*N_VECTOR_GRID)
@@ -38,6 +39,7 @@ extern vector_float4 ptcl_hsb_color(void);
 extern vector_float4 ptcl_rgb_color(Particle * _Nonnull p, vector_float4 hsba, float maxSpeed);
 extern vector_float2 particle_size(Particle * _Nonnull p);
 extern simd_float3x3 particle_tr_mx(Particle * _Nonnull p);
+extern void fill_circle_at(RCE _Nonnull rce, vector_float2 center, float radius, int nEdges);
 
 NS_ASSUME_NONNULL_BEGIN
 

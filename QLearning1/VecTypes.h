@@ -17,7 +17,8 @@ enum {
 };
 // Input data indices for fragment shaders
 enum {
-	IndexTexture
+	IndexTexture,
+	IndexFrgColor
 };
 
 #endif /* VecTypes_h */

@@ -9,6 +9,7 @@
 #import "Agent.h"
 #import "AppDelegate.h"
 #import "VecTypes.h"
+#import "LogoDrawer.h"
 #define NV_GRID ((NGridW + NGridH - 2) * 2)
 #define NTHREADS nCores
 
@@ -18,6 +19,7 @@ NSColor *colBackground, *colObstacles, *colAgent,
 	*colGridLines, *colSymbols, *colParticles;
 PTCLColorMode ptclColorMode = PTCLconstColor;
 PTCLDrawMethod ptclDrawMethod = PTCLbyLines;
+enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
 NSInteger nCores;
 static NSColor *color_with_comp(CGFloat *comp) {
 	return [NSColor colorWithColorSpace:NSColorSpace.genericRGBColorSpace
@@ -113,12 +115,14 @@ static void particle_step(Particle *p) {
 	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex;
 	id<MTLBuffer> vxBuf, colBuf;
 	NSMutableDictionary *symbolAttr;
+	LogoDrawerMTL *logoDrawer;
 	NSLock *vxBufLock, *ptclLock;
 	vector_uint2 viewportSize;
 	float maxSpeed;
 }
 - (id<MTLTexture>)textureDrawnBy:(void (^)(NSBitmapImageRep *bm))block
 	size:(NSSize)size scaleFactor:(CGFloat)sclFctr {
+	sclFctr *= view.sampleCount * viewportSize.y / PTCLMaxY;
 	NSInteger pixW = ceil(size.width * sclFctr), pixH = ceil(size.height * sclFctr);
 	NSBitmapImageRep *imgRep = create_rgb_bitmap(pixW, pixH, NULL);
 	imgRep.size = size;
@@ -149,21 +153,27 @@ static void particle_step(Particle *p) {
 		[trs rotateByRadians:M_PI / -2.];
 		[trs concat];
 		[image drawInRect:(NSRect){0., 0., sz}];
-	} size:(NSSize){sz.height, sz.width} scaleFactor:300./72.];
+	} size:(NSSize){sz.height, sz.width} scaleFactor:TileSize * 2.8 / sz.width];
 }
 - (void)setupSymbolTex {
 	if (symbolAttr == nil) symbolAttr = [NSMutableDictionary dictionaryWithObject:
 		[NSFont userFontOfSize:TileSize / 2 * view.sampleCount]
 		forKey:NSFontAttributeName];
-	symbolAttr[NSForegroundColorAttributeName] = colSymbols;
 	StrSTex = [self texFromStr:@"S" attribute:symbolAttr];
 	StrGTex = [self texFromStr:@"G" attribute:symbolAttr];
+}
+- (void)setupEquationTex {
+	equLTex = [self texFromImageName:@"equationL"];
+	equPTex = [self texFromImageName:@"equationP"];
 }
 - (Particle *)adjustPtclMemory {
 	Particle *newMem = _particles;
 	if (_nPtcls != NParticles) {
 		newMem = realloc(_particles, sizeof(Particle) * NParticles);
-		if (newMem == NULL) @throw @0;
+		if (newMem == NULL) {
+			error_msg(@"Could not allocate memory for particles.", nil);
+			@throw @(FailPtclMem);
+		}
 		if (_nPtcls < NParticles)
 			for (int i = _nPtcls; i < NParticles; i ++)
 				particle_reset(newMem + i, YES);
@@ -180,7 +190,10 @@ static void particle_step(Particle *p) {
 		if (newNC > 0) {
 			newColBuf = [view.device newBufferWithLength:
 				sizeof(vector_float4) * newNC options:MTLResourceStorageModeShared];
-			if (newColBuf == nil) @throw @1;
+			if (newColBuf == nil) {
+				error_msg(@"Could not allocate buffer for colors.", nil);
+				@throw @(FailColBuf);
+			}
 		} else colBuf = newColBuf = nil;
 	}
 	return newColBuf;
@@ -195,17 +208,31 @@ static void particle_step(Particle *p) {
 	if (newNV != nVertices) {
 		newVxBuf = [view.device newBufferWithLength:
 			sizeof(vector_float2) * newNV options:MTLResourceStorageModeShared];
-		if (newVxBuf == nil) @throw @2;
+		if (newVxBuf == nil) {
+			error_msg(@"Could not allocate buffer for vertices.", nil);
+			@throw @(FailVxBuf);
+		}
 	}
 	if (_displayMode != DispParticle && _arrowVec == NULL) {
 		_arrowVec = malloc(sizeof(vector_float2) * N_VECTORS * NVERTICES_ARROW);
+		if (_arrowVec == NULL) {
+			error_msg(@"Could not allocate memory for arrow vectors.", nil);
+			@throw @(FailArrowMem);
+		}
 		_arrowCol = malloc(sizeof(vector_float4) * N_VECTORS);
+		if (_arrowCol == NULL) {
+			free(_arrowVec);
+			_arrowVec = NULL;
+			error_msg(@"Could not allocate memory for arrow colors.", nil);
+			@throw @(FailArrowMem);
+		}
 	}
 	return newVxBuf;
 }
-- (void)adjustMemoryForNParticles {
+- (BOOL)adjustMemoryForNParticles {
 	[ptclLock lock];
 	[vxBufLock lock];
+	BOOL result = YES;
 	@try {
 		Particle *newPTCLs = [self adjustPtclMemory];
 		id<MTLBuffer> newColBuf = [self adjustColBufferSize];
@@ -215,9 +242,14 @@ static void particle_step(Particle *p) {
 		vxBuf = newVxBuf;
 		[self setupVertices];
 		[self setupParticleColors];
-	} @catch (id x) {}
+	} @catch (NSNumber *num) {
+		if (_nPtcls > 0) NParticles = _nPtcls;
+		if (num.intValue == FailArrowMem) _displayMode = DispParticle;
+		result = NO;
+	}
 	[vxBufLock unlock];
 	[ptclLock unlock];
+	return result;
 }
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
 	if (!(self = [super init])) return nil;
@@ -265,20 +297,19 @@ static void particle_step(Particle *p) {
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		self->view.needsDisplay = YES;
 	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		[self setupSymbolTex];
-		self->view.needsDisplay = YES;
-	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"colorParticles"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		[self->vxBufLock lock];
 		[self setupParticleColors];
-		self->view.needsDisplay = YES;
+		[self->vxBufLock unlock];
+		if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"nParticles"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		[self adjustMemoryForNParticles];
-		self->view.needsDisplay = YES;
+		if (![self adjustMemoryForNParticles]) {
+			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustNParticleDgt];
+		}
+		else if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"ptclLifeSpan"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
@@ -287,27 +318,31 @@ static void particle_step(Particle *p) {
 		int orgVal = oldValue.intValue;
 		for (int i = 0; i < self.nPtcls; i ++)
 			self.particles[i].life = self.particles[i].life * LifeSpan / orgVal;
-		self->view.needsDisplay = YES;
+		if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:keyColorMode
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		if (self.displayMode != DispParticle) return;
 		[self->vxBufLock lock];
 		@try {
-			id<MTLBuffer> newColBuf = [self adjustColBufferSize];
-			self->colBuf = newColBuf;
+			self->colBuf = [self adjustColBufferSize];
 			[self setupParticleColors];
-		} @catch (id x) {}
+		} @catch (id x) {
+			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustColorMode:note.userInfo];
+		}
 		[self->vxBufLock unlock];
 		self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:keyDrawMethod
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		if (self.displayMode != DispParticle) return;
 		[self->vxBufLock lock];
 		@try {
-			id<MTLBuffer> newVxBuf = [self adjustVxBufferSize];
-			self->vxBuf = newVxBuf;
+			self->vxBuf = [self adjustVxBufferSize];
 			[self setupVertices];
-		} @catch (id x) {}
+		} @catch (id x) {
+			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustDrawMethod:note.userInfo];
+		}
 		[self->vxBufLock unlock];
 		self->view.needsDisplay = YES;
 	}];
@@ -496,7 +531,7 @@ static void set_arrow_shape(vector_float2 *v, simd_float3x3 *trs) {
 			(simd_float3){-cs.y * .5, cs.x * .5, 0.},
 			(simd_float3){vec[i].x, vec[i].y, 1.}};
 		set_arrow_shape(_arrowVec + i * NVERTICES_ARROW, &trs);
-		float grade = vec[i].z / maxV;
+		float grade = .1 + vec[i].z / maxV * .9;
 		_arrowCol[i] = bgCol * (1. - grade) + maxCol * grade;
 	}
 }
@@ -527,24 +562,34 @@ static void set_arrow_shape(vector_float2 *v, simd_float3x3 *trs) {
 				(simd_float3){-cs.y, cs.x, 0.},
 				(simd_float3){center.x + cs.x * 2., center.y + cs.y * 2., 1.}};
 			set_arrow_shape(_arrowVec + vIdx * NVERTICES_ARROW, &trs);
-			float grade = getGrade(Q[j]);
+			float grade = .1 + getGrade(Q[j]) * .9;
 			_arrowCol[vIdx] = bgCol * (1. - grade) + maxCol * grade;
 		}
 	}
 }
 - (void)setDisplayMode:(DisplayMode)newMode {
 	if (_displayMode == newMode) return;
+	[vxBufLock lock];
+	DisplayMode orgMode = _displayMode;
 	_displayMode = newMode;
-	[self adjustColBufferSize];
-	[self adjustVxBufferSize];
-	switch (_displayMode) {
-		case DispParticle:
-		[self setupVertices];
-		[self setupParticleColors]; break;
-		case DispVector: [self setupArrowsForVecFld]; break;
-		case DispQValues: [self setupArrowsForQValues];
+	@try {
+		id<MTLBuffer> newColBuf = [self adjustColBufferSize];
+		id<MTLBuffer> newVxBuf = [self adjustVxBufferSize];
+		colBuf = newColBuf;
+		vxBuf = newVxBuf;
+	} @catch (id _) {
+		_displayMode = orgMode;
+	} @finally {
+		switch (_displayMode) {
+			case DispParticle:
+			[self setupVertices];
+			[self setupParticleColors]; break;
+			case DispVector: [self setupArrowsForVecFld]; break;
+			case DispQValues: [self setupArrowsForQValues];
+		}
+		view.needsDisplay = YES;
 	}
-	view.needsDisplay = YES;
+	[vxBufLock unlock];
 }
 - (void)reset {
 	if (_particles != NULL) {
@@ -557,19 +602,32 @@ static void set_arrow_shape(vector_float2 *v, simd_float3x3 *trs) {
 		[self setupVertices];
 		[vxBufLock unlock];
 		[ptclLock unlock];
-	} else [self adjustMemoryForNParticles];
+	} else if (![self adjustMemoryForNParticles]) {
+		int NpFDv = 100;
+		for (IntVarInfo *p = IntVars; p->key != nil; p ++)
+			if (p->v == &NParticles) { NpFDv = p->fd; break; }
+		if (NParticles <= NpFDv) [NSApp terminate:nil];
+		NParticles = NpFDv;
+		if (![self adjustMemoryForNParticles]) [NSApp terminate:nil];
+	}
 	view.needsDisplay = YES;
 }
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size {
-    viewportSize.x = size.width;
-    viewportSize.y = size.height;
+	viewportSize.x = size.width;
+	viewportSize.y = size.height;
+	if (StrSTex != nil) {
+		[self setupSymbolTex];
+		[self setupEquationTex];
+	}
 #ifdef DEBUG
 	NSLog(@"Drawable size = %.1f x %.1f", size.width, size.height);
 #endif
 }
-typedef id<MTLRenderCommandEncoder> RCE;
 static void set_color(RCE rce, vector_float4 rgba) {
 	[rce setVertexBytes:&rgba length:sizeof(rgba) atIndex:IndexColors];
+}
+static void set_fragment_color(RCE rce, vector_float4 rgba) {
+	[rce setFragmentBytes:&rgba length:sizeof(rgba) atIndex:IndexFrgColor];
 }
 static void fill_rect(RCE rce, NSRect rect) {
 	vector_float2 vertices[4] = {
@@ -580,7 +638,7 @@ static void fill_rect(RCE rce, NSRect rect) {
 	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
 	[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 }
-static void fill_circle_at(RCE rce, vector_float2 center, float radius, int nEdges) {
+void fill_circle_at(RCE rce, vector_float2 center, float radius, int nEdges) {
 	int nVertices = nEdges * 2 + 1;
 	vector_float2 vx[nVertices];
 	for (int i = 0; i < nVertices; i ++) vx[i] = center;
@@ -592,20 +650,17 @@ static void fill_circle_at(RCE rce, vector_float2 center, float radius, int nEdg
 	[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip
 		vertexStart:0 vertexCount:nVertices];
 }
-static void draw_texture(RCE rce, id<MTLTexture> tex,
-	int *tilePosition, NSUInteger sampleCount) {
+static void draw_texture(RCE rce, id<MTLTexture> tex, int *tilePosition) {
 	[rce setFragmentTexture:tex atIndex:IndexTexture];
-	CGFloat w = (CGFloat)tex.width / sampleCount,
-		h = (CGFloat)tex.height / sampleCount;
+	CGFloat h = TileSize * .667, w = h * tex.width / tex.height;
 	fill_rect(rce, (NSRect){
 		tilePosition[0] * TileSize + (TileSize - w) / 2.,
 		tilePosition[1] * TileSize + (TileSize - h) / 2., w, h});
 }
-static void draw_equtex(RCE rce, id<MTLTexture> tex,
-	int *tileP, NSUInteger sampleCount) {
+static void draw_equtex(RCE rce, id<MTLTexture> tex, int *tileP, int nTiles) {
 	[rce setFragmentTexture:tex atIndex:IndexTexture];
 	NSRect rect = {(tileP[0] + .1) * TileSize, (tileP[1] + .1) * TileSize,
-		TileSize * .8, TileSize * 2.8};
+		TileSize * .8, TileSize * (nTiles - .2)};
 	CGFloat newW = rect.size.height * tex.width / tex.height;
 	rect.origin.x += (rect.size.width - newW) / 2.;
 	rect.size.width = newW;
@@ -641,13 +696,15 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex,
 	// String "S" and "G"
 	if (StrSTex == nil) [self setupSymbolTex];
 	[rce setRenderPipelineState:texPSO];
-	draw_texture(rce, StrSTex, StartP, view.sampleCount);
-	draw_texture(rce, StrGTex, GoalP, view.sampleCount);
+	set_fragment_color(rce, col_to_vec(colSymbols));
+	draw_texture(rce, StrSTex, StartP);
+	draw_texture(rce, StrGTex, GoalP);
 	// particles, vectors, or Q values
 	[rce setRenderPipelineState:shapePSO];
+	uint nv = 0;
 	switch (_displayMode) {
-		case DispParticle: {
-			uint nv = 0, nVertices = (vxBuf == NULL)? 0 :
+		case DispParticle: if (_particles != NULL) {
+			uint nVertices = (vxBuf == NULL)? 0 :
 				(uint)(vxBuf.length / sizeof(vector_float2));
 			if (colBuf != nil) {
 				nv = nVertices / _nPtcls;
@@ -662,11 +719,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex,
 		case DispVector: [self setupArrows:rce n:N_VECTORS]; break;
 		case DispQValues: [self setupArrows:rce n:NActiveGrids * NActs];
 	}
-	// Obstables
-	set_color(rce, col_to_vec(colObstacles));
-	for (int i = 0; i < NObstacles; i ++) fill_rect(rce, (NSRect)
-		{ObsP[i][0] * TileSize, ObsP[i][1] * TileSize, TileSize, TileSize});
 	// grid lines
+	nv = 0; [rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
 	set_color(rce, col_to_vec(colGridLines));
 	vector_float2 vertices[NV_GRID], *vp = vertices;
 	for (int i = 1; i < NGridH; i ++, vp += 2) {
@@ -677,16 +731,28 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex,
 		vp[0] = (vector_float2){TileSize * i, 0.};
 		vp[1] = (vector_float2){TileSize * i, PTCLMaxY};
 	}
+	if (nv > 0) {
+		nv = 0;
+		[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
+	}
 	[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
 	[rce drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:NV_GRID];
+	// Obstables
+	set_color(rce, col_to_vec(colObstacles));
+	for (int i = 0; i < NObstacles; i ++) fill_rect(rce, (NSRect)
+		{ObsP[i][0] * TileSize, ObsP[i][1] * TileSize, TileSize, TileSize});
+	// project logo
+	set_color(rce, col_to_vec(colSymbols));
+	if (logoDrawer == nil) logoDrawer = LogoDrawerMTL.new;
+	int *logoGrid = ObsP[3];
+	[logoDrawer drawByMTL:rce inRect:(NSRect){
+		logoGrid[0] * TileSize, logoGrid[1] * TileSize, TileSize, TileSize}];
 	// equations
-	if (equLTex == nil) {
-		equLTex = [self texFromImageName:@"equationL"];
-		equPTex = [self texFromImageName:@"equationP"];
-	}
+	if (equLTex == nil) [self setupEquationTex];
 	[rce setRenderPipelineState:texPSO];
-	draw_equtex(rce, equLTex, (int []){2, 2}, view.sampleCount);
-	draw_equtex(rce, equPTex, (int []){7, 3}, view.sampleCount);
+	set_fragment_color(rce, col_to_vec(colSymbols));
+	draw_equtex(rce, equLTex, ObsP[0], 3);
+	draw_equtex(rce, equPTex, ObsP[4], 3);
 	[rce endEncoding];
 }
 - (void)drawInMTKView:(nonnull MTKView *)view {
@@ -697,7 +763,6 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex,
 	[cmdBuf commit];
 }
 - (void)oneStepForParticles {
-	[ptclLock lock];
 	NSInteger unit = _nPtcls / NTHREADS;
 	for (int i = 0; i < _nPtcls; i += unit) {
 		Particle *pStart = _particles + i;
@@ -712,18 +777,19 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex,
 		}];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
-	[vxBufLock lock];
 	[self setupVertices];
 	[self setupParticleColors];
-	[vxBufLock unlock];
-	[ptclLock unlock];
 }
 - (void)oneStep {
+	[ptclLock lock];
+	[vxBufLock lock];
 	switch (_displayMode) {
 		case DispParticle: [self oneStepForParticles]; break;
 		case DispVector: [self setupArrowsForVecFld]; break;
 		case DispQValues: [self setupArrowsForQValues];
 	}
+	[vxBufLock unlock];
+	[ptclLock unlock];
 	in_main_thread(^{ self->view.needsDisplay = YES; });
 }
 - (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)sclFactor

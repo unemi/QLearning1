@@ -87,7 +87,7 @@
                         <nil key="toolTip"/>
                         <textField key="view" horizontalHuggingPriority="251" verticalHuggingPriority="750" id="pDp-vQ-Nm3" customClass="TextFieldForToolBarItem">
                             <rect key="frame" x="0.0" y="14" width="105" height="16"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <autoresizingMask key="autoresizingMask"/>
                             <textFieldCell key="cell" lineBreakMode="clipping" title="0 steps, 0 goals" id="bfR-aR-hPs">
                                 <font key="font" usesAppearanceFont="YES"/>
                                 <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
@@ -99,10 +99,10 @@
                         <nil key="toolTip"/>
                         <popUpButton key="view" verticalHuggingPriority="750" id="sCT-kh-uF1">
                             <rect key="frame" x="0.0" y="14" width="107" height="30"/>
-                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                            <autoresizingMask key="autoresizingMask"/>
                             <popUpButtonCell key="cell" type="roundTextured" title="Particles" bezelStyle="texturedRounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="border" imageScaling="proportionallyDown" inset="2" selectedItem="MQc-4z-Jwh" id="CxM-PH-dWg">
                                 <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                <font key="font" metaFont="system"/>
+                                <font key="font" metaFont="menu"/>
                                 <menu key="menu" id="Olb-AH-y8R">
                                     <items>
                                         <menuItem title="Particles" state="on" id="MQc-4z-Jwh"/>

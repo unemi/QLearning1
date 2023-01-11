@@ -41,8 +41,9 @@ vertex RasterizerDataTex vertexShaderTex(uint vertexID [[vertex_id]],
     return out;
 }
 fragment float4 fragmentShaderTex(RasterizerDataTex in [[stage_in]],
-	texture2d<half> colorTexture [[texture(IndexTexture)]]) {
+	texture2d<half> colorTexture [[texture(IndexTexture)]],
+	constant vector_float4 *color [[buffer(IndexFrgColor)]]) {
 	constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
 	const half4 s = colorTexture.sample(textureSampler, in.textureCoordinate);
-    return float4(s.bgra);
+    return float4(color->rgb, s.a);
 }
