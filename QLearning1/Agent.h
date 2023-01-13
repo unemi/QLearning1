@@ -10,6 +10,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef enum {
+	AgentStepped, AgentReached, AgentBumped
+} AgentStepResult;
+
 extern int MemSize, MemTrials;
 extern float T0, T1, CoolingRate, InitQValue, Gamma, Alpha;
 extern vector_float4 QTable[NGridH][NGridW];
@@ -18,7 +22,7 @@ extern vector_float4 QTable[NGridH][NGridW];
 - (void)getPositionX:(int *)xp Y:(int *)yp;
 - (void)reset;
 - (void)restart;
-- (BOOL)oneStep;
+- (AgentStepResult)oneStep;
 @end
 
 NS_ASSUME_NONNULL_END

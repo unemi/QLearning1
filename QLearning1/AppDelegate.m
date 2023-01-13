@@ -55,7 +55,7 @@ ColVarInfo ColVars[] = {
 	{ @"colorObstacles", &colObstacles, nil, 0 },
 	{ @"colorAgent", &colAgent, nil, 0 },
 	{ @"colorGridLines", &colGridLines, nil, 0 },
-	{ @"colorSymbols", &colSymbols, nil, 0 },
+	{ @"colorSymbols", &colSymbols, nil, ShouldPostNotification },
 	{ @"colorParticles", &colParticles, nil, ShouldPostNotification },
 	{ nil }
 };
@@ -282,6 +282,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
 	dgtStrokeWidth.enabled = (ptclDrawMethod != PTCLbyLines);
 	[screenPopUp selectItemWithTitle:scrForFullScr];
+	dgtCoolingRate.enabled = (MAX_GOALCNT == 0);
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
 }
 - (void)windowDidLoad {
@@ -423,6 +424,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	}];
 	info->v = newValue;
 	[self checkFDBits:FDBTUInt + dgt.tag cond:newValue == info->fd];
+	if (dgt.tag == MAX_GOALCNT_TAG)
+		dgtCoolingRate.enabled = (MAX_GOALCNT == 0);
 }
 - (IBAction)switchBoolValue:(NSButton *)btn {
 	BoolVarInfo *info = &BoolVars[btn.tag];

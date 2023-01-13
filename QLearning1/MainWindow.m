@@ -11,29 +11,67 @@
 #import "Display.h"
 #import "RecordView.h"
 #import "MyViewForCG.h"
+@import AVFAudio;
 
 NSString *scrForFullScr = @"Screen the main window placed";
 static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
-@interface TextFieldForToolBarItem : NSTextField
+@interface MyProgressBar : NSView
+@property CGFloat maxValue, doubleValue;
 @end
-@implementation TextFieldForToolBarItem
-- (void)setFont:(NSFont *)font {
-	[super setFont:[NSFont fontWithName:@"Menlo Regular" size:font.pointSize]];
+@implementation MyProgressBar
+- (void)drawRect:(NSRect)dirtyRect {
+	[super drawRect:dirtyRect];
+	NSRect rect = self.bounds;
+	if (_maxValue > 0.) {
+		if (_doubleValue < _maxValue) rect.size.width *= _doubleValue / _maxValue;
+		[colSymbols setFill];
+		[NSBezierPath fillRect:rect];
+		rect.origin.x += rect.size.width;
+		rect.size.width = self.bounds.size.width - rect.size.width;
+	}
+	if (rect.size.width > 0.) {
+		[colBackground setFill];
+		[NSBezierPath fillRect:rect];
+	}
 }
 @end
 
+@implementation AVAudioPlayer (MyExtention)
+static NSString *iMovieSndDir = @"";
+- (instancetype)initWithiMovieSnd:(NSString *)type path:(NSString *)path {
+	NSString *fullPath = [NSString stringWithFormat:
+		@"/Applications/iMovie.app/Contents/Resources/%@ Sound Effects/%@",
+		type, path];
+	NSURL *url = [NSURL fileURLWithPath:fullPath];
+	return [self initWithContentsOfURL:url error:NULL];
+}
+- (void)startPlaying {
+	if (self.isPlaying) [self stop];
+	[self play];
+}
+@end
+static AVAudioPlayer *sound_player(NSString *type, NSString *path) {
+	return [AVAudioPlayer.alloc initWithiMovieSnd:type path:path];
+}
+static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
+	return [AVAudioPlayer.alloc initWithContentsOfURL:
+		[NSBundle.mainBundle URLForResource:name withExtension:ext] error:NULL];
+}
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
 	CGFloat interval;
 	BOOL running;
 	NSUInteger steps, goalCount;
-	NSSound *sndGoal, *sndBad, *sndGood;
-	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem, *infoTextItem;
+	NSRect infoViewFrame;
+	AVAudioPlayer *sndBump, *sndGoal, *sndBad, *sndGood;
+	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
 	IBOutlet MTKView *view;
 	IBOutlet RecordView *recordView;
-	IBOutlet NSTextField *infoText;
+	IBOutlet MyProgressBar *stepsPrg, *goalsPrg;
+	IBOutlet NSTextField *stepsDgt, *goalsDgt, *stepsUnit, *goalsUnit;
+	NSArray<NSTextField *> *infoTexts;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
 - (void)adjustViewFrame:(NSNotification *)note {
@@ -82,12 +120,19 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	interval = 1. / 60.;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
+	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit];
+	for (NSTextField *txt in infoTexts) txt.textColor = colSymbols;
+	[recordView loadImages];
 //	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustViewFrame:)
 		name:NSViewFrameDidChangeNotification object:view.superview];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		for (NSTextField *txt in self->infoTexts) txt.textColor = colSymbols;
+	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		if (self->view.superview.inFullScreenMode)
@@ -96,21 +141,12 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	}];
 	[view.window makeFirstResponder:self];
 	[self reset:nil];
-/**Basso.aiff	Blow.aiff	Bottle.aiff	Frog.aiff	Funk.aiff
-Glass.aiff	Hero.aiff	Morse.aiff	Ping.aiff	Pop.aiff
-Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
-//	sndGoal = [NSSound soundNamed:@"Ping"];
-	sndGoal = [NSSound.alloc initWithContentsOfURL:
-		[NSBundle.mainBundle URLForResource:@"Ping" withExtension:@"aac"] byReference:NO];
-	sndBad = [NSSound.alloc initWithContentsOfURL:
-		[NSURL fileURLWithPath:
-@"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/Stingers/Cartoon Boing.caf"]
-		byReference:NO];
-	sndGood = [NSSound.alloc initWithContentsOfURL:
-		[NSURL fileURLWithPath:
-@"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/Stingers/Ethereal Accents.caf"]
-		byReference:NO];
-//	if (sndGoal == nil) NSLog(@"Failed to read sound file.");
+	sndBump = sound_resource(@"Bump", @"mp3"); 
+	sndGoal = sound_resource(@"Ping", @"aac");
+//	sndBad = sound_player(@"iMovie", @"Cartoon Tumble Down.mp3");
+	sndBad = sound_player(@"iLife", @"People/Children Aaaah.caf");
+	sndGood = sound_player(@"iLife", @"People/Kids Cheering.caf");
+	sndBump.enableRate = YES;
 }
 - (NSString *)infoText {
 	return [NSString stringWithFormat:@"%@ steps, %ld goal%@",
@@ -118,20 +154,37 @@ Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
 			numberStyle:NSNumberFormatterDecimalStyle],
 		goalCount, (goalCount == 1)? @"" : @"s"];
 }
-- (void)showSteps {
-	NSString *infoStr = self.infoText;
-	if (!view.superview.inFullScreenMode ||
-		self.window.screen != view.window.screen)
-		((NSTextField *)infoTextItem.view).stringValue = infoStr;
-	if (!infoText.hidden) infoText.stringValue = infoStr;
+static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, NSInteger cnt) {
+	prg.doubleValue = (prg.maxValue >= cnt)? cnt : 0;
+	dgt.integerValue = cnt;
+	NSString *unitStr = unit.stringValue;
+	if (cnt == 1) {
+		if ([unitStr hasSuffix:@"s"])
+			unit.stringValue = [unitStr substringToIndex:unitStr.length - 1];
+	} else if (![unitStr hasSuffix:@"s"])
+		unit.stringValue = [unitStr stringByAppendingString:@"s"];
+	prg.needsDisplay = YES;
+}
+- (void)showSteps { show_count(stepsPrg, stepsDgt, stepsUnit, steps); }
+- (void)showGoals { show_count(goalsPrg, goalsDgt, goalsUnit, goalCount); }
+- (void)playAgentSound:(AVAudioPlayer *)player {
+	int ix, iy;
+	[agent getPositionX:&ix Y:&iy];
+	if (player.isPlaying) [player stop];
+	player.pan = (float)ix / (NGridW - 1) * 1.8 - .9;
+	player.rate = powf(1.4142f, (float)iy / (NGridH - 1) * 2 - 1);
+	[player play];
 }
 - (void)loopThread {
 	while (running) {
 		NSUInteger tm = current_time_us();
-		if ([agent oneStep]) {
+		switch ([agent oneStep]) {
+			case AgentStepped: break;
+			case AgentBumped: [self playAgentSound:sndBump]; break;
+			case AgentReached:
 			goalCount ++;
-			if (sndGoal.isPlaying) [sndGoal stop];
-			[sndGoal play];
+			in_main_thread(^{ [self showGoals]; });
+			[sndGoal startPlaying];
 		}
 		steps ++;
 		in_main_thread(^{ [self showSteps]; });
@@ -156,6 +209,10 @@ Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
 	[agent restart];
 	[display reset];
 	steps = goalCount = 0;
+	stepsPrg.maxValue = MAX_STEPS;
+	goalsPrg.maxValue = MAX_GOALCNT;
+	[self showSteps];
+	[self showGoals];
 	in_main_thread(^{ [self showSteps]; });
 }
 - (IBAction)startStop:(id)sender {
@@ -169,29 +226,46 @@ Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
 		startStopItem.label = @"Start";
 	}
 }
+static void adjust_subviews_frame(NSView *view, CGFloat scale) {
+	for (NSView *v in view.subviews) {
+		NSRect f = v.frame;
+		v.frame = (NSRect){f.origin.x * scale, f.origin.y * scale,
+			f.size.width * scale, f.size.height * scale};
+		if ([v isKindOfClass:NSControl.class]) {
+			NSFont *orgFont = ((NSControl *)v).font;
+			((NSControl *)v).font = [NSFont fontWithName:
+				orgFont.fontName size:orgFont.pointSize * scale];
+		}
+	}
+}
 - (IBAction)fullScreen:(id)sender {
-	NSView *cView = view.superview;
+	NSView *cView = view.superview, *infoView = stepsDgt.superview;
 	if (!cView.inFullScreenMode) {
 		NSScreen *screen = self.window.screen;
 		if (scrForFullScr != nil) for (NSScreen *scr in NSScreen.screens)
 			if ([scrForFullScr isEqualToString:scr.localizedName])
 				{ screen = scr; break; }
+		infoViewFrame = infoView.frame;
+		CGFloat topMargin = cView.frame.size.height - NSMaxY(infoViewFrame),
+			scale = screen.frame.size.height / cView.frame.size.height;
 		[cView enterFullScreenMode:screen
 			withOptions:@{NSFullScreenModeAllScreens:@NO}];
+		NSRect rect = {infoViewFrame.origin.x * scale, 0,
+			infoViewFrame.size.width * scale, infoViewFrame.size.height * scale};
+		rect.origin.y = screen.frame.size.height - topMargin * scale - rect.size.height;
+		[infoView setFrame:rect];
+		adjust_subviews_frame(infoView, scale);
 		fullScreenItem.label = labelFullScreenOff;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
-		infoText.hidden = NO;
-		infoText.textColor = colSymbols;
-		infoText.font = [NSFont fontWithName:@"Menlo Regular" size:
-			screen.frame.size.width / 1920. * 24.];
-		infoText.stringValue = self.infoText;
 		if (NSPointInRect(NSEvent.mouseLocation, screen.frame))
 			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
+		CGFloat orgH = cView.frame.size.height;
 		[cView exitFullScreenModeWithOptions:nil];
+		[infoView setFrame:infoViewFrame];
+		adjust_subviews_frame(infoView, cView.frame.size.height / orgH);
 		fullScreenItem.label = labelFullScreenOn;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
-		infoText.hidden = YES;
 		[self showSteps];
 		[NSCursor setHiddenUntilMouseMoves:NO];
 	}
@@ -204,13 +278,15 @@ Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
 	prInfo.bottomMargin = pb.origin.y;
 	prInfo.leftMargin = pb.origin.x;
 	prInfo.rightMargin = pSize.width - NSMaxX(pb);
-	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb display:display];
+	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb
+		display:display infoView:stepsDgt.superview];
 	NSPrintOperation *prOpe = [NSPrintOperation printOperationWithView:view printInfo:prInfo];
 	[prOpe runOperation];
 }
 - (IBAction)copy:(id)sender {
 	NSRect frame = {0., 0., NGridW * TileSize, NGridH * TileSize};
-	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame display:display];
+	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame
+		display:display infoView:stepsDgt.superview];
 	NSData *data = [view dataWithPDFInsideRect:frame];
 	NSPasteboard *pb = NSPasteboard.generalPasteboard;
 	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];
@@ -231,8 +307,11 @@ Purr.aiff	Sosumi.aiff	Submarine.aiff	Tink.aiff*/
 	return view.superview.inFullScreenMode? sender.frame.size : frameSize;
 }
 - (void)windowWillClose:(NSNotification *)notification {
-	if (notification.object == self.window)
+	if (notification.object == self.window) {
+		if (RECORD_IMAGES) [recordView saveImages];
+		else [recordView clearImages];
 		[NSApp terminate:nil];
+	}
 }
 // Menu item validation
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {

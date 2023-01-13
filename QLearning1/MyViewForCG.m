@@ -12,13 +12,16 @@
 #import "LogoDrawer.h"
 
 @implementation MyViewForCG {
-	Display *display;
+	Display __weak *display;
+	NSView __weak *infoView;
 	NSBitmapImageRep *imgCache;
 	LogoDrawerCG *logoDrawer;
 }
-- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp {
+- (instancetype)initWithFrame:(NSRect)frameRect
+	display:(Display *)disp infoView:(NSView *)iview {
 	if (!(self = [super initWithFrame:frameRect])) return nil;
 	display = disp;
+	infoView = iview;
 	return self;
 }
 static void draw_symbol(NSString *str, NSDictionary *attr, int p[2]) {
@@ -110,11 +113,9 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	imgRect.size.height = imgRect.size.width * imgSz.height / imgSz.width;
 	NSBitmapImageRep *imgRep = [self bitmapImageRepForCachingDisplayInRect:imgRect];
 	if (imgRep.bitsPerPixel != 32) {
-		error_msg(@"Bit per pixel of chache image is not 32.", nil);
+		error_msg(@"Bits per pixel of chache image is not 32.", nil);
 		return;
 	}
-NSLog(@"hasAlpha = %@, bitmapFormat = %lX",
-	imgRep.hasAlpha? @"YES" : @"NO", imgRep.bitmapFormat);
 	union { unsigned long ul; unsigned char c[4]; } c;
 	c.ul = EndianU32_NtoB(col_to_ulong(colSymbols));
 	draw_in_bitmap(imgRep, ^(NSBitmapImageRep * _Nonnull bm) {
@@ -169,7 +170,7 @@ NSLog(@"hasAlpha = %@, bitmapFormat = %lX",
 	[trans concat];
 	// background
 	[colBackground setFill];
-	[NSBezierPath fillRect:(NSRect){0., 0., NGridW * TileSize, NGridH * TileSize}];
+	[NSBezierPath fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
 	// Agent
 	int ix, iy;
 	[display.agent getPositionX:&ix Y:&iy];
@@ -215,6 +216,21 @@ NSLog(@"hasAlpha = %@, bitmapFormat = %lX",
 	if (logoDrawer == nil) logoDrawer = LogoDrawerCG.new;
 	[colSymbols set];
 	[logoDrawer drawByCGinRect:(NSRect){5 * TileSize, TileSize, TileSize, TileSize}];
+	// Info view -- steps and goals
+	trans = NSAffineTransform.transform;
+	[trans scaleBy:PTCLMaxY / infoView.superview.frame.size.height];
+	NSPoint origin = infoView.frame.origin;
+	[trans translateXBy:origin.x yBy:origin.y];
+	[trans concat];
+	for (NSView *v in infoView.subviews) {
+		[NSGraphicsContext saveGraphicsState];
+		trans = NSAffineTransform.transform;
+		origin = v.frame.origin; 
+		[trans translateXBy:origin.x yBy:origin.y];
+		[trans concat];
+		[v drawRect:v.bounds];
+		[NSGraphicsContext restoreGraphicsState];
+	}
 	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawRect:(NSRect)rect {

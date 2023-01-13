@@ -30,7 +30,7 @@ typedef struct {
 @implementation Agent {
 	NSMutableArray<NSValue *> *mem;
 	float T;
-	int x, y;
+	int x, y, goalCount;
 }
 - (instancetype)init {
 	if (!(self = [super init])) return nil;
@@ -50,6 +50,7 @@ typedef struct {
 	for (int k = 0; k < NActs; k ++)
 		QTable[i][j][k] = InitQValue;
 	T = T0;
+	goalCount = 0;
 }
 - (int)policy {
 	float roulette[NActs], pSum = 0.;
@@ -74,23 +75,26 @@ typedef struct {
 	QTable[mem.y][mem.x][mem.action] +=
 		(mem.reward + Gamma * maxQ - QTable[mem.y][mem.x][mem.action]) * Alpha;
 }
-- (BOOL)oneStep {
+- (AgentStepResult)oneStep {
 	if (x == GoalP[0] && y == GoalP[1]) {
-		T += (T1 - T) * CoolingRate;
+		if (MAX_GOALCNT > 0)
+			T = T0 * powf(T1 / T0, (float)(++ goalCount) / MAX_GOALCNT);
+		else T += (T1 - T) * CoolingRate;
 		[self restart];
-		return YES;
+		return AgentReached;
 	}
+	AgentStepResult result = AgentStepped;
 	int action = [self policy];
 	int newx = x + Move[action][0];
 	int newy = y + Move[action][1];
 	if (newx < 0 || newx >= NGridW || newy < 0 || newy >= NGridH
-	 || Obstacles[newy][newx] != 0) { newx = x; newy = y; }
+	 || Obstacles[newy][newx] != 0) { newx = x; newy = y; result = AgentBumped; }
 	float reward = [self rewardAtX:newx Y:newy];
 	[mem addObject:[NSValue valueWithMemory:(Memory){x, y, action, newx, newy, reward}]];
 	if (mem.count > MemSize) [mem removeObjectsInRange:(NSRange){0, mem.count - MemSize}];
 	for (int i = 0; i < MemTrials; i ++)
 		[self learn:mem[lrand48() % mem.count].memoryValue];
 	x = newx; y = newy;
-	return NO;
+	return result;
 }
 @end

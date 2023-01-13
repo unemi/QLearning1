@@ -12,6 +12,9 @@ NS_ASSUME_NONNULL_BEGIN
 @class Display;
 @interface RecordView : NSView
 - (void)addImage:(Display *)display infoText:(NSString *)infoText;
+- (void)loadImages;
+- (void)saveImages;
+- (void)clearImages;
 @end
 
 NS_ASSUME_NONNULL_END

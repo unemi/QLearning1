@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23DB3560296EAA2B0008D821 /* AVFAudio.framework */; };
+		2309A093297014F600250E31 /* Bump.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2309A092297014F600250E31 /* Bump.mp3 */; };
 		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
 		2318A51E296697030025CCFB /* RecordView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A51D296697030025CCFB /* RecordView.m */; };
 		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
@@ -21,13 +23,14 @@
 		23297D8A296AD1CC00178016 /* equationL.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D88296AD1CC00178016 /* equationL.pdf */; };
 		233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 233DF0A0295B109C00F9F20C /* MyShaders.metal */; };
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
-		234090D92969025D008CC72D /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 234090D72969025D008CC72D /* MainWindow.xib */; };
 		234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 234090DB296937CF008CC72D /* MetalKit.framework */; };
 		234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */ = {isa = PBXBuildFile; fileRef = 234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */; };
 		2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */ = {isa = PBXBuildFile; fileRef = 2390BB6E296EC37700B4FB07 /* Ping.aac */; };
+		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2309A092297014F600250E31 /* Bump.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Bump.mp3; sourceTree = "<group>"; };
 		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		2318A51C296697030025CCFB /* RecordView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RecordView.h; sourceTree = "<group>"; };
 		2318A51D296697030025CCFB /* RecordView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RecordView.m; sourceTree = "<group>"; };
@@ -52,12 +55,12 @@
 		233DF0A0295B109C00F9F20C /* MyShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.metal; path = MyShaders.metal; sourceTree = "<group>"; };
 		234090D52969025D008CC72D /* MainWindow.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainWindow.h; sourceTree = "<group>"; };
 		234090D62969025D008CC72D /* MainWindow.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainWindow.m; sourceTree = "<group>"; };
-		234090D72969025D008CC72D /* MainWindow.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = MainWindow.xib; sourceTree = "<group>"; };
 		234090DB296937CF008CC72D /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
 		234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LogoDrawer.h; sourceTree = "<group>"; };
 		234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LogoDrawer.m; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 		2390BB6E296EC37700B4FB07 /* Ping.aac */ = {isa = PBXFileReference; lastKnownFileType = file; path = Ping.aac; sourceTree = "<group>"; };
+		23DAB3AB2970FDF400700DA9 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainWindow.xib; sourceTree = "<group>"; };
 		23DB3560296EAA2B0008D821 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		23FDEFDC2967CA2700C6C1E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -67,6 +70,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */,
 				234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -98,7 +102,6 @@
 		2325216E2956BB7900159F30 /* QLearning1 */ = {
 			isa = PBXGroup;
 			children = (
-				23FDEFDC2967CA2700C6C1E2 /* Info.plist */,
 				2325216F2956BB7900159F30 /* AppDelegate.h */,
 				232521702956BB7900159F30 /* AppDelegate.m */,
 				234090D52969025D008CC72D /* MainWindow.h */,
@@ -113,8 +116,9 @@
 				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
 				234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */,
 				234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */,
+				23FDEFDC2967CA2700C6C1E2 /* Info.plist */,
 				232521722956BB7A00159F30 /* Assets.xcassets */,
-				234090D72969025D008CC72D /* MainWindow.xib */,
+				23DAB3AC2970FDF400700DA9 /* MainWindow.xib */,
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				23214954295C6980001A40D3 /* ControlPanel.xib */,
 				232521772956BB7A00159F30 /* main.m */,
@@ -147,6 +151,7 @@
 		2390BB6D296EC37700B4FB07 /* Sounds */ = {
 			isa = PBXGroup;
 			children = (
+				2309A092297014F600250E31 /* Bump.mp3 */,
 				2390BB6E296EC37700B4FB07 /* Ping.aac */,
 			);
 			name = Sounds;
@@ -210,9 +215,10 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				2309A093297014F600250E31 /* Bump.mp3 in Resources */,
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
 				2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */,
-				234090D92969025D008CC72D /* MainWindow.xib in Resources */,
+				23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
@@ -257,6 +263,14 @@
 				232521752956BB7A00159F30 /* Base */,
 			);
 			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+		23DAB3AC2970FDF400700DA9 /* MainWindow.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				23DAB3AB2970FDF400700DA9 /* Base */,
+			);
+			name = MainWindow.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -379,7 +393,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -408,7 +422,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 7;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;

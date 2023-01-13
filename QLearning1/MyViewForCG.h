@@ -10,7 +10,8 @@
 NS_ASSUME_NONNULL_BEGIN
 @class Display;
 @interface MyViewForCG : NSView
-- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp;
+- (instancetype)initWithFrame:(NSRect)frameRect
+	display:(Display *)disp infoView:(NSView *)iview;
 @end
 
 NS_ASSUME_NONNULL_END

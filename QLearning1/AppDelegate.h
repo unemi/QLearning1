@@ -24,8 +24,9 @@ typedef struct { NSString *key; BOOL v, fd; int flag; } BoolVarInfo;
 extern IntVarInfo IntVars[];
 extern UIntegerVarInfo UIntegerVars[];
 extern BoolVarInfo BoolVars[];
+#define MAX_GOALCNT_TAG 1
 #define MAX_STEPS (UIntegerVars[0].v)
-#define MAX_GOALCNT (UIntegerVars[1].v)
+#define MAX_GOALCNT (UIntegerVars[MAX_GOALCNT_TAG].v)
 #define START_WIDTH_FULL_SCR (BoolVars[0].v)
 #define RECORD_IMAGES (BoolVars[1].v)
 
