@@ -125,7 +125,7 @@ static NSURL *img_file_url(NSURL *dirURL, NSInteger n) {
 		if (imgRect.origin.y < bounds.size.height) {
 			if (NSIntersectsRect(dirtyRect, imgRect)) [images[i] drawInRect:imgRect];
 			imgRect.origin.y += imgRect.size.height;
-		} else [images removeObjectAtIndex:i];
+		} else [images removeObjectAtIndex:0];
 	}
 	if (dirtyRect.origin.x < 1.) {
 		[colGridLines setStroke];

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>T0</key>
+	<real>0.20000000298023224</real>
+	<key>colorParticles</key>
+	<string>FDFFAA19</string>
+	<key>colorSymbols</key>
+	<string>FEFFFFFF</string>
+	<key>maxGoalCount</key>
+	<integer>12</integer>
+	<key>maxSteps</key>
+	<integer>2000</integer>
+	<key>nParticles</key>
+	<integer>240000</integer>
+	<key>ptclColorMode</key>
+	<integer>2</integer>
+	<key>ptclDrawMethod</key>
+	<integer>0</integer>
+	<key>ptclLength</key>
+	<real>0.15999999642372131</real>
+	<key>recordFinalImage</key>
+	<true/>
+	<key>screenForFullScreenMode</key>
+	<string>EV2315W</string>
+</dict>
+</plist>

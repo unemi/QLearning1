@@ -11,6 +11,7 @@
 #import "MainWindow.h"
 #import "Display.h"
 #import "Agent.h"
+#import "MySound.h"
 @import UniformTypeIdentifiers;
 
 int Move[4][2] = {{0,1},{1,0},{0,-1},{-1,0}}; // up, right, down, left
@@ -21,8 +22,7 @@ int StartP[] = {0,3}, GoalP[] = {8,5};
 NSString *keyCntlPnl = @"controlPanel";
 NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw";
 NSString *keyColorMode = @"ptclColorMode", *keyDrawMethod = @"ptclDrawMethod";
-static NSString *scrForFullScrFD;
-static NSString *keyScrForFullScr = @"screenForFullScreenMode";
+static NSString *scrForFullScrFD, *keyScrForFullScr = @"screenForFullScreenMode";
 static PTCLColorMode ptclColorModeFD;
 static PTCLDrawMethod ptclDrawMethodFD;
 enum {
@@ -80,6 +80,26 @@ DEF_FOR_ALL_PROC(for_all_uint_vars, UIntegerVarInfo, UIntegerVars)
 DEF_FOR_ALL_PROC(for_all_bool_vars, BoolVarInfo, BoolVars)
 DEF_FOR_ALL_PROC(for_all_color_vars, ColVarInfo, ColVars)
 
+static SoundSrc sndData[NVoices] = {
+	{ @"Frog", nil, 1 },
+	{ @"Submarine", nil, 2 },
+//	{ @"People/Kids Cheering.caf", @"iLife", 2 },
+//	{ @"People/Children Aaaah.caf", @"iLife", 2 },
+	{ @"Stingers/Ethereal Accents.caf", @"iLife", 2 },
+	{ @"Stingers/Electric Flutters 02.caf", @"iLife", 2 },
+	{ @"Cave and Wind.mp3", @"iMovie", 2 }
+//	{ @"EnvNoise1", nil, 2 }
+};
+
+static struct {
+	NSString *key, *fdValue;
+	NSButton *playBtn;
+	int FDBit;
+} sndInfo[] = {
+	{ @"soundBump", nil, nil, 0 },
+	{ @"soundGoal", nil, nil, 0 }
+};
+
 //NSUInteger tm0 = current_time_us();
 //NSUInteger tm1 = current_time_us();
 //printf("%ld\n", tm1-tm0);
@@ -109,6 +129,14 @@ void error_msg(NSObject *obj, NSWindow *window) {
 	else [alt beginSheetModalForWindow:window
 		completionHandler:^(NSModalResponse returnCode) {
 	}];
+}
+void err_msg(NSString *msg, OSStatus err, BOOL isFatal) {
+	NSAlert *alt = NSAlert.new;
+	alt.alertStyle = isFatal? NSAlertStyleCritical : NSAlertStyleWarning;
+	alt.messageText = msg;
+	alt.informativeText = [NSString stringWithFormat:@"Error code = %d", err];
+	[alt runModal];
+	if (isFatal) [NSApp terminate:nil];
 }
 
 NSUInteger col_to_ulong(NSColor *col) {
@@ -176,12 +204,16 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	ptclColorModeFD = ptclColorMode;
 	ptclDrawMethodFD = ptclDrawMethod;
 	scrForFullScrFD = scrForFullScr;
+	sndInfo[SndBump].fdValue = sndData[SndBump].name;
+	sndInfo[SndGoal].fdValue = sndData[SndGoal].name;
 	NSNumber *nm = [ud objectForKey:keyColorMode];
 	if (nm != nil) ptclColorMode = nm.intValue;
 	nm = [ud objectForKey:keyDrawMethod];
 	if (nm != nil) ptclDrawMethod = nm.intValue;
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
+	for (SoundType type = 0; type < 2; type ++)
+		if ((str = [ud objectForKey:sndInfo[type].key]) != nil) sndData[type].name = str;
 	NSColorPanel.sharedColorPanel.showsAlpha = YES;
 }
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
@@ -196,6 +228,7 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 				[self->mainWindow startStop:nil]; }];
 		}];
 	} else [mainWindow adjustForRecordView:nil];
+	init_audio_out(sndData, NVoices);
 }
 - (void)applicationWillTerminate:(NSNotification *)notification {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
@@ -225,6 +258,11 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	else [ud setInteger:ptclDrawMethod forKey:keyDrawMethod];
 	if (scrForFullScr == scrForFullScrFD) [ud removeObjectForKey:keyScrForFullScr];
 	else [ud setObject:scrForFullScr forKey:keyScrForFullScr];
+	for (SoundType type = 0; type < 2; type ++) {
+		if ([sndData[type].name isEqualToString:sndInfo[type].fdValue])
+			[ud removeObjectForKey:sndInfo[type].key];
+		else [ud setObject:sndData[type].name forKey:sndInfo[type].key];
+	}
 }
 @end
 
@@ -253,6 +291,17 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		kCGDisplayEnabledFlag | kCGDisplayDisabledFlag)) == 0) return;
 	setup_screen_menu((__bridge NSPopUpButton *)userInfo);
 }
+static NSString *SysSndDir = @"/System/Library/Sounds";
+static void setup_sound_menu(NSPopUpButton *popup) {
+	NSError *error;
+	NSArray<NSString *> *list = [NSFileManager.defaultManager
+		contentsOfDirectoryAtPath:SysSndDir error:&error];
+	if (list == nil) { error_msg(error, nil); return; }
+	list = [list sortedArrayUsingSelector:@selector(compare:)];
+	[popup itemAtIndex:0].title = @"None";
+	for (NSString *name in list) if ([name hasSuffix:@".aiff"])
+		[popup addItemWithTitle:[name stringByDeletingPathExtension]];
+}
 @implementation ControlPanel {
 	IBOutlet NSColorWell *cwlBackground, *cwObstacles, *cwAgent,
 		*cwGridLines, *cwSymbols, *cwParticles;
@@ -262,7 +311,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	IBOutlet NSButton *btnDrawByRects, *btnDrawByTriangles, *btnDrawByLines,
 		*btnColConst, *btnColAngle, *btnColSpeed,
 		*cboxStartFullScr, *cboxRecordImages, *btnRevertToFD, *btnExport;
-	IBOutlet NSPopUpButton *screenPopUp;
+	IBOutlet NSPopUpButton *screenPopUp, *sndBumpPopUp, *sndGoalPopUp;
+	IBOutlet NSButton *playBumpBtn, *playGoalBtn;
 	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt;
 	NSArray<NSColorWell *> *colWels;
 	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts;
@@ -282,7 +332,11 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
 	dgtStrokeWidth.enabled = (ptclDrawMethod != PTCLbyLines);
 	[screenPopUp selectItemWithTitle:scrForFullScr];
-	dgtCoolingRate.enabled = (MAX_GOALCNT == 0);
+	[sndBumpPopUp selectItemWithTitle:sndData[SndBump].name];
+	[sndGoalPopUp selectItemWithTitle:sndData[SndGoal].name];
+	playBumpBtn.enabled = (sndBumpPopUp.indexOfSelectedItem > 0);
+	playGoalBtn.enabled = (sndGoalPopUp.indexOfSelectedItem > 0);
+	dgtCoolingRate.enabled = (MAX_STEPS == 0);
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
 }
 - (void)windowDidLoad {
@@ -290,6 +344,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	if (self.window == nil) return;
 	_undoManager = NSUndoManager.new;
 	setup_screen_menu(screenPopUp);
+	setup_sound_menu(sndBumpPopUp);
+	setup_sound_menu(sndGoalPopUp);
 	CGError error = CGDisplayRegisterReconfigurationCallback
 		(displayReconfigCB, (__bridge void *)screenPopUp);
 	if (error != kCGErrorSuccess)
@@ -361,6 +417,12 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	}
 	FDBTFulScr = (int)bit;
 	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
+	for (SoundType type = 0; type < 2; type ++) {
+		sndInfo[type].FDBit = (int)(++ bit);
+		if (![sndData[type].name isEqualToString:sndInfo[type].fdValue]) FDBits |= 1 << bit;
+	}
+	sndInfo[SndBump].playBtn = playBumpBtn;
+	sndInfo[SndGoal].playBtn = playGoalBtn;
 	[self adjustControls];
 }
 - (void)checkFDBits:(NSInteger)bitPosition cond:(BOOL)cond {
@@ -424,8 +486,10 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	}];
 	info->v = newValue;
 	[self checkFDBits:FDBTUInt + dgt.tag cond:newValue == info->fd];
-	if (dgt.tag == MAX_GOALCNT_TAG)
-		dgtCoolingRate.enabled = (MAX_GOALCNT == 0);
+	if (dgt.tag == MAX_STEPS_TAG)
+		dgtCoolingRate.enabled = (MAX_STEPS == 0);
+	[NSNotificationCenter.defaultCenter
+		postNotificationName:info->key object:NSApp];
 }
 - (IBAction)switchBoolValue:(NSButton *)btn {
 	BoolVarInfo *info = &BoolVars[btn.tag];
@@ -479,6 +543,32 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	scrForFullScr = newValue;
 	[self checkFDBits:FDBTFulScr cond:newValue == scrForFullScrFD];
 }
+- (IBAction)chooseSound:(NSPopUpButton *)popUp {
+	SoundType type = (SoundType)popUp.tag;
+	NSString *orgValue = sndData[type].name,
+		*newValue = [popUp titleOfSelectedItem];
+	if ([orgValue isEqualToString:newValue]) return;
+	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+		[popUp selectItemWithTitle:orgValue];
+		[popUp sendAction:popUp.action to:target];
+	}];
+	change_sound_data(type, newValue);
+//	if (popUp.indexOfSelectedItem > 0)
+//		change_sound_data(type);
+//	else if (sndData[type].buf != NULL) {
+//		free(sndData[type].buf);
+//		sndData[type].buf = NULL;
+//	}
+	sndInfo[type].playBtn.enabled = (popUp.indexOfSelectedItem > 0);
+	[self checkFDBits:sndInfo[type].FDBit cond:
+		[newValue isEqualToString:sndInfo[type].fdValue]];
+}
+- (IBAction)listenSound:(NSButton *)btn {
+	NSString *path = [NSString stringWithFormat:
+		@"%@/%@.aiff", SysSndDir, sndData[btn.tag].name];
+	NSSound *snd = [NSSound.alloc initWithContentsOfFile:path byReference:YES];
+	[snd play];
+}
 - (IBAction)revertToFactoryDefault:(id)sender {
 	NSMutableDictionary *md = NSMutableDictionary.new;
 	for_all_int_vars(^(IntVarInfo *p) {
@@ -500,7 +590,13 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	if (ptclDrawMethod != ptclDrawMethodFD) md[keyDrawMethod] = @(ptclDrawMethodFD);
 	if (![scrForFullScr isEqualToString:scrForFullScrFD])
 		md[keyScrForFullScr] = scrForFullScrFD;
+	for (SoundType type = 0; type < 2; type ++)
+		if (![sndData[type].name isEqualToString:sndInfo[type].fdValue])
+			md[sndInfo[type].key] = sndInfo[type].fdValue;
 	[self setParamValuesFromDict:md];
+}
+static void set_sound_from_dict(NSDictionary *dict, SoundType type,
+	NSString *key, NSString *fdName, NSMutableDictionary *orgValues, int bit, UInt64 *fbP) {
 }
 - (void)setParamValuesFromDict:(NSDictionary *)dict {
 	NSMutableArray<NSString *> *postKeys = NSMutableArray.new;
@@ -528,6 +624,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for_all_uint_vars(^(UIntegerVarInfo *p) {
 		NSNumber *num = dict[p->key]; if (num == nil) return;
 		NSUInteger newValue = num.integerValue; if (p->v == newValue) return;
+		[postKeys addObject:p->key];
 		orgValues[p->key] = @(p->v);
 		if (newValue == p->fd || p->v == p->fd)
 			*fbP |= 1 << (self->FDBTUInt + (p - UIntegerVars));
@@ -566,7 +663,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		if (ptclColorMode != newValue) {
 			orgValues[keyColorMode] = @(ptclColorMode);
 			if (ptclColorMode == ptclColorModeFD || newValue == ptclColorModeFD)
-				*fbP |= 1 << self->FDBTDc;
+				*fbP |= 1 << FDBTDc;
 			ptclColorMode = newValue;
 			[postKeys addObject:keyColorMode];
 		}
@@ -577,19 +674,25 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		if (ptclDrawMethod != newValue) {
 			orgValues[keyDrawMethod] = @(ptclDrawMethod);
 			if (ptclDrawMethod == ptclDrawMethodFD || newValue == ptclDrawMethodFD)
-				*fbP |= 1 << self->FDBTDm;
+				fdFlipBits |= 1 << FDBTDm;
 			ptclDrawMethod = newValue;
 			[postKeys addObject:keyDrawMethod];
 		}
 	}
 	NSString *newValue = dict[keyScrForFullScr];
-	if (newValue != nil) {
-		if (![scrForFullScr isEqualToString:newValue]) {
-			orgValues[keyScrForFullScr] = scrForFullScr;
-			if (scrForFullScr == scrForFullScrFD || newValue == scrForFullScrFD)
-				*fbP |= 1 << self->FDBTFulScr;
-			scrForFullScr = newValue;
-		}
+	if (newValue != nil && ![scrForFullScr isEqualToString:newValue]) {
+		orgValues[keyScrForFullScr] = scrForFullScr;
+		if (scrForFullScr == scrForFullScrFD || newValue == scrForFullScrFD)
+			fdFlipBits |= 1 << FDBTFulScr;
+		scrForFullScr = newValue;
+	}
+	for (SoundType type = 0; type < 2; type ++)
+		if ((newValue = dict[sndInfo[type].key]) != nil
+		 && ![sndData[type].name isEqualToString:newValue]) {
+			orgValues[sndInfo[type].key] = sndData[type].name;
+			if ([@[newValue, sndData[type].name] containsObject:sndInfo[type].fdValue])
+				fdFlipBits |= 1 << sndInfo[type].FDBit;
+				change_sound_data(type, newValue);
 	}
 	FDBits ^= fdFlipBits;
 	[self adjustControls];

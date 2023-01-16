@@ -8,10 +8,10 @@
 #import <Cocoa/Cocoa.h>
 
 NS_ASSUME_NONNULL_BEGIN
-@class Display;
+@class Display, RecordView;
 @interface MyViewForCG : NSView
-- (instancetype)initWithFrame:(NSRect)frameRect
-	display:(Display *)disp infoView:(NSView *)iview;
+- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp
+	infoView:(NSView *)iview recordView:(RecordView *)recordView;
 @end
 
 NS_ASSUME_NONNULL_END

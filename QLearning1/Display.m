@@ -33,7 +33,7 @@ void init_default_colors(void) {
 	colSymbols = color_with_comp((CGFloat []){.7, .7, .7, 1.});
 	colParticles = color_with_comp((CGFloat []){1., 1., 1., .1});
 }
-vector_float4 col_to_vec(NSColor * _Nonnull col) {
+static vector_float4 col_to_vec(NSColor * _Nonnull col) {
 	CGFloat c[4] = {0, 0, 0, 1};
 	[[col colorUsingColorSpace:NSColorSpace.genericRGBColorSpace]
 		getComponents:c];
@@ -597,7 +597,7 @@ static void set_arrow_shape(vector_float2 *v, simd_float3x3 *trs) {
 		for (int i = 0; i < _nPtcls; i ++)
 			particle_reset(_particles + i, YES);
 		[vxBufLock lock];
-		if (ptclColorMode != PTCLconstColor)
+		if (_displayMode == DispParticle && ptclColorMode != PTCLconstColor)
 			[self setupParticleColors];
 		[self setupVertices];
 		[vxBufLock unlock];

@@ -11,7 +11,7 @@
 #import "Display.h"
 #import "RecordView.h"
 #import "MyViewForCG.h"
-@import AVFAudio;
+#import "MySound.h"
 
 NSString *scrForFullScr = @"Screen the main window placed";
 static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
@@ -28,35 +28,21 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 		[NSBezierPath fillRect:rect];
 		rect.origin.x += rect.size.width;
 		rect.size.width = self.bounds.size.width - rect.size.width;
-	}
-	if (rect.size.width > 0.) {
-		[colBackground setFill];
+		if (rect.size.width > 0.) {
+			[colBackground setFill];
+			[NSBezierPath fillRect:rect];
+		}
+	} else {
+		CGFloat r1, r2, g1, g2, b1, b2, a1, a2;
+		[colBackground getRed:&r1 green:&g1 blue:&b1 alpha:&a1];
+		[colSymbols getRed:&r2 green:&g2 blue:&b2 alpha:&a2];
+		[[NSColor colorWithSRGBRed:(r1 + r2) / 2. green:(g1 + g2) / 2.
+			blue:(b1 + b2) / 2. alpha:(a1 + a2) / 2.] setFill];
 		[NSBezierPath fillRect:rect];
 	}
 }
 @end
 
-@implementation AVAudioPlayer (MyExtention)
-static NSString *iMovieSndDir = @"";
-- (instancetype)initWithiMovieSnd:(NSString *)type path:(NSString *)path {
-	NSString *fullPath = [NSString stringWithFormat:
-		@"/Applications/iMovie.app/Contents/Resources/%@ Sound Effects/%@",
-		type, path];
-	NSURL *url = [NSURL fileURLWithPath:fullPath];
-	return [self initWithContentsOfURL:url error:NULL];
-}
-- (void)startPlaying {
-	if (self.isPlaying) [self stop];
-	[self play];
-}
-@end
-static AVAudioPlayer *sound_player(NSString *type, NSString *path) {
-	return [AVAudioPlayer.alloc initWithiMovieSnd:type path:path];
-}
-static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
-	return [AVAudioPlayer.alloc initWithContentsOfURL:
-		[NSBundle.mainBundle URLForResource:name withExtension:ext] error:NULL];
-}
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
@@ -64,7 +50,6 @@ static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
 	BOOL running;
 	NSUInteger steps, goalCount;
 	NSRect infoViewFrame;
-	AVAudioPlayer *sndBump, *sndGoal, *sndBad, *sndGood;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
 	IBOutlet MTKView *view;
@@ -106,6 +91,17 @@ static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
 	[self adjustViewFrame:note];
 	recordView.hidden = !RECORD_IMAGES;
 }
+- (void)adjustMaxStepsOrGoals:(NSInteger)tag {
+	switch (tag) {
+		case MAX_STEPS_TAG:
+		stepsPrg.maxValue = MAX_STEPS;
+		stepsPrg.needsDisplay = YES;
+		break;
+		case MAX_GOALCNT_TAG:
+		goalsPrg.maxValue = MAX_GOALCNT;
+		goalsPrg.needsDisplay = YES;
+	}
+}
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	memset(Obstacles, 0, sizeof(Obstacles));
@@ -123,12 +119,22 @@ static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
 	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit];
 	for (NSTextField *txt in infoTexts) txt.textColor = colSymbols;
 	[recordView loadImages];
+	[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
+	[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
 //	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustViewFrame:)
 		name:NSViewFrameDidChangeNotification object:view.superview];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"maxSteps"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
+	}];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"maxGoalCount"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
+	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		for (NSTextField *txt in self->infoTexts) txt.textColor = colSymbols;
@@ -141,12 +147,6 @@ static AVAudioPlayer *sound_resource(NSString *name, NSString *ext) {
 	}];
 	[view.window makeFirstResponder:self];
 	[self reset:nil];
-	sndBump = sound_resource(@"Bump", @"mp3"); 
-	sndGoal = sound_resource(@"Ping", @"aac");
-//	sndBad = sound_player(@"iMovie", @"Cartoon Tumble Down.mp3");
-	sndBad = sound_player(@"iLife", @"People/Children Aaaah.caf");
-	sndGood = sound_player(@"iLife", @"People/Kids Cheering.caf");
-	sndBump.enableRate = YES;
 }
 - (NSString *)infoText {
 	return [NSString stringWithFormat:@"%@ steps, %ld goal%@",
@@ -167,29 +167,52 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 }
 - (void)showSteps { show_count(stepsPrg, stepsDgt, stepsUnit, steps); }
 - (void)showGoals { show_count(goalsPrg, goalsDgt, goalsUnit, goalCount); }
-- (void)playAgentSound:(AVAudioPlayer *)player {
+static void play_agent_sound(Agent *agent, SoundType sndType) {
 	int ix, iy;
+	SoundQue sndQue = { sndType, 1., 0., 1., 0 };
 	[agent getPositionX:&ix Y:&iy];
-	if (player.isPlaying) [player stop];
-	player.pan = (float)ix / (NGridW - 1) * 1.8 - .9;
-	player.rate = powf(1.4142f, (float)iy / (NGridH - 1) * 2 - 1);
-	[player play];
+	sndQue.pan = (float)ix / (NGridW - 1) * 1.8 - .9;
+	sndQue.pitchShift = powf(1.4142f, (float)iy / (NGridH - 1) * 2 - 1);
+	set_audio_events(&sndQue);
+}
+static void play_sound_effect(SoundType sndType, float pitchShift) {
+	set_audio_events(&(SoundQue){ sndType, pitchShift, 0., 1., 0 });
+}
+static void feed_env_noise_params(void) {
+	SoundEnvParam sep[NGridW];
+	int gCnt[NGridW];
+	memset(sep, 0, sizeof(sep));
+	memset(gCnt, 0, sizeof(gCnt));
+	for (NSInteger i = 0; i < NActiveGrids; i ++) {
+		int *pos = FieldP[i], ix = pos[0], iy = pos[1];
+		vector_float4 Q = QTable[iy][ix];
+		for (NSInteger k = 0; k < NActs; k ++) sep[ix].amp += Q[k];
+		sep[ix].pitchShift += hypotf(Q.x - Q.z, Q.y - Q.w);
+		gCnt[ix] ++;
+	}
+	for (NSInteger i = 0; i < NGridW; i ++) {
+		sep[i].amp = (sep[i].amp / gCnt[i] - 2.f) * .45f + .6f;
+		sep[i].pitchShift = powf(2.f, sep[i].pitchShift / gCnt[i] * 8.f - 1.f);
+	}
+	set_audio_env_params(sep);
 }
 - (void)loopThread {
 	while (running) {
 		NSUInteger tm = current_time_us();
 		switch ([agent oneStep]) {
 			case AgentStepped: break;
-			case AgentBumped: [self playAgentSound:sndBump]; break;
+			case AgentBumped: play_agent_sound(agent, SndBump); break;
 			case AgentReached:
 			goalCount ++;
 			in_main_thread(^{ [self showGoals]; });
-			[sndGoal startPlaying];
+			play_sound_effect(SndGoal, (MAX_GOALCNT == 0)? 1. :
+				powf(1.4142f, (float)goalCount / MAX_GOALCNT * 2. - 1.));
 		}
 		steps ++;
 		in_main_thread(^{ [self showSteps]; });
 		[display oneStep];
-		NSInteger timeRemain = (interval- (1./52. - 1 / 60.)) * 1e6
+		feed_env_noise_params();
+		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6
 			- (current_time_us() - tm);
 		if (timeRemain > 0) usleep((useconds_t)timeRemain);
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
@@ -199,7 +222,7 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 				[self reset:nil];
 				[self startStop:nil];
 			});
-			[((goalCount >= MAX_GOALCNT)? sndGood : sndBad) play];
+			play_sound_effect((goalCount >= MAX_GOALCNT)? SndGood : SndBad, 1.);
 	}}
 }
 - (IBAction)reset:(id)sender {
@@ -209,8 +232,6 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 	[agent restart];
 	[display reset];
 	steps = goalCount = 0;
-	stepsPrg.maxValue = MAX_STEPS;
-	goalsPrg.maxValue = MAX_GOALCNT;
 	[self showSteps];
 	[self showGoals];
 	in_main_thread(^{ [self showSteps]; });
@@ -221,9 +242,11 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 			toTarget:self withObject:nil];
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPauseTemplate];
 		startStopItem.label = @"Stop";
+		start_audio_out();
 	} else {
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPlayTemplate];
 		startStopItem.label = @"Start";
+		stop_audio_out();
 	}
 }
 static void adjust_subviews_frame(NSView *view, CGFloat scale) {
@@ -279,14 +302,14 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	prInfo.leftMargin = pb.origin.x;
 	prInfo.rightMargin = pSize.width - NSMaxX(pb);
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb
-		display:display infoView:stepsDgt.superview];
+		display:display infoView:stepsDgt.superview recordView:recordView];
 	NSPrintOperation *prOpe = [NSPrintOperation printOperationWithView:view printInfo:prInfo];
 	[prOpe runOperation];
 }
 - (IBAction)copy:(id)sender {
 	NSRect frame = {0., 0., NGridW * TileSize, NGridH * TileSize};
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame
-		display:display infoView:stepsDgt.superview];
+		display:display infoView:stepsDgt.superview recordView:recordView];
 	NSData *data = [view dataWithPDFInsideRect:frame];
 	NSPasteboard *pb = NSPasteboard.generalPasteboard;
 	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];

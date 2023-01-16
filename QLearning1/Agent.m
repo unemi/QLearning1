@@ -30,7 +30,7 @@ typedef struct {
 @implementation Agent {
 	NSMutableArray<NSValue *> *mem;
 	float T;
-	int x, y, goalCount;
+	int x, y, steps;
 }
 - (instancetype)init {
 	if (!(self = [super init])) return nil;
@@ -50,7 +50,7 @@ typedef struct {
 	for (int k = 0; k < NActs; k ++)
 		QTable[i][j][k] = InitQValue;
 	T = T0;
-	goalCount = 0;
+	steps = 0;
 }
 - (int)policy {
 	float roulette[NActs], pSum = 0.;
@@ -77,12 +77,12 @@ typedef struct {
 }
 - (AgentStepResult)oneStep {
 	if (x == GoalP[0] && y == GoalP[1]) {
-		if (MAX_GOALCNT > 0)
-			T = T0 * powf(T1 / T0, (float)(++ goalCount) / MAX_GOALCNT);
-		else T += (T1 - T) * CoolingRate;
 		[self restart];
 		return AgentReached;
 	}
+	if (MAX_STEPS > 0)
+		T = T0 * powf(T1 / T0, (float)(++ steps) / MAX_STEPS);
+	else T += (T1 - T) * CoolingRate / 100;
 	AgentStepResult result = AgentStepped;
 	int action = [self policy];
 	int newx = x + Move[action][0];

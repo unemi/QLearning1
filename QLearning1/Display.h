@@ -32,7 +32,6 @@ extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 extern PTCLColorMode ptclColorMode;
 extern PTCLDrawMethod ptclDrawMethod;
 extern void init_default_colors(void);
-extern vector_float4 col_to_vec(NSColor * _Nonnull col);
 extern void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
 	void (^ _Nonnull block)(NSBitmapImageRep * _Nonnull bm));
 extern vector_float4 ptcl_hsb_color(void);

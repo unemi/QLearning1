@@ -8,10 +8,10 @@
 
 /* Begin PBXBuildFile section */
 		2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23DB3560296EAA2B0008D821 /* AVFAudio.framework */; };
-		2309A093297014F600250E31 /* Bump.mp3 in Resources */ = {isa = PBXBuildFile; fileRef = 2309A092297014F600250E31 /* Bump.mp3 */; };
 		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
 		2318A51E296697030025CCFB /* RecordView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A51D296697030025CCFB /* RecordView.m */; };
 		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
+		231D98B1297260EE006672BD /* MySound.m in Sources */ = {isa = PBXBuildFile; fileRef = 231D98AF297260EE006672BD /* MySound.m */; };
 		23214956295C6980001A40D3 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23214954295C6980001A40D3 /* ControlPanel.xib */; };
 		232521712956BB7900159F30 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521702956BB7900159F30 /* AppDelegate.m */; };
 		232521732956BB7A00159F30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 232521722956BB7A00159F30 /* Assets.xcassets */; };
@@ -25,17 +25,22 @@
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
 		234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 234090DB296937CF008CC72D /* MetalKit.framework */; };
 		234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */ = {isa = PBXBuildFile; fileRef = 234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */; };
-		2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */ = {isa = PBXBuildFile; fileRef = 2390BB6E296EC37700B4FB07 /* Ping.aac */; };
 		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
+		23E048B62975076B007DF723 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048B52975076B007DF723 /* AppDelegate.m */; };
+		23E048B82975076B007DF723 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23E048B72975076B007DF723 /* Assets.xcassets */; };
+		23E048BB2975076B007DF723 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23E048B92975076B007DF723 /* MainMenu.xib */; };
+		23E048BD2975076B007DF723 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048BC2975076B007DF723 /* main.m */; };
+		23E048C829754C99007DF723 /* MySound.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048C729754C99007DF723 /* MySound.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		2309A092297014F600250E31 /* Bump.mp3 */ = {isa = PBXFileReference; lastKnownFileType = audio.mp3; path = Bump.mp3; sourceTree = "<group>"; };
 		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		2318A51C296697030025CCFB /* RecordView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RecordView.h; sourceTree = "<group>"; };
 		2318A51D296697030025CCFB /* RecordView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RecordView.m; sourceTree = "<group>"; };
 		2318A51F2966E2AE0025CCFB /* MyViewForCG.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MyViewForCG.h; sourceTree = "<group>"; };
 		2318A5202966E2AE0025CCFB /* MyViewForCG.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyViewForCG.m; sourceTree = "<group>"; };
+		231D98AF297260EE006672BD /* MySound.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MySound.m; sourceTree = "<group>"; };
+		231D98B0297260EE006672BD /* MySound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MySound.h; sourceTree = "<group>"; };
 		23214955295C6980001A40D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
 		2325216C2956BB7900159F30 /* QLearning1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QLearning1.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		2325216F2956BB7900159F30 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -59,9 +64,17 @@
 		234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LogoDrawer.h; sourceTree = "<group>"; };
 		234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LogoDrawer.m; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
-		2390BB6E296EC37700B4FB07 /* Ping.aac */ = {isa = PBXFileReference; lastKnownFileType = file; path = Ping.aac; sourceTree = "<group>"; };
 		23DAB3AB2970FDF400700DA9 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainWindow.xib; sourceTree = "<group>"; };
 		23DB3560296EAA2B0008D821 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
+		23E048B22975076B007DF723 /* MySoundTest4QL1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MySoundTest4QL1.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		23E048B42975076B007DF723 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		23E048B52975076B007DF723 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		23E048B72975076B007DF723 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		23E048BA2975076B007DF723 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
+		23E048BC2975076B007DF723 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		23E048BE2975076B007DF723 /* MySoundTest4QL1.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MySoundTest4QL1.entitlements; sourceTree = "<group>"; };
+		23E048C629754C99007DF723 /* MySound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MySound.h; sourceTree = "<group>"; };
+		23E048C729754C99007DF723 /* MySound.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MySound.m; sourceTree = "<group>"; };
 		23FDEFDC2967CA2700C6C1E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -72,6 +85,13 @@
 			files = (
 				2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */,
 				234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		23E048AF2975076B007DF723 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -86,6 +106,7 @@
 				23297D8B296AD1DF00178016 /* Images */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
 				2330B0E6296972A100F87CEC /* Samples */,
+				23E048B32975076B007DF723 /* MySoundTest4QL1 */,
 				2325216D2956BB7900159F30 /* Products */,
 				234090DA296937CF008CC72D /* Frameworks */,
 			);
@@ -95,6 +116,7 @@
 			isa = PBXGroup;
 			children = (
 				2325216C2956BB7900159F30 /* QLearning1.app */,
+				23E048B22975076B007DF723 /* MySoundTest4QL1.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,6 +138,8 @@
 				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
 				234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */,
 				234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */,
+				231D98B0297260EE006672BD /* MySound.h */,
+				231D98AF297260EE006672BD /* MySound.m */,
 				23FDEFDC2967CA2700C6C1E2 /* Info.plist */,
 				232521722956BB7A00159F30 /* Assets.xcassets */,
 				23DAB3AC2970FDF400700DA9 /* MainWindow.xib */,
@@ -151,11 +175,23 @@
 		2390BB6D296EC37700B4FB07 /* Sounds */ = {
 			isa = PBXGroup;
 			children = (
-				2309A092297014F600250E31 /* Bump.mp3 */,
-				2390BB6E296EC37700B4FB07 /* Ping.aac */,
 			);
 			name = Sounds;
-			path = QLearning1/Sounds;
+			sourceTree = "<group>";
+		};
+		23E048B32975076B007DF723 /* MySoundTest4QL1 */ = {
+			isa = PBXGroup;
+			children = (
+				23E048B42975076B007DF723 /* AppDelegate.h */,
+				23E048B52975076B007DF723 /* AppDelegate.m */,
+				23E048C629754C99007DF723 /* MySound.h */,
+				23E048C729754C99007DF723 /* MySound.m */,
+				23E048B72975076B007DF723 /* Assets.xcassets */,
+				23E048B92975076B007DF723 /* MainMenu.xib */,
+				23E048BC2975076B007DF723 /* main.m */,
+				23E048BE2975076B007DF723 /* MySoundTest4QL1.entitlements */,
+			);
+			path = MySoundTest4QL1;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -178,6 +214,23 @@
 			productReference = 2325216C2956BB7900159F30 /* QLearning1.app */;
 			productType = "com.apple.product-type.application";
 		};
+		23E048B12975076B007DF723 /* MySoundTest4QL1 */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 23E048C12975076B007DF723 /* Build configuration list for PBXNativeTarget "MySoundTest4QL1" */;
+			buildPhases = (
+				23E048AE2975076B007DF723 /* Sources */,
+				23E048AF2975076B007DF723 /* Frameworks */,
+				23E048B02975076B007DF723 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = MySoundTest4QL1;
+			productName = MySoundTest4QL1;
+			productReference = 23E048B22975076B007DF723 /* MySoundTest4QL1.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -188,6 +241,9 @@
 				LastUpgradeCheck = 1420;
 				TargetAttributes = {
 					2325216B2956BB7900159F30 = {
+						CreatedOnToolsVersion = 14.2;
+					};
+					23E048B12975076B007DF723 = {
 						CreatedOnToolsVersion = 14.2;
 					};
 				};
@@ -206,6 +262,7 @@
 			projectRoot = "";
 			targets = (
 				2325216B2956BB7900159F30 /* QLearning1 */,
+				23E048B12975076B007DF723 /* MySoundTest4QL1 */,
 			);
 		};
 /* End PBXProject section */
@@ -215,15 +272,22 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2309A093297014F600250E31 /* Bump.mp3 in Resources */,
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
-				2390BB6F296EC37700B4FB07 /* Ping.aac in Resources */,
 				23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		23E048B02975076B007DF723 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				23E048B82975076B007DF723 /* Assets.xcassets in Resources */,
+				23E048BB2975076B007DF723 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -241,8 +305,19 @@
 				234090D82969025D008CC72D /* MainWindow.m in Sources */,
 				233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */,
 				234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */,
+				231D98B1297260EE006672BD /* MySound.m in Sources */,
 				232521712956BB7900159F30 /* AppDelegate.m in Sources */,
 				2318A51E296697030025CCFB /* RecordView.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		23E048AE2975076B007DF723 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				23E048C829754C99007DF723 /* MySound.m in Sources */,
+				23E048BD2975076B007DF723 /* main.m in Sources */,
+				23E048B62975076B007DF723 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -271,6 +346,14 @@
 				23DAB3AB2970FDF400700DA9 /* Base */,
 			);
 			name = MainWindow.xib;
+			sourceTree = "<group>";
+		};
+		23E048B92975076B007DF723 /* MainMenu.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				23E048BA2975076B007DF723 /* Base */,
+			);
+			name = MainMenu.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -393,7 +476,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -422,7 +505,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 8;
+				CURRENT_PROJECT_VERSION = 9;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -438,6 +521,60 @@
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.QLearning1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Release;
+		};
+		23E048BF2975076B007DF723 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MySoundTest4QL1/MySoundTest4QL1.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 726X5Z9867;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainNibFile = MainMenu;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.MySoundTest4QL1;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+			};
+			name = Debug;
+		};
+		23E048C02975076B007DF723 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = MySoundTest4QL1/MySoundTest4QL1.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 726X5Z9867;
+				ENABLE_HARDENED_RUNTIME = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSMainNibFile = MainMenu;
+				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 12.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.MySoundTest4QL1;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 			};
@@ -460,6 +597,15 @@
 			buildConfigurations = (
 				2325217D2956BB7A00159F30 /* Debug */,
 				2325217E2956BB7A00159F30 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		23E048C12975076B007DF723 /* Build configuration list for PBXNativeTarget "MySoundTest4QL1" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				23E048BF2975076B007DF723 /* Debug */,
+				23E048C02975076B007DF723 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

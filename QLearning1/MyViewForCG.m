@@ -10,18 +10,21 @@
 #import "AppDelegate.h"
 #import "Agent.h"
 #import "LogoDrawer.h"
+#import "RecordView.h"
 
 @implementation MyViewForCG {
 	Display __weak *display;
 	NSView __weak *infoView;
+	RecordView __weak *recordView;
 	NSBitmapImageRep *imgCache;
 	LogoDrawerCG *logoDrawer;
 }
-- (instancetype)initWithFrame:(NSRect)frameRect
-	display:(Display *)disp infoView:(NSView *)iview {
+- (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp
+	infoView:(NSView *)iview recordView:(RecordView *)recView {
 	if (!(self = [super initWithFrame:frameRect])) return nil;
 	display = disp;
 	infoView = iview;
+	recordView = recView;
 	return self;
 }
 static void draw_symbol(NSString *str, NSDictionary *attr, int p[2]) {
@@ -150,13 +153,13 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		CGFloat d = pSize.width; pSize.width = pSize.height; pSize.height = d;
 	}
 	NSPoint offset = {0., 0.};
-	CGFloat scale = 1.;
-	if (whRate > (CGFloat)NGridW / NGridH) {
-		scale = pSize.height / (NGridH * TileSize);
-		offset.x = (pSize.width - NGridW * TileSize * scale) / 2.;
+	CGFloat scale = 1., dWhRate = recordView.hidden? (CGFloat)NGridW / NGridH : 16. / 9.;
+	if (whRate > dWhRate) {
+		scale = pSize.height / PTCLMaxY;
+		offset.x = (pSize.width - pSize.height * dWhRate) / 2.;
 	} else {
-		scale = pSize.width / (NGridW * TileSize);
-		offset.y = (pSize.height - NGridH * TileSize * scale) / 2.;
+		scale = pSize.width / (PTCLMaxY * dWhRate);
+		offset.y = (pSize.height - pSize.width / dWhRate) / 2.;
 	}
 	[[NSColor colorWithWhite:0. alpha:0.] setFill];
 	[NSBezierPath fillRect:self.bounds];
@@ -165,9 +168,10 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		[trans rotateByDegrees:90.];
 		[trans translateXBy:0. yBy:-pSize.height];
 	}
-	[trans scaleBy:scale];
 	[trans translateXBy:offset.x yBy:offset.y];
+	[trans scaleBy:scale];
 	[trans concat];
+	[NSBezierPath clipRect:(NSRect){0., 0., PTCLMaxY * dWhRate, PTCLMaxY}];
 	// background
 	[colBackground setFill];
 	[NSBezierPath fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
@@ -217,6 +221,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	[colSymbols set];
 	[logoDrawer drawByCGinRect:(NSRect){5 * TileSize, TileSize, TileSize, TileSize}];
 	// Info view -- steps and goals
+	[NSGraphicsContext saveGraphicsState];
 	trans = NSAffineTransform.transform;
 	[trans scaleBy:PTCLMaxY / infoView.superview.frame.size.height];
 	NSPoint origin = infoView.frame.origin;
@@ -230,6 +235,15 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		[trans concat];
 		[v drawRect:v.bounds];
 		[NSGraphicsContext restoreGraphicsState];
+	}
+	[NSGraphicsContext restoreGraphicsState];
+	// Recorded images
+	if (dWhRate == 16. / 9.) {
+		trans = NSAffineTransform.transform;
+		[trans translateXBy:PTCLMaxX yBy:0.];
+		[trans scaleBy:PTCLMaxY / recordView.frame.size.height];
+		[trans concat];
+		[recordView drawRect:recordView.bounds];
 	}
 	[NSGraphicsContext restoreGraphicsState];
 }
