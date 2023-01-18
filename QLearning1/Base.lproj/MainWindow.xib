@@ -9,6 +9,8 @@
         <customObject id="-2" userLabel="File's Owner" customClass="MainWindow">
             <connections>
                 <outlet property="dispModePopUp" destination="sCT-kh-uF1" id="X3B-g6-k0T"/>
+                <outlet property="fpsDgt" destination="H0m-zG-uDg" id="2cf-oR-gbr"/>
+                <outlet property="fpsUnit" destination="qiJ-Hc-6MK" id="UNZ-nm-oMQ"/>
                 <outlet property="fullScreenItem" destination="7YG-rz-idg" id="jUR-kR-pEe"/>
                 <outlet property="goalsDgt" destination="7Rq-Ff-TtE" id="30N-le-AR6"/>
                 <outlet property="goalsPrg" destination="uRZ-We-3dd" id="zFl-Fg-cwm"/>
@@ -38,15 +40,15 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                         <subviews>
                             <customView id="Asu-SC-uaC">
-                                <rect key="frame" x="15" y="497" width="197" height="28"/>
+                                <rect key="frame" x="15" y="473" width="197" height="52"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <subviews>
                                     <customView id="9pj-4e-7Cn" customClass="MyProgressBar">
-                                        <rect key="frame" x="0.0" y="20" width="89" height="8"/>
+                                        <rect key="frame" x="0.0" y="44" width="89" height="8"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                     </customView>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="YcI-x0-ea5">
-                                        <rect key="frame" x="53" y="0.0" width="38" height="16"/>
+                                        <rect key="frame" x="53" y="24" width="38" height="16"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" title="steps" id="rfX-H1-1mo">
                                             <font key="font" usesAppearanceFont="YES"/>
@@ -55,7 +57,7 @@
                                         </textFieldCell>
                                     </textField>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="tyC-Se-90e">
-                                        <rect key="frame" x="-2" y="0.0" width="51" height="15"/>
+                                        <rect key="frame" x="-2" y="24" width="51" height="15"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="99,999" id="3ZG-NJ-IVd">
                                             <numberFormatter key="formatter" formatterBehavior="custom10_4" allowsFloats="NO" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="42" id="dth-EC-Alq">
@@ -67,7 +69,7 @@
                                         </textFieldCell>
                                     </textField>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="7Rq-Ff-TtE">
-                                        <rect key="frame" x="107" y="0.0" width="51" height="15"/>
+                                        <rect key="frame" x="107" y="24" width="51" height="15"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="99,999" id="XyR-OX-TH7">
                                             <numberFormatter key="formatter" formatterBehavior="custom10_4" allowsFloats="NO" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="42" id="09x-jS-FgS">
@@ -79,7 +81,7 @@
                                         </textFieldCell>
                                     </textField>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="ztb-Rl-1Er">
-                                        <rect key="frame" x="162" y="0.0" width="37" height="16"/>
+                                        <rect key="frame" x="162" y="24" width="37" height="16"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" title="goals" id="63s-eL-kq3">
                                             <font key="font" usesAppearanceFont="YES"/>
@@ -88,9 +90,30 @@
                                         </textFieldCell>
                                     </textField>
                                     <customView id="uRZ-We-3dd" customClass="MyProgressBar">
-                                        <rect key="frame" x="108" y="20" width="89" height="8"/>
+                                        <rect key="frame" x="108" y="44" width="89" height="8"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                     </customView>
+                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="H0m-zG-uDg">
+                                        <rect key="frame" x="5" y="1" width="44" height="15"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="99.99" id="mCl-53-hwV">
+                                            <numberFormatter key="formatter" formatterBehavior="custom10_4" allowsFloats="NO" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="42" minimumFractionDigits="2" maximumFractionDigits="2" id="Zie-I7-hUQ">
+                                                <integer key="multiplier" value="1"/>
+                                            </numberFormatter>
+                                            <font key="font" size="13" name="Menlo-Regular"/>
+                                            <color key="textColor" red="0.99999600649999998" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                        </textFieldCell>
+                                    </textField>
+                                    <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qiJ-Hc-6MK">
+                                        <rect key="frame" x="53" y="0.0" width="24" height="16"/>
+                                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
+                                        <textFieldCell key="cell" lineBreakMode="clipping" title="fps" id="15N-Dl-RXH">
+                                            <font key="font" usesAppearanceFont="YES"/>
+                                            <color key="textColor" red="0.99999600649999998" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                            <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                        </textFieldCell>
+                                    </textField>
                                 </subviews>
                             </customView>
                         </subviews>

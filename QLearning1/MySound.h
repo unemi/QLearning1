@@ -6,13 +6,7 @@
 //  Copyright © 2017, Tatsuo Unemi. All rights reserved.
 //
 
-#import "AppDelegate.h"
-
-typedef struct {
-	NSString *name, *type;
-	UInt32 nCh, nFrames;
-	float *buf;
-} SoundSrc;
+#import "CommonTypes.h"
 
 typedef struct {
 	SoundType type;
@@ -24,7 +18,7 @@ typedef struct {
 	float pitchShift, amp;
 } SoundEnvParam;
 
-extern BOOL init_audio_out(SoundSrc *sndSrc, NSInteger nSrcs);
+extern BOOL init_audio_out(void);
 extern void change_sound_data(SoundType sndType, NSString *name);
 extern void start_audio_out(void);
 extern void stop_audio_out(void);

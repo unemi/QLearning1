@@ -43,6 +43,17 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 }
 @end
 
+static void setup_obstacle_info(void) {
+	memset(Obstacles, 0, sizeof(Obstacles));
+	for (int i = 0; i < NObstacles; i ++)
+		Obstacles[ObsP[i][1]][ObsP[i][0]] = 1;
+	int k1 = 0, k2 = 0;
+	for (int j = 0; j < NGridW; j ++)
+	for (int i = 0; i < NGridH; i ++) {
+		if (k1 < NObstacles && ObsP[k1][0] == j && ObsP[k1][1] == i) k1 ++;
+		else { FieldP[k2][0] = j; FieldP[k2][1] = i; k2 ++; }
+	}
+}
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
@@ -55,8 +66,10 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	IBOutlet MTKView *view;
 	IBOutlet RecordView *recordView;
 	IBOutlet MyProgressBar *stepsPrg, *goalsPrg;
-	IBOutlet NSTextField *stepsDgt, *goalsDgt, *stepsUnit, *goalsUnit;
+	IBOutlet NSTextField *stepsDgt, *goalsDgt, *stepsUnit, *goalsUnit,
+		*fpsDgt, *fpsUnit;
 	NSArray<NSTextField *> *infoTexts;
+	CGFloat FPS;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
 - (void)adjustViewFrame:(NSNotification *)note {
@@ -104,20 +117,13 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 }
 - (void)windowDidLoad {
 	[super windowDidLoad];
-	memset(Obstacles, 0, sizeof(Obstacles));
-	for (int i = 0; i < NObstacles; i ++)
-		Obstacles[ObsP[i][1]][ObsP[i][0]] = 1;
-	int k1 = 0, k2 = 0;
-	for (int j = 0; j < NGridW; j ++)
-	for (int i = 0; i < NGridH; i ++) {
-		if (k1 < NObstacles && ObsP[k1][0] == j && ObsP[k1][1] == i) k1 ++;
-		else { FieldP[k2][0] = j; FieldP[k2][1] = i; k2 ++; }
-	}
+	setup_obstacle_info();
 	interval = 1. / 60.;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
-	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit];
+	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
 	for (NSTextField *txt in infoTexts) txt.textColor = colSymbols;
+	fpsDgt.doubleValue = 0.;
 	[recordView loadImages];
 	[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
 	[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
@@ -138,6 +144,10 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		for (NSTextField *txt in self->infoTexts) txt.textColor = colSymbols;
+	}];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"showFPS"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
@@ -167,16 +177,20 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 }
 - (void)showSteps { show_count(stepsPrg, stepsDgt, stepsUnit, steps); }
 - (void)showGoals { show_count(goalsPrg, goalsDgt, goalsUnit, goalCount); }
+static float mag_to_scl(float mag, SoundPrm *p) {
+	return powf(2.f, mag * (p->mmax - p->mmin) + p->mmin);
+}
 static void play_agent_sound(Agent *agent, SoundType sndType) {
 	int ix, iy;
-	SoundQue sndQue = { sndType, 1., 0., 1., 0 };
+	SoundPrm *p = &sndData[sndType].v;
+	SoundQue sndQue = { sndType, 1., 0., p->vol, 0 };
 	[agent getPositionX:&ix Y:&iy];
 	sndQue.pan = (float)ix / (NGridW - 1) * 1.8 - .9;
-	sndQue.pitchShift = powf(1.4142f, (float)iy / (NGridH - 1) * 2 - 1);
+	sndQue.pitchShift = mag_to_scl((float)iy / (NGridH - 1), p);
 	set_audio_events(&sndQue);
 }
 static void play_sound_effect(SoundType sndType, float pitchShift) {
-	set_audio_events(&(SoundQue){ sndType, pitchShift, 0., 1., 0 });
+	set_audio_events(&(SoundQue){ sndType, pitchShift, 0., sndData[sndType].v.vol, 0 });
 }
 static void feed_env_noise_params(void) {
 	SoundEnvParam sep[NGridW];
@@ -190,9 +204,10 @@ static void feed_env_noise_params(void) {
 		sep[ix].pitchShift += hypotf(Q.x - Q.z, Q.y - Q.w);
 		gCnt[ix] ++;
 	}
+	SoundPrm *p = &sndData[SndEnvNoise].v;
 	for (NSInteger i = 0; i < NGridW; i ++) {
-		sep[i].amp = (sep[i].amp / gCnt[i] - 2.f) * .45f + .6f;
-		sep[i].pitchShift = powf(2.f, sep[i].pitchShift / gCnt[i] * 8.f - 1.f);
+		sep[i].amp = ((sep[i].amp / gCnt[i] - 2.f) * .45f + .6f) * p->vol;
+		sep[i].pitchShift = mag_to_scl(sep[i].pitchShift / gCnt[i], p);
 	}
 	set_audio_env_params(sep);
 }
@@ -205,16 +220,24 @@ static void feed_env_noise_params(void) {
 			case AgentReached:
 			goalCount ++;
 			in_main_thread(^{ [self showGoals]; });
+			SoundPrm *p = &sndData[SndGoal].v;
 			play_sound_effect(SndGoal, (MAX_GOALCNT == 0)? 1. :
-				powf(1.4142f, (float)goalCount / MAX_GOALCNT * 2. - 1.));
+				mag_to_scl((float)goalCount / MAX_GOALCNT, p));
 		}
 		steps ++;
-		in_main_thread(^{ [self showSteps]; });
 		[display oneStep];
 		feed_env_noise_params();
-		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6
-			- (current_time_us() - tm);
-		if (timeRemain > 0) usleep((useconds_t)timeRemain);
+		unsigned long elapsed_us = current_time_us() - tm;
+		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
+		if (timeRemain > 0) {
+			elapsed_us = interval * 1e6;
+			usleep((useconds_t)timeRemain);
+		}
+		FPS += (1e6 / elapsed_us - FPS) * .02;
+		in_main_thread(^{
+			[self showSteps];
+			self->fpsDgt.doubleValue = self->FPS;
+		});
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
 		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT)) {
 			running = NO;
@@ -222,7 +245,9 @@ static void feed_env_noise_params(void) {
 				[self reset:nil];
 				[self startStop:nil];
 			});
-			play_sound_effect((goalCount >= MAX_GOALCNT)? SndGood : SndBad, 1.);
+			if (goalCount >= MAX_GOALCNT)
+				play_sound_effect(SndGood, 1.);
+			else play_sound_effect(SndBad, 1.);
 	}}
 }
 - (IBAction)reset:(id)sender {

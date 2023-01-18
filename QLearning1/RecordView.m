@@ -16,6 +16,7 @@
 	NSDateFormatter *dtFmt;
 	NSMutableDictionary *attributes;
 	CGFloat yOffset, oldHeight;
+	BOOL modified;
 }
 - (instancetype)initWithCoder:(NSCoder *)coder {
 	if (!(self = [super initWithCoder:coder])) return nil;
@@ -52,6 +53,7 @@
 			(vSize.height - txSize.height) / 2.}
 			withAttributes:attr];
 	}]];
+	modified = YES;
 #ifdef DEBUG
 	NSBitmapImageRep *bm = (NSBitmapImageRep *)images.lastObject;
 	NSLog(@"Image size = %.0f x %.0f, bitmap pixels = %ld x %ld",
@@ -88,6 +90,12 @@ static NSURL *img_file_url(NSURL *dirURL, NSInteger n) {
 #endif
 }
 - (void)saveImages {
+	if (!modified) {
+#ifdef DEBUG
+	NSLog(@"It added no images.");
+#endif
+		return;
+	}
 	NSURL *dirURL = container_url();
 	NSInteger nSucc = 0, nFailed = 0;
 	for (NSInteger n = 0; n < images.count; n ++) {

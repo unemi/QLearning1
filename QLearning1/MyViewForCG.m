@@ -214,12 +214,13 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	[colObstacles setFill];
 	[path fill];
 	// Equations
-	[self drawEqu:@"equationL" at:(NSPoint){2., 5.}];
-	[self drawEqu:@"equationP" at:(NSPoint){7., 6.}];
+	[self drawEqu:@"equationL" at:(NSPoint){ObsP[0][0], ObsP[0][1] + 3}];
+	[self drawEqu:@"equationP" at:(NSPoint){ObsP[4][0], ObsP[4][1] + 3}];
 	// Project Logo
 	if (logoDrawer == nil) logoDrawer = LogoDrawerCG.new;
 	[colSymbols set];
-	[logoDrawer drawByCGinRect:(NSRect){5 * TileSize, TileSize, TileSize, TileSize}];
+	[logoDrawer drawByCGinRect:
+		(NSRect){ObsP[3][0] * TileSize, ObsP[3][1] * TileSize, TileSize, TileSize}];
 	// Info view -- steps and goals
 	[NSGraphicsContext saveGraphicsState];
 	trans = NSAffineTransform.transform;

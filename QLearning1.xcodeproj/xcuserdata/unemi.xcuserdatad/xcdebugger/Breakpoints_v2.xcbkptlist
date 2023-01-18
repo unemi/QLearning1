@@ -14,41 +14,25 @@
             filePath = "QLearning1/Display.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "623"
-            endingLineNumber = "623"
-            landmarkName = "-mtkView:drawableSizeWillChange:"
-            landmarkType = "7">
+            startingLineNumber = "679"
+            endingLineNumber = "679"
+            landmarkName = "draw_equtex(rce, tex, tileP, nTiles)"
+            landmarkType = "9">
          </BreakpointContent>
       </BreakpointProxy>
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "1D79EF5C-E848-44E8-BC2F-EEE03F02BB0D"
+            uuid = "8EFF53DC-3DFB-4EAF-A3ED-F514B53C8CE8"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "QLearning1/MyViewForCG.m"
+            filePath = "QLearning1/AppDelegate.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "227"
-            endingLineNumber = "227"
-            landmarkName = "-drawByCoreGraphics"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "50A6580C-CF83-4129-9132-7FC7A5104505"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "QLearning1/RecordView.m"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "79"
-            endingLineNumber = "79"
-            landmarkName = "-loadImages"
+            startingLineNumber = "755"
+            endingLineNumber = "755"
+            landmarkName = "-setParamValuesFromDict:"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

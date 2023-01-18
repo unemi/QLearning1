@@ -26,11 +26,6 @@
 		234090DC296937CF008CC72D /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 234090DB296937CF008CC72D /* MetalKit.framework */; };
 		234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */ = {isa = PBXBuildFile; fileRef = 234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */; };
 		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
-		23E048B62975076B007DF723 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048B52975076B007DF723 /* AppDelegate.m */; };
-		23E048B82975076B007DF723 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23E048B72975076B007DF723 /* Assets.xcassets */; };
-		23E048BB2975076B007DF723 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23E048B92975076B007DF723 /* MainMenu.xib */; };
-		23E048BD2975076B007DF723 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048BC2975076B007DF723 /* main.m */; };
-		23E048C829754C99007DF723 /* MySound.m in Sources */ = {isa = PBXBuildFile; fileRef = 23E048C729754C99007DF723 /* MySound.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -64,17 +59,10 @@
 		234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LogoDrawer.h; sourceTree = "<group>"; };
 		234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LogoDrawer.m; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
+		23BD0D1F2976C7A600B5F91E /* CommonTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommonTypes.h; sourceTree = "<group>"; };
 		23DAB3AB2970FDF400700DA9 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainWindow.xib; sourceTree = "<group>"; };
 		23DB3560296EAA2B0008D821 /* AVFAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AVFAudio.framework; path = System/Library/Frameworks/AVFAudio.framework; sourceTree = SDKROOT; };
 		23E048B22975076B007DF723 /* MySoundTest4QL1.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = MySoundTest4QL1.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		23E048B42975076B007DF723 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
-		23E048B52975076B007DF723 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
-		23E048B72975076B007DF723 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		23E048BA2975076B007DF723 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
-		23E048BC2975076B007DF723 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		23E048BE2975076B007DF723 /* MySoundTest4QL1.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MySoundTest4QL1.entitlements; sourceTree = "<group>"; };
-		23E048C629754C99007DF723 /* MySound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MySound.h; sourceTree = "<group>"; };
-		23E048C729754C99007DF723 /* MySound.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MySound.m; sourceTree = "<group>"; };
 		23FDEFDC2967CA2700C6C1E2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -102,11 +90,9 @@
 			isa = PBXGroup;
 			children = (
 				23363EE6295F12540005A64D /* README.md */,
-				2390BB6D296EC37700B4FB07 /* Sounds */,
 				23297D8B296AD1DF00178016 /* Images */,
 				2325216E2956BB7900159F30 /* QLearning1 */,
 				2330B0E6296972A100F87CEC /* Samples */,
-				23E048B32975076B007DF723 /* MySoundTest4QL1 */,
 				2325216D2956BB7900159F30 /* Products */,
 				234090DA296937CF008CC72D /* Frameworks */,
 			);
@@ -124,6 +110,7 @@
 		2325216E2956BB7900159F30 /* QLearning1 */ = {
 			isa = PBXGroup;
 			children = (
+				23BD0D1F2976C7A600B5F91E /* CommonTypes.h */,
 				2325216F2956BB7900159F30 /* AppDelegate.h */,
 				232521702956BB7900159F30 /* AppDelegate.m */,
 				234090D52969025D008CC72D /* MainWindow.h */,
@@ -170,28 +157,6 @@
 				234090DB296937CF008CC72D /* MetalKit.framework */,
 			);
 			name = Frameworks;
-			sourceTree = "<group>";
-		};
-		2390BB6D296EC37700B4FB07 /* Sounds */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			name = Sounds;
-			sourceTree = "<group>";
-		};
-		23E048B32975076B007DF723 /* MySoundTest4QL1 */ = {
-			isa = PBXGroup;
-			children = (
-				23E048B42975076B007DF723 /* AppDelegate.h */,
-				23E048B52975076B007DF723 /* AppDelegate.m */,
-				23E048C629754C99007DF723 /* MySound.h */,
-				23E048C729754C99007DF723 /* MySound.m */,
-				23E048B72975076B007DF723 /* Assets.xcassets */,
-				23E048B92975076B007DF723 /* MainMenu.xib */,
-				23E048BC2975076B007DF723 /* main.m */,
-				23E048BE2975076B007DF723 /* MySoundTest4QL1.entitlements */,
-			);
-			path = MySoundTest4QL1;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -286,8 +251,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				23E048B82975076B007DF723 /* Assets.xcassets in Resources */,
-				23E048BB2975076B007DF723 /* MainMenu.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -315,9 +278,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				23E048C829754C99007DF723 /* MySound.m in Sources */,
-				23E048BD2975076B007DF723 /* main.m in Sources */,
-				23E048B62975076B007DF723 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -346,14 +306,6 @@
 				23DAB3AB2970FDF400700DA9 /* Base */,
 			);
 			name = MainWindow.xib;
-			sourceTree = "<group>";
-		};
-		23E048B92975076B007DF723 /* MainMenu.xib */ = {
-			isa = PBXVariantGroup;
-			children = (
-				23E048BA2975076B007DF723 /* Base */,
-			);
-			name = MainMenu.xib;
 			sourceTree = "<group>";
 		};
 /* End PBXVariantGroup section */
@@ -476,7 +428,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -505,7 +457,7 @@
 				CODE_SIGN_ENTITLEMENTS = QLearning1/QLearning1.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 9;
+				CURRENT_PROJECT_VERSION = 10;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;

@@ -9,6 +9,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <AudioUnit/AudioUnit.h>
 #import "MySound.h"
+#import "AppDelegate.h"
 #define SAMPLE_RATE 44100
 #define QUE_LENGTH 256
 
@@ -18,58 +19,54 @@ static NSLock *soundBufLock = nil;
 static NSRange sndQIdx = {0, 0};
 static SoundQue sndQue[QUE_LENGTH], envSndQ[NGridW];
 static CGFloat sndAmp = 1.;
-static SoundSrc *sndData;
-static NSString *reqSndName[NVoices];
 
-static NSString *pathFmt = @"/Applications/iMovie.app/Contents/Resources/%@ Sound Effects/%@";
-static void get_sound_data(SoundSrc *sp) {
-	OSStatus err = noErr;
-	@try {
-		NSURL *url = (sp->type == nil)?
-//			[NSBundle.mainBundle URLForResource:sp->name withExtension:@"aac"] :
-			[NSURL fileURLWithPath:
-				[NSString stringWithFormat:@"/System/Library/Sounds/%@.aiff", sp->name]] :
-			[NSURL fileURLWithPath:[NSString stringWithFormat:pathFmt, sp->type, sp->name]];
-		if (!url) @throw [NSString stringWithFormat:@"Could not find %@.aac.", sp->name];
-		ExtAudioFileRef file;
-		err = ExtAudioFileOpenURL((__bridge CFURLRef)url, &file);
-		if (err) @throw [NSString stringWithFormat:@"Could not open %@.", url.path];
-		AudioStreamBasicDescription sbDesc = {SAMPLE_RATE, kAudioFormatLinearPCM,
-			kAudioFormatFlagIsFloat, sizeof(float) * sp->nCh,
-			1, sizeof(float) * sp->nCh, sp->nCh, sizeof(float) * 8 };
-		if ((err = ExtAudioFileSetProperty(file, kExtAudioFileProperty_ClientDataFormat,
-			sizeof(sbDesc), &sbDesc)))
-			@throw @"ExtAudioFileSetProperty ClientDataFormat";
-		UInt32 dataSize = sizeof(sbDesc);
-		if ((err = ExtAudioFileGetProperty(file, kExtAudioFileProperty_FileDataFormat,
-			&dataSize, &sbDesc))) @throw @"ExtAudioFileGetProperty FileDataFormat";
-		SInt64 nFrames = 0;
-		dataSize = sizeof(nFrames);
-		if ((err = ExtAudioFileGetProperty(file, kExtAudioFileProperty_FileLengthFrames,
-			&dataSize, &nFrames))) @throw @"ExtAudioFileGetProperty FileLengthFrames";
-		if (sbDesc.mSampleRate != SAMPLE_RATE) nFrames *= SAMPLE_RATE / sbDesc.mSampleRate;
-		UInt32 bufSize = (UInt32)(sizeof(float) * sp->nCh * nFrames);
-		float *newBuf;
-		if ((newBuf = malloc(bufSize)) == NULL)
-			@throw [NSString stringWithFormat:@"malloc buffer %d bytes.", bufSize];
-		AudioBufferList bufList = {1, {sp->nCh, bufSize, newBuf}};
-		UInt32 nbFrames = (UInt32)nFrames;
-		NSString *errStr = @"";
-		if ((err = ExtAudioFileRead(file, &nbFrames, &bufList))) {
-			errStr = @"ExtAudioFileRead";
-			free(newBuf);
-		} else {
-			sp->nFrames = nbFrames;
-			if (sp->buf != NULL) free(sp->buf);
-			sp->buf = newBuf;
+static void get_sound_data(SoundSrc *sp, OSStatus *err) {
+	if (sp->v.path.length == 0) {
+		if (sp->buf != NULL) { free(sp->buf); sp->buf = NULL; sp->nFrames = 0; }
+		sp->loaded = @"";
+		return;
+	}
+	NSURL *url = [NSURL fileURLWithPath:sp->v.path];
+	if (!url) @throw [NSString stringWithFormat:@"Could not make URL for %@.", sp->v.path];
+	ExtAudioFileRef file;
+	*err = ExtAudioFileOpenURL((__bridge CFURLRef)url, &file);
+	if (*err) @throw [NSString stringWithFormat:@"Could not open %@.", url.path];
+	AudioStreamBasicDescription sbDesc = {SAMPLE_RATE, kAudioFormatLinearPCM,
+		kAudioFormatFlagIsFloat, sizeof(float) * sp->nCh,
+		1, sizeof(float) * sp->nCh, sp->nCh, sizeof(float) * 8 };
+	if ((*err = ExtAudioFileSetProperty(file, kExtAudioFileProperty_ClientDataFormat,
+		sizeof(sbDesc), &sbDesc)))
+		@throw @"ExtAudioFileSetProperty ClientDataFormat";
+	UInt32 dataSize = sizeof(sbDesc);
+	if ((*err = ExtAudioFileGetProperty(file, kExtAudioFileProperty_FileDataFormat,
+		&dataSize, &sbDesc))) @throw @"ExtAudioFileGetProperty FileDataFormat";
+	SInt64 nFrames = 0;
+	dataSize = sizeof(nFrames);
+	if ((*err = ExtAudioFileGetProperty(file, kExtAudioFileProperty_FileLengthFrames,
+		&dataSize, &nFrames))) @throw @"ExtAudioFileGetProperty FileLengthFrames";
+	if (sbDesc.mSampleRate != SAMPLE_RATE) nFrames *= SAMPLE_RATE / sbDesc.mSampleRate;
+	UInt32 bufSize = (UInt32)(sizeof(float) * sp->nCh * nFrames);
+	float *newBuf;
+	if ((newBuf = malloc(bufSize)) == NULL)
+		@throw [NSString stringWithFormat:@"malloc buffer %d bytes.", bufSize];
+	AudioBufferList bufList = {1, {sp->nCh, bufSize, newBuf}};
+	UInt32 nbFrames = (UInt32)nFrames;
+	NSString *errStr = @"";
+	if ((*err = ExtAudioFileRead(file, &nbFrames, &bufList))) {
+		errStr = @"ExtAudioFileRead";
+		free(newBuf);
+	} else {
+		sp->nFrames = nbFrames;
+		if (sp->buf != NULL) free(sp->buf);
+		sp->buf = newBuf;
+		sp->loaded = sp->v.path;
 #ifdef DEBUG
-NSLog(@"%@: %d ch., %d frames loaded", sp->name, sp->nCh, sp->nFrames);
+NSLog(@"%@: %d ch., %d frames loaded", sp->v.path.lastPathComponent, sp->nCh, sp->nFrames);
 #endif
-		}
-		if ((err = ExtAudioFileDispose(file)))
-			errStr = [errStr stringByAppendingString:@"ExtAudioFileDispose"];
-		if (errStr.length > 0) @throw errStr;
-	} @catch (NSString *msg) { err_msg(msg, err, NO); }
+	}
+	if ((*err = ExtAudioFileDispose(file)))
+		errStr = [errStr stringByAppendingString:@"ExtAudioFileDispose"];
+	if (errStr.length > 0) @throw errStr;
 }
 static float sound_sample(UInt32 nCh, SoundSrc *sndDt, long fPos, float fPosR) {
 	return ((fPos < 0)? 0. : sndDt->buf[fPos]) * (1. - fPosR) +
@@ -129,10 +126,10 @@ static OSStatus my_render_callback(void *inRefCon,
 	[soundBufLock unlock];
 	return noErr;
 }
-BOOL init_audio_out(SoundSrc *sndSrc, NSInteger nSrcs) {
+BOOL init_audio_out(void) {
 	if (output) return YES;
 	OSStatus err = noErr;
-	for (NSInteger i = 0; i < nSrcs; i ++) sndSrc[i].buf = NULL;
+	for (NSInteger i = 0; i < NVoices; i ++) sndData[i].buf = NULL;
 	@try {
 		AURenderCallbackStruct auCallback;
 		AudioComponentDescription desc = {kAudioUnitType_Output,
@@ -150,13 +147,7 @@ BOOL init_audio_out(SoundSrc *sndSrc, NSInteger nSrcs) {
 			kAudioUnitScope_Input, 0, &sampleRate, sizeof(double))))
 			@throw @"AudioUnitSetProperty SampleRate";
 		if ((err = AudioUnitInitialize(output))) @throw @"AudioUnitInitialize";
-		for (NSInteger i = 0; i < nSrcs; i ++) {
-			get_sound_data(&sndSrc[i]);
-			if (sndSrc[i].buf == NULL) sndSrc[i].name = @"None";
-			reqSndName[i] = sndSrc[i].name; 
-		}
-		sndData = sndSrc;
-		soundBufLock = [NSLock new];
+		soundBufLock = NSLock.new;
 		soundBufLock.name = @"Sound buffer lock";
 	} @catch (NSString *msg) {
 		if (output) {
@@ -172,15 +163,18 @@ BOOL init_audio_out(SoundSrc *sndSrc, NSInteger nSrcs) {
 	return YES;
 }
 static void check_sound_changed(SoundType sndType) {
-	if ([reqSndName[sndType] isEqualToString:sndData[sndType].name]) return;
-	sndData[sndType].name = reqSndName[sndType];
+	SoundSrc *s = &sndData[sndType];
+	if ([s->loaded isEqualToString:s->v.path]) return;
 	[soundBufLock lock];
-	get_sound_data(&sndData[sndType]);
+	OSStatus err;
+	@try { get_sound_data(&sndData[sndType], &err); }
+	@catch (NSString *msg) { err_msg(msg, err, NO); }
 	[soundBufLock unlock];
 }
 void change_sound_data(SoundType sndType, NSString *name) {
-	if ([reqSndName[sndType] isEqualToString:name]) return;
-	reqSndName[sndType] = name;
+	SoundSrc *s = &sndData[sndType];
+	if ([s->v.path isEqualToString:name]) return;
+	s->v.path = name;
 	if (isRunning) check_sound_changed(sndType);
 }
 void start_audio_out(void) {
@@ -190,8 +184,8 @@ void start_audio_out(void) {
 		err_msg(@"AudioOutputUnitStart", err, NO);
 	else {
 		isRunning = YES;
-		check_sound_changed(SndBump);
-		check_sound_changed(SndGoal);
+		for (SoundType type = 0; type < NVoices; type ++)
+			check_sound_changed(type);
 	}
 }
 void stop_audio_out(void) {

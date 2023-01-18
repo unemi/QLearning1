@@ -20,14 +20,16 @@ int FieldP[NActiveGrids][2];
 int Obstacles[NGridH][NGridW];
 int StartP[] = {0,3}, GoalP[] = {8,5};
 NSString *keyCntlPnl = @"controlPanel";
-NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw";
+NSString *keyOldValue = @"oldValue",
+	*keyShouldRedraw = @"shouldRedraw", *keyShouldReviseVertices = @"shouldReviseVertices";
 NSString *keyColorMode = @"ptclColorMode", *keyDrawMethod = @"ptclDrawMethod";
 static NSString *scrForFullScrFD, *keyScrForFullScr = @"screenForFullScreenMode";
 static PTCLColorMode ptclColorModeFD;
 static PTCLDrawMethod ptclDrawMethodFD;
 enum {
 	ShouldPostNotification = 1,
-	ShouldRedrawScreen = 2
+	ShouldRedrawScreen = 2,
+	ShouldReviseVertices = 4
 };
 IntVarInfo IntVars[] = {
 	{ @"memSize", &MemSize, 0, 0 },
@@ -45,8 +47,8 @@ FloatVarInfo FloatVars[] = {
 	{ @"alpha", &Alpha, 0, 0 },
 	{ @"ptclMass", &Mass, 0, 0 },
 	{ @"ptclFriction", &Friction, 0, 0 },
-	{ @"ptclLength", &StrokeLength, 0, ShouldRedrawScreen },
-	{ @"ptclWeight", &StrokeWidth, 0, ShouldRedrawScreen },
+	{ @"ptclLength", &StrokeLength, 0, ShouldReviseVertices },
+	{ @"ptclWeight", &StrokeWidth, 0, ShouldReviseVertices },
 	{ @"ptclMaxSpeed", &MaxSpeed, 0, 0 },
 	{ nil }
 };
@@ -67,6 +69,8 @@ UIntegerVarInfo UIntegerVars[] = {
 BoolVarInfo BoolVars[] = {
 	{ @"startWithFullScreenMode", NO },
 	{ @"recordFinalImage", NO, NO, ShouldPostNotification },
+	{ @"useSharedBuffer", YES, },
+	{ @"showFPS", YES, YES, ShouldPostNotification },
 	{ nil }
 };
 
@@ -80,24 +84,18 @@ DEF_FOR_ALL_PROC(for_all_uint_vars, UIntegerVarInfo, UIntegerVars)
 DEF_FOR_ALL_PROC(for_all_bool_vars, BoolVarInfo, BoolVars)
 DEF_FOR_ALL_PROC(for_all_color_vars, ColVarInfo, ColVars)
 
-static SoundSrc sndData[NVoices] = {
-	{ @"Frog", nil, 1 },
-	{ @"Submarine", nil, 2 },
+SoundSrc sndData[NVoices] = {
+	{ @"soundBump", 1, { @"/System/Library/Sounds/Frog.aiff", -.5, .5, 1.} },
+	{ @"soundGoal", 2, { @"/System/Library/Sounds/Submarine.aiff", -.5, .5, 1.} },
 //	{ @"People/Kids Cheering.caf", @"iLife", 2 },
 //	{ @"People/Children Aaaah.caf", @"iLife", 2 },
-	{ @"Stingers/Ethereal Accents.caf", @"iLife", 2 },
-	{ @"Stingers/Electric Flutters 02.caf", @"iLife", 2 },
-	{ @"Cave and Wind.mp3", @"iMovie", 2 }
+	{ @"soundGood", 2, { @"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/"
+		@"Stingers/Ethereal Accents.caf", 0., 0., 1.} },
+	{ @"soundBad", 2, { @"/Applications/iMovie.app/Contents/Resources/iLife Sound Effects/"
+		@"Stingers/Electric Flutters 02.caf", 0., 0., 1.} },
+	{ @"soundAmbience", 2, { @"/Applications/iMovie.app/Contents/Resources/iMovie Sound Effects/"
+		@"Cave and Wind.mp3", -1., 7., 1.} }
 //	{ @"EnvNoise1", nil, 2 }
-};
-
-static struct {
-	NSString *key, *fdValue;
-	NSButton *playBtn;
-	int FDBit;
-} sndInfo[] = {
-	{ @"soundBump", nil, nil, 0 },
-	{ @"soundGoal", nil, nil, 0 }
 };
 
 //NSUInteger tm0 = current_time_us();
@@ -131,10 +129,14 @@ void error_msg(NSObject *obj, NSWindow *window) {
 	}];
 }
 void err_msg(NSString *msg, OSStatus err, BOOL isFatal) {
+	union { OSStatus e; char c[4]; } u = { .e = EndianU32_NtoB(err) };
+	char s[8];
+	for (int i = 0; i < 4; i ++) s[i] = (u.c[i] < ' ' || u.c[i] >= 127)? ' ' : u.c[i];
+	s[4] = '\0';
 	NSAlert *alt = NSAlert.new;
 	alt.alertStyle = isFatal? NSAlertStyleCritical : NSAlertStyleWarning;
 	alt.messageText = msg;
-	alt.informativeText = [NSString stringWithFormat:@"Error code = %d", err];
+	alt.informativeText = [NSString stringWithFormat:@"Error code = %s", s];
 	[alt runModal];
 	if (isFatal) [NSApp terminate:nil];
 }
@@ -162,6 +164,10 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	unsigned int uInt;
 	[scan scanHexInt:&uInt];
 	return (NSUInteger)uInt;
+}
+static BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
+	return [a->path isEqualToString:b->path] &&
+		a->mmin == b->mmin && a->mmax == b->mmax && a->vol == b->vol;
 }
 
 @implementation AppDelegate {
@@ -204,16 +210,40 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	ptclColorModeFD = ptclColorMode;
 	ptclDrawMethodFD = ptclDrawMethod;
 	scrForFullScrFD = scrForFullScr;
-	sndInfo[SndBump].fdValue = sndData[SndBump].name;
-	sndInfo[SndGoal].fdValue = sndData[SndGoal].name;
 	NSNumber *nm = [ud objectForKey:keyColorMode];
 	if (nm != nil) ptclColorMode = nm.intValue;
 	nm = [ud objectForKey:keyDrawMethod];
 	if (nm != nil) ptclDrawMethod = nm.intValue;
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
-	for (SoundType type = 0; type < 2; type ++)
-		if ((str = [ud objectForKey:sndInfo[type].key]) != nil) sndData[type].name = str;
+	NSFileManager *fm = NSFileManager.defaultManager;
+	NSMutableDictionary<NSString *, NSString *> *missingSnd = NSMutableDictionary.new;
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		s->fd = s->v;
+		NSObject *obj = [ud objectForKey:s->key];
+		if ([obj isKindOfClass:NSString.class]) s->v.path = (NSString *)obj;
+		else if ([obj isKindOfClass:NSDictionary.class]) {
+			NSDictionary *dict = (NSDictionary *)obj;
+			if ((str = dict[@"path"]) != nil) s->v.path = str;
+			if ((nm = dict[@"mmin"]) != nil) s->v.mmin = nm.floatValue;
+			if ((nm = dict[@"mmax"]) != nil) s->v.mmax = nm.floatValue;
+			if ((nm = dict[@"vol"]) != nil) s->v.vol = nm.floatValue;
+		}
+		s->loaded = @"";
+		if (s->v.path.length > 0 && ![fm fileExistsAtPath:s->v.path]) {
+			missingSnd[s->key] = s->v.path;
+			s->v.path = @"";
+		}
+	}
+	if (missingSnd.count > 0) {
+		NSMutableString *msg = NSMutableString.new;
+		[msg appendString:@"Could not find sound file"];
+		for (NSString *key in missingSnd)
+			[msg appendFormat:@"\n%@ for %@", missingSnd[key], [key substringFromIndex:5]];
+		[msg appendString:@"."];
+		error_msg(msg, nil);
+	}
 	NSColorPanel.sharedColorPanel.showsAlpha = YES;
 }
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
@@ -228,7 +258,7 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 				[self->mainWindow startStop:nil]; }];
 		}];
 	} else [mainWindow adjustForRecordView:nil];
-	init_audio_out(sndData, NVoices);
+	init_audio_out();
 }
 - (void)applicationWillTerminate:(NSNotification *)notification {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
@@ -258,10 +288,17 @@ static NSUInteger hex_string_to_uint(NSString *str) {
 	else [ud setInteger:ptclDrawMethod forKey:keyDrawMethod];
 	if (scrForFullScr == scrForFullScrFD) [ud removeObjectForKey:keyScrForFullScr];
 	else [ud setObject:scrForFullScr forKey:keyScrForFullScr];
-	for (SoundType type = 0; type < 2; type ++) {
-		if ([sndData[type].name isEqualToString:sndInfo[type].fdValue])
-			[ud removeObjectForKey:sndInfo[type].key];
-		else [ud setObject:sndData[type].name forKey:sndInfo[type].key];
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		if (prm_equal(&s->v, &s->fd)) [ud removeObjectForKey:s->key];
+		else {
+			NSMutableDictionary *md = NSMutableDictionary.new;
+			if (![s->v.path isEqualToString:s->fd.path]) md[@"path"] = s->v.path;
+			if (s->v.mmin != s->fd.mmin) md[@"mmin"] = @(s->v.mmin);
+			if (s->v.mmax != s->fd.mmax) md[@"mmax"] = @(s->v.mmax);
+			if (s->v.vol != s->fd.vol) md[@"vol"] = @(s->v.vol);
+			[ud setObject:md forKey:s->key];
+		}
 	}
 }
 @end
@@ -291,17 +328,6 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		kCGDisplayEnabledFlag | kCGDisplayDisabledFlag)) == 0) return;
 	setup_screen_menu((__bridge NSPopUpButton *)userInfo);
 }
-static NSString *SysSndDir = @"/System/Library/Sounds";
-static void setup_sound_menu(NSPopUpButton *popup) {
-	NSError *error;
-	NSArray<NSString *> *list = [NSFileManager.defaultManager
-		contentsOfDirectoryAtPath:SysSndDir error:&error];
-	if (list == nil) { error_msg(error, nil); return; }
-	list = [list sortedArrayUsingSelector:@selector(compare:)];
-	[popup itemAtIndex:0].title = @"None";
-	for (NSString *name in list) if ([name hasSuffix:@".aiff"])
-		[popup addItemWithTitle:[name stringByDeletingPathExtension]];
-}
 @implementation ControlPanel {
 	IBOutlet NSColorWell *cwlBackground, *cwObstacles, *cwAgent,
 		*cwGridLines, *cwSymbols, *cwParticles;
@@ -310,13 +336,20 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 		*dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;
 	IBOutlet NSButton *btnDrawByRects, *btnDrawByTriangles, *btnDrawByLines,
 		*btnColConst, *btnColAngle, *btnColSpeed,
-		*cboxStartFullScr, *cboxRecordImages, *btnRevertToFD, *btnExport;
-	IBOutlet NSPopUpButton *screenPopUp, *sndBumpPopUp, *sndGoalPopUp;
-	IBOutlet NSButton *playBumpBtn, *playGoalBtn;
+		*cboxStartFullScr, *cboxRecordImages, *cboxUseSharedBuffer, *cBoxShowFPS,
+		*btnRevertToFD, *btnExport;
+	IBOutlet NSPopUpButton *screenPopUp;
+	IBOutlet NSTextField *txtBump, *txtGaol, *txtGood, *txtBad, *txtAmbience;
+	IBOutlet NSButton *playBump, *playGoal, *playGood, *playBad, *playAmbience;
+	IBOutlet NSPanel *sndPanel;
+	IBOutlet NSTextField *sndPTitle, *sndPInfo, *sndPMMin, *sndPMMax, *sndPVol;
+	IBOutlet NSButton *sndPRevertBtn;
 	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt;
 	NSArray<NSColorWell *> *colWels;
-	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts;
-	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns;
+	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts, *sndTxts;
+	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns, *playBtns;
+	NSSound *soundNowPlaying;
+	SoundType playingSoundType, openingSoundType;
 	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
 		FDBTDm, FDBTFulScr;
 	UInt64 FDBits;
@@ -332,20 +365,33 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 	for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
 	dgtStrokeWidth.enabled = (ptclDrawMethod != PTCLbyLines);
 	[screenPopUp selectItemWithTitle:scrForFullScr];
-	[sndBumpPopUp selectItemWithTitle:sndData[SndBump].name];
-	[sndGoalPopUp selectItemWithTitle:sndData[SndGoal].name];
-	playBumpBtn.enabled = (sndBumpPopUp.indexOfSelectedItem > 0);
-	playGoalBtn.enabled = (sndGoalPopUp.indexOfSelectedItem > 0);
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		sndTxts[type].stringValue = s->v.path.lastPathComponent;
+		playBtns[type].enabled = (s->v.path.length > 0);
+	}
 	dgtCoolingRate.enabled = (MAX_STEPS == 0);
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
 }
+#define SETUP_CNTRL(b,class,list,fn,var,ref,act)	b = (int)bit; tag = 0;\
+	for (class *ctr in list) {\
+		if (fn(var ref[tag].v) != fn(ref[tag].fd)) FDBits |= 1 << bit;\
+		ctr.target = self;\
+		ctr.action = @selector(act:);\
+		ctr.tag = tag ++; bit ++;\
+	}
+#define SETUP_RADIOBTN(b,var,fd,list,act)	b = (int)(bit ++); tag = 0;\
+	if (var != fd) FDBits |= 1 << b;\
+	for (NSButton *btn in list) {\
+		btn.target = self;\
+		btn.action = @selector(act:);\
+		btn.tag = tag ++;\
+	}
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	if (self.window == nil) return;
 	_undoManager = NSUndoManager.new;
 	setup_screen_menu(screenPopUp);
-	setup_sound_menu(sndBumpPopUp);
-	setup_sound_menu(sndGoalPopUp);
 	CGError error = CGDisplayRegisterReconfigurationCallback
 		(displayReconfigCB, (__bridge void *)screenPopUp);
 	if (error != kCGErrorSuccess)
@@ -355,74 +401,26 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 	fvDgts = @[dgtT0, dgtT1, dgtCoolingRate, dgtInitQValue, dgtGamma, dgtAlpha,
 		dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed];
 	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
-	boolVBtns = @[cboxStartFullScr, cboxRecordImages];
+	boolVBtns = @[cboxStartFullScr, cboxRecordImages, cboxUseSharedBuffer, cBoxShowFPS];
 	colBtns = @[btnColConst, btnColAngle, btnColSpeed];
 	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
-	NSInteger bit = 0, tag = 0;
-	FDBTCol = (int)bit;
-	for (NSColorWell *cwl in colWels) {
-		if (col_to_ulong(*ColVars[tag].v) != col_to_ulong(ColVars[tag].fd))
-			FDBits |= 1 << bit;
-		cwl.target = self;
-		cwl.action = @selector(chooseColorWell:);
-		cwl.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTInt = (int)bit;
-	for (NSTextField *dgt in ivDgts) {
-		if (*IntVars[tag].v != IntVars[tag].fd) FDBits |= 1 << bit;
-		dgt.target = self;
-		dgt.action = @selector(changeIntValue:);
-		dgt.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTFloat = (int)bit;
-	for (NSTextField *dgt in fvDgts) {
-		if (*FloatVars[tag].v != FloatVars[tag].fd) FDBits |= 1 << bit;
-		dgt.target = self;
-		dgt.action = @selector(changeFloatValue:);
-		dgt.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTUInt = (int)bit;
-	for (NSTextField *dgt in uvDgts) {
-		if (UIntegerVars[tag].v != UIntegerVars[tag].fd) FDBits |= 1 << bit;
-		dgt.target = self;
-		dgt.action = @selector(changeUIntegerValue:);
-		dgt.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTBool = (int)bit;
-	for (NSButton *btn in boolVBtns) {
-		if (BoolVars[tag].v != BoolVars[tag].fd) FDBits |= 1 << bit;
-		btn.target = self;
-		btn.action = @selector(switchBoolValue:);
-		btn.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTDc = (int)bit;
-	if (ptclColorMode != ptclColorModeFD) FDBits |= 1 << bit;
-	for (NSButton *btn in colBtns) {
-		btn.target = self;
-		btn.action = @selector(chooseColorMode:);
-		btn.tag = tag ++; bit ++;
-	}
-	tag = 0;
-	FDBTDm = (int)bit;
-	if (ptclDrawMethod != ptclDrawMethodFD) FDBits |= 1 << bit;
-	for (NSButton *btn in dmBtns) {
-		btn.target = self;
-		btn.action = @selector(chooseDrawMethod:);
-		btn.tag = tag ++; bit ++;
-	}
+	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
+	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
+	NSInteger bit = 0, tag;
+	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
+	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
+	SETUP_CNTRL(FDBTFloat, NSTextField, fvDgts, , *, FloatVars, changeFloatValue)
+	SETUP_CNTRL(FDBTUInt, NSTextField, uvDgts, , , UIntegerVars, changeUIntegerValue)
+	SETUP_CNTRL(FDBTBool, NSButton, boolVBtns, , , BoolVars, switchBoolValue)
+	SETUP_RADIOBTN(FDBTDc, ptclColorMode, ptclColorModeFD, colBtns, chooseColorMode)
+	SETUP_RADIOBTN(FDBTDm, ptclDrawMethod, ptclDrawMethodFD, dmBtns, chooseDrawMethod)
 	FDBTFulScr = (int)bit;
 	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
-	for (SoundType type = 0; type < 2; type ++) {
-		sndInfo[type].FDBit = (int)(++ bit);
-		if (![sndData[type].name isEqualToString:sndInfo[type].fdValue]) FDBits |= 1 << bit;
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		s->FDBit = (int)(++ bit);
+		if (!prm_equal(&s->v, &s->fd)) FDBits |= 1 << bit;
 	}
-	sndInfo[SndBump].playBtn = playBumpBtn;
-	sndInfo[SndGoal].playBtn = playGoalBtn;
 	[self adjustControls];
 }
 - (void)checkFDBits:(NSInteger)bitPosition cond:(BOOL)cond {
@@ -475,6 +473,8 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 	[self checkFDBits:FDBTFloat + dgt.tag cond:newValue == info->fd];
 	if (info->flag & ShouldRedrawScreen) [NSNotificationCenter.defaultCenter
 		postNotificationName:keyShouldRedraw object:NSApp];
+	if (info->flag & ShouldReviseVertices) [NSNotificationCenter.defaultCenter
+		postNotificationName:keyShouldReviseVertices object:NSApp];
 }
 - (IBAction)changeUIntegerValue:(NSTextField *)dgt {
 	UIntegerVarInfo *info = &UIntegerVars[dgt.tag];
@@ -543,31 +543,99 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 	scrForFullScr = newValue;
 	[self checkFDBits:FDBTFulScr cond:newValue == scrForFullScrFD];
 }
-- (IBAction)chooseSound:(NSPopUpButton *)popUp {
-	SoundType type = (SoundType)popUp.tag;
-	NSString *orgValue = sndData[type].name,
-		*newValue = [popUp titleOfSelectedItem];
-	if ([orgValue isEqualToString:newValue]) return;
+static NSString *sound_name(SoundType type) {
+	return [sndData[type].key substringFromIndex:5];
+}
+- (void)setSoundType:(SoundType)type prm:(SoundPrm)prm {
+	SoundSrc *s = &sndData[type];
+	SoundPrm orgPrm = s->v;
+	change_sound_data(type, prm.path);
+	sndTxts[type].stringValue = prm.path.lastPathComponent;
+	s->v = prm;
+	[self checkFDBits:sndData[type].FDBit cond:prm_equal(&orgPrm, &prm)];
 	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
-		[popUp selectItemWithTitle:orgValue];
-		[popUp sendAction:popUp.action to:target];
+		[self setSoundType:type prm:orgPrm];
 	}];
-	change_sound_data(type, newValue);
-//	if (popUp.indexOfSelectedItem > 0)
-//		change_sound_data(type);
-//	else if (sndData[type].buf != NULL) {
-//		free(sndData[type].buf);
-//		sndData[type].buf = NULL;
-//	}
-	sndInfo[type].playBtn.enabled = (popUp.indexOfSelectedItem > 0);
-	[self checkFDBits:sndInfo[type].FDBit cond:
-		[newValue isEqualToString:sndInfo[type].fdValue]];
+}
+- (SoundPrm)getSoundParamsFromPanel {
+	return (SoundPrm){ sndPInfo.stringValue,
+		sndPMMin.doubleValue, sndPMMax.doubleValue, sndPVol.doubleValue };
+}
+- (void)beginSoundPanel {
+	SoundType type = openingSoundType;
+	SoundSrc *s = &sndData[type];
+	SoundPrm prm = [self getSoundParamsFromPanel];
+	sndPRevertBtn.enabled = !prm_equal(&prm, &s->fd);
+	[self.window beginSheet:sndPanel completionHandler:^(NSModalResponse returnCode) {
+		if (returnCode != NSModalResponseOK) return;
+		SoundPrm newPrm = [self getSoundParamsFromPanel], orgPrm = prm;
+		if (prm_equal(&newPrm, &orgPrm)) return;
+		[self setSoundType:type prm:newPrm];
+	}];
+}
+- (void)setSoundParamToPanel:(SoundPrm *)p {
+	sndPInfo.stringValue = p->path;
+	sndPMMin.doubleValue = p->mmin;
+	sndPMMax.doubleValue = p->mmax;
+	sndPVol.doubleValue = p->vol;
+}
+- (IBAction)openSoundPanel:(NSButton *)btn {
+	SoundType type = openingSoundType = (SoundType)btn.tag;
+	sndPTitle.stringValue = [NSString stringWithFormat:@"%@ Sound Settings", sound_name(type)];
+	[self setSoundParamToPanel:&sndData[type].v];
+	[self beginSoundPanel];
+}
+- (IBAction)soundPanelOK:(id)sender {
+	[self.window endSheet:sndPanel returnCode:NSModalResponseOK];
+}
+- (IBAction)soundPanelCancel:(id)sender {
+	[self.window endSheet:sndPanel returnCode:NSModalResponseCancel];
+}
+- (IBAction)chooseSound:(NSButton *)btn {
+	[self.window endSheet:sndPanel returnCode:NSModalResponseStop];
+	NSOpenPanel *op = NSOpenPanel.openPanel;
+	op.allowedContentTypes = @[UTTypeAudio];
+	op.directoryURL = [NSURL fileURLWithPath:
+		sndPInfo.stringValue.stringByDeletingLastPathComponent];
+	op.message = [NSString stringWithFormat:
+		@"Choose a sound file for %@.", sound_name(openingSoundType)];
+	op.delegate = self;
+	op.treatsFilePackagesAsDirectories = YES;
+	[op beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse result) {
+		if (result == NSModalResponseOK)
+			self->sndPInfo.stringValue = op.URL.path;
+		[self beginSoundPanel];
+	}];
+}
+- (IBAction)defaultFile:(NSButton *)sender {
+	SoundSrc *s = &sndData[openingSoundType];
+	[self setSoundParamToPanel:&s->fd];
+}
+- (BOOL)panel:(id)sender shouldEnableURL:(NSURL *)url {
+	return ![@[@"mid", @"midi"] containsObject:url.pathExtension];
 }
 - (IBAction)listenSound:(NSButton *)btn {
-	NSString *path = [NSString stringWithFormat:
-		@"%@/%@.aiff", SysSndDir, sndData[btn.tag].name];
-	NSSound *snd = [NSSound.alloc initWithContentsOfFile:path byReference:YES];
-	[snd play];
+	SoundType type = (SoundType)btn.tag;
+	if (soundNowPlaying != nil) {
+		[soundNowPlaying stop];
+		if (playingSoundType == type) { soundNowPlaying = nil; return; }
+	}
+	playingSoundType = type;
+	soundNowPlaying = [NSSound.alloc initWithContentsOfFile:sndData[type].v.path byReference:YES];
+	soundNowPlaying.delegate = self;
+	[soundNowPlaying play];
+}
+- (void)sound:(NSSound *)sound didFinishPlaying:(BOOL)flag {
+	playBtns[playingSoundType].state = NSControlStateValueOff;
+	soundNowPlaying = nil;
+}
+static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
+	NSMutableDictionary *md = NSMutableDictionary.new;
+	if (![a->path isEqualToString:b->path]) md[@"path"] = b->path;
+	if (a->mmin != b->mmin) md[@"mmin"] = @(b->mmin);
+	if (a->mmax != b->mmax) md[@"mmax"] = @(b->mmax);
+	if (a->vol != b->vol) md[@"vol"] = @(b->vol);
+	return md;
 }
 - (IBAction)revertToFactoryDefault:(id)sender {
 	NSMutableDictionary *md = NSMutableDictionary.new;
@@ -590,13 +658,11 @@ static void setup_sound_menu(NSPopUpButton *popup) {
 	if (ptclDrawMethod != ptclDrawMethodFD) md[keyDrawMethod] = @(ptclDrawMethodFD);
 	if (![scrForFullScr isEqualToString:scrForFullScrFD])
 		md[keyScrForFullScr] = scrForFullScrFD;
-	for (SoundType type = 0; type < 2; type ++)
-		if (![sndData[type].name isEqualToString:sndInfo[type].fdValue])
-			md[sndInfo[type].key] = sndInfo[type].fdValue;
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		if (!prm_equal(&s->v, &s->fd)) md[s->key] = param_diff_dict(&s->v, &s->fd);
+	}
 	[self setParamValuesFromDict:md];
-}
-static void set_sound_from_dict(NSDictionary *dict, SoundType type,
-	NSString *key, NSString *fdName, NSMutableDictionary *orgValues, int bit, UInt64 *fbP) {
 }
 - (void)setParamValuesFromDict:(NSDictionary *)dict {
 	NSMutableArray<NSString *> *postKeys = NSMutableArray.new;
@@ -686,13 +752,21 @@ static void set_sound_from_dict(NSDictionary *dict, SoundType type,
 			fdFlipBits |= 1 << FDBTFulScr;
 		scrForFullScr = newValue;
 	}
-	for (SoundType type = 0; type < 2; type ++)
-		if ((newValue = dict[sndInfo[type].key]) != nil
-		 && ![sndData[type].name isEqualToString:newValue]) {
-			orgValues[sndInfo[type].key] = sndData[type].name;
-			if ([@[newValue, sndData[type].name] containsObject:sndInfo[type].fdValue])
-				fdFlipBits |= 1 << sndInfo[type].FDBit;
-				change_sound_data(type, newValue);
+	for (SoundType type = 0; type < NVoices; type ++) {
+		SoundSrc *s = &sndData[type];
+		NSDictionary *dc = dict[s->key];
+		if (dc == nil) continue;
+		SoundPrm prm = s->v;
+		if ((newValue = dc[@"path"]) != nil) prm.path = newValue;
+		if ((num = dc[@"mmin"]) != nil) prm.mmin = num.floatValue;
+		if ((num = dc[@"mmax"]) != nil) prm.mmax = num.floatValue;
+		if ((num = dc[@"vol"]) != nil) prm.vol = num.floatValue;
+		if (prm_equal(&s->v, &prm)) continue;
+		orgValues[s->key] = param_diff_dict(&prm, &s->v);
+		if (prm_equal(&prm, &s->fd) || prm_equal(&s->v, &s->fd))
+			fdFlipBits |= 1 << s->FDBit;
+		if (![prm.path isEqualToString:s->v.path])
+			change_sound_data(type, prm.path);
 	}
 	FDBits ^= fdFlipBits;
 	[self adjustControls];
