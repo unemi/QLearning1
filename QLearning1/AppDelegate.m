@@ -97,7 +97,6 @@ SoundSrc sndData[NVoices] = {
 		@"Cave and Wind.mp3", -1., 7., 1.} }
 //	{ @"EnvNoise1", nil, 2 }
 };
-
 //NSUInteger tm0 = current_time_us();
 //NSUInteger tm1 = current_time_us();
 //printf("%ld\n", tm1-tm0);
@@ -342,13 +341,16 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	IBOutlet NSTextField *txtBump, *txtGaol, *txtGood, *txtBad, *txtAmbience;
 	IBOutlet NSButton *playBump, *playGoal, *playGood, *playBad, *playAmbience;
 	IBOutlet NSPanel *sndPanel;
-	IBOutlet NSTextField *sndPTitle, *sndPInfo, *sndPMMin, *sndPMMax, *sndPVol;
-	IBOutlet NSButton *sndPRevertBtn;
+	IBOutlet NSTextField *sndPTitle, *sndPInfo, *sndPMMin, *sndPMMax, *sndPVol, *sndPMVal;
+	IBOutlet NSSlider *sndPMValSld, *sndPVolSld;
+	IBOutlet NSButton *sndPlayStopBtn, *sndPMSetMinBtn, *sndPMSetMaxBtn, *sndPRevertBtn;
 	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt;
 	NSArray<NSColorWell *> *colWels;
 	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts, *sndTxts;
 	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns, *playBtns;
+	NSArray<NSControl *> *sndContrls;
 	NSSound *soundNowPlaying;
+	NSUndoManager *undoManager, *undoMng4SndPnl;
 	SoundType playingSoundType, openingSoundType;
 	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
 		FDBTDm, FDBTFulScr;
@@ -390,7 +392,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	if (self.window == nil) return;
-	_undoManager = NSUndoManager.new;
+	undoManager = NSUndoManager.new;
 	setup_screen_menu(screenPopUp);
 	CGError error = CGDisplayRegisterReconfigurationCallback
 		(displayReconfigCB, (__bridge void *)screenPopUp);
@@ -406,6 +408,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
 	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
+	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
@@ -435,7 +438,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	NSUInteger newValUlong = col_to_ulong(newValue);
 	if (col_to_ulong(*var) == newValUlong) return;
 	NSColor *orgValue = *var;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		colWl.color = orgValue;
 		[colWl sendAction:colWl.action to:target];
 	}];
@@ -450,7 +453,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	int *var = info->v, newValue = dgt.intValue;
 	if (*var == newValue) return;
 	int orgValue = *var;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		dgt.intValue = orgValue;
 		[dgt sendAction:dgt.action to:target];
 	}];
@@ -465,7 +468,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	float *var = info->v, newValue = dgt.floatValue;
 	if (*var == newValue) return;
 	float orgValue = *var;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		dgt.floatValue = orgValue;
 		[dgt sendAction:dgt.action to:target];
 	}];
@@ -480,7 +483,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	UIntegerVarInfo *info = &UIntegerVars[dgt.tag];
 	NSUInteger newValue = dgt.integerValue, orgValue = info->v;
 	if (orgValue == newValue) return;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		dgt.integerValue = orgValue;
 		[dgt sendAction:dgt.action to:target];
 	}];
@@ -495,7 +498,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	BoolVarInfo *info = &BoolVars[btn.tag];
 	BOOL newValue = btn.state, orgValue = info->v;
 	if (newValue == orgValue) return;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		btn.state = orgValue;
 		[btn sendAction:btn.action to:target];
 	}];
@@ -509,7 +512,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	PTCLColorMode newValue = (PTCLColorMode)btn.tag;
 	if (ptclColorMode == newValue) return;
 	NSButton *orgBtn = colBtns[ptclColorMode];
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[orgBtn performClick:nil];
 	}];
 	ptclColorMode = newValue;
@@ -521,7 +524,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	PTCLDrawMethod newValue = (PTCLDrawMethod)btn.tag;
 	if (ptclDrawMethod == newValue) return;
 	NSButton *orgBtn = dmBtns[ptclDrawMethod];
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[orgBtn performClick:nil];
 	}];
 	ptclDrawMethod = newValue;
@@ -534,7 +537,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	NSString *newValue = popUp.titleOfSelectedItem;
 	if ([scrForFullScr isEqualToString:newValue]) return;
 	NSString *orgValue = scrForFullScr;
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		if ([popUp itemWithTitle:orgValue] != nil)
 			[popUp selectItemWithTitle:orgValue];
 		else [popUp selectItemAtIndex:0];
@@ -553,7 +556,7 @@ static NSString *sound_name(SoundType type) {
 	sndTxts[type].stringValue = prm.path.lastPathComponent;
 	s->v = prm;
 	[self checkFDBits:sndData[type].FDBit cond:prm_equal(&orgPrm, &prm)];
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[self setSoundType:type prm:orgPrm];
 	}];
 }
@@ -561,28 +564,66 @@ static NSString *sound_name(SoundType type) {
 	return (SoundPrm){ sndPInfo.stringValue,
 		sndPMMin.doubleValue, sndPMMax.doubleValue, sndPVol.doubleValue };
 }
+- (void)stopIfNeeded {
+	if (sndPlayStopBtn.state == NSControlStateValueOn) {
+		sndPlayStopBtn.state = NSControlStateValueOff;
+		[sndPlayStopBtn sendAction:sndPlayStopBtn.action to:sndPlayStopBtn.target];
+	}
+}
 - (void)beginSoundPanel {
 	SoundType type = openingSoundType;
 	SoundSrc *s = &sndData[type];
 	SoundPrm prm = [self getSoundParamsFromPanel];
 	sndPRevertBtn.enabled = !prm_equal(&prm, &s->fd);
 	[self.window beginSheet:sndPanel completionHandler:^(NSModalResponse returnCode) {
-		if (returnCode != NSModalResponseOK) return;
-		SoundPrm newPrm = [self getSoundParamsFromPanel], orgPrm = prm;
-		if (prm_equal(&newPrm, &orgPrm)) return;
-		[self setSoundType:type prm:newPrm];
+		switch (returnCode) {
+			case NSModalResponseOK: {
+				SoundPrm newPrm = [self getSoundParamsFromPanel], orgPrm = prm;
+				if (!prm_equal(&newPrm, &orgPrm))
+					[self setSoundType:type prm:newPrm];
+			}
+			case NSModalResponseCancel:
+			self->undoMng4SndPnl = nil;
+			[self stopIfNeeded];
+			default: break;
+		}
 	}];
 }
 - (void)setSoundParamToPanel:(SoundPrm *)p {
 	sndPInfo.stringValue = p->path;
-	sndPMMin.doubleValue = p->mmin;
-	sndPMMax.doubleValue = p->mmax;
-	sndPVol.doubleValue = p->vol;
+	sndPMMin.doubleValue = sndPMValSld.minValue = p->mmin;
+	sndPMMax.doubleValue = sndPMValSld.maxValue = p->mmax;
+	sndPVol.doubleValue = sndPVolSld.doubleValue = p->vol;
+	((NSNumberFormatter *)sndPMMin.formatter).maximum = @(p->mmax);
+	((NSNumberFormatter *)sndPMMax.formatter).minimum = @(p->mmin);
+	sndPMVal.doubleValue = sndPMValSld.doubleValue = (p->mmin + p->mmax) / 2.;
+	sndPRevertBtn.enabled = !prm_equal(p, &sndData[openingSoundType].fd);
+}
+- (void)checkRevertable {
+	SoundPrm prm = [self getSoundParamsFromPanel];
+	sndPRevertBtn.enabled = !prm_equal(&prm, &sndData[openingSoundType].fd);
+}
+static NSString *keyPath = @"path", *keyPMMin = @"pmMin", *keyPMMax = @"pmMax",
+	*keyPM = @"pm", *keyVol = @"vol";
+- (NSDictionary *)sndParamDict {
+	return @{keyPath:sndPInfo.stringValue,
+		keyPMMin:@(sndPMMin.doubleValue), keyPMMax:@(sndPMMax.doubleValue),
+		keyPM:@(sndPMVal.doubleValue), keyVol:@(sndPVol.doubleValue)};
+}
+- (void)setDictToPanel:(NSDictionary *)dict {
+	[undoMng4SndPnl registerUndoWithTarget:self
+		selector:@selector(setDictToPanel:) object:[self sndParamDict]];
+	SoundPrm prm = {dict[keyPath],
+		[dict[keyPMMin] doubleValue], [dict[keyPMMax] doubleValue],
+		[dict[keyVol] doubleValue] };
+	[self setSoundParamToPanel:&prm];
+	sndPMVal.doubleValue = sndPMValSld.doubleValue = [dict[keyPM] doubleValue];
 }
 - (IBAction)openSoundPanel:(NSButton *)btn {
 	SoundType type = openingSoundType = (SoundType)btn.tag;
 	sndPTitle.stringValue = [NSString stringWithFormat:@"%@ Sound Settings", sound_name(type)];
 	[self setSoundParamToPanel:&sndData[type].v];
+	undoMng4SndPnl = NSUndoManager.new;
 	[self beginSoundPanel];
 }
 - (IBAction)soundPanelOK:(id)sender {
@@ -590,6 +631,13 @@ static NSString *sound_name(SoundType type) {
 }
 - (IBAction)soundPanelCancel:(id)sender {
 	[self.window endSheet:sndPanel returnCode:NSModalResponseCancel];
+}
+- (void)setSndPInfoPath:(NSString *)newPath {
+	[undoMng4SndPnl registerUndoWithTarget:self
+		selector:@selector(setSndPInfoPath:) object:sndPInfo.stringValue];
+	sndPInfo.stringValue = newPath;
+	[self checkRevertable];
+	[self stopIfNeeded];
 }
 - (IBAction)chooseSound:(NSButton *)btn {
 	[self.window endSheet:sndPanel returnCode:NSModalResponseStop];
@@ -602,15 +650,77 @@ static NSString *sound_name(SoundType type) {
 	op.delegate = self;
 	op.treatsFilePackagesAsDirectories = YES;
 	[op beginSheetModalForWindow:self.window completionHandler:^(NSModalResponse result) {
-		if (result == NSModalResponseOK)
-			self->sndPInfo.stringValue = op.URL.path;
+		if (result == NSModalResponseOK) [self setSndPInfoPath:op.URL.path];
 		[self beginSoundPanel];
 	}];
 }
 - (IBAction)defaultFile:(NSButton *)sender {
+	[undoMng4SndPnl registerUndoWithTarget:self
+		selector:@selector(setDictToPanel:) object:[self sndParamDict]];
 	SoundSrc *s = &sndData[openingSoundType];
 	[self setSoundParamToPanel:&s->fd];
 }
+- (IBAction)playStopSound:(NSButton *)btn {
+	if (btn.state == NSControlStateValueOn) {
+		for (NSControl *ctrl in sndContrls) ctrl.enabled = YES;
+		enter_test_mode(sndPInfo.stringValue, sndPMVal.floatValue, sndPVol.floatValue);
+	} else {
+		exit_test_mode();
+		for (NSControl *ctrl in sndContrls) ctrl.enabled = NO;
+	}
+}
+- (IBAction)assignPMMin:(NSTextField *)sender {
+	NSTextField *dgt = [sender isKindOfClass:NSTextField.class]? sender : sndPMVal;
+	CGFloat value = dgt.doubleValue, orgValue = sndPMValSld.minValue;
+	if (value == orgValue) return;
+	[undoMng4SndPnl registerUndoWithTarget:sndPMMin handler:^(NSTextField *tf) {
+		tf.doubleValue = orgValue;
+		[tf sendAction:tf.action to:tf.target];
+	}];
+	((NSNumberFormatter *)sndPMMax.formatter).minimum = 
+	((NSNumberFormatter *)sndPMVal.formatter).minimum = @(value);
+	sndPMValSld.minValue = value;
+	if (dgt == sndPMVal) sndPMMin.doubleValue = value;
+	else if (sndPMVal.doubleValue < value)
+		sndPMVal.doubleValue = sndPMValSld.doubleValue = value;
+	[self checkRevertable];
+}
+- (IBAction)assignPMMax:(NSTextField *)sender {
+	NSTextField *dgt = [sender isKindOfClass:NSTextField.class]? sender : sndPMVal;
+	CGFloat value = dgt.doubleValue, orgValue = sndPMValSld.maxValue;
+	if (value == orgValue) return;
+	[undoMng4SndPnl registerUndoWithTarget:sndPMMax handler:^(NSTextField *tf) {
+		tf.doubleValue = orgValue;
+		[tf sendAction:tf.action to:tf.target];
+	}];
+	((NSNumberFormatter *)sndPMMin.formatter).maximum = 
+	((NSNumberFormatter *)sndPMVal.formatter).maximum = @(value);
+	sndPMValSld.maxValue = value;
+	if (dgt == sndPMVal) sndPMMax.doubleValue = value;
+	else if (sndPMVal.doubleValue > value)
+		sndPMVal.doubleValue = sndPMValSld.doubleValue = value;
+	[self checkRevertable];
+}
+- (void)changeSldDgtValue:(NSControl *)sender sld:(NSSlider *)sld dgt:(NSTextField *)dgt {
+	NSControl *pc = (sender == sld)? dgt : sld;
+	CGFloat value = sender.doubleValue, orgValue = pc.doubleValue;
+	if (value == orgValue) return;
+	[undoMng4SndPnl registerUndoWithTarget:sender handler:^(NSControl *ctl) {
+		ctl.doubleValue = orgValue;
+		[ctl sendAction:ctl.action to:ctl.target];
+	}];
+	pc.doubleValue = value;
+}
+- (IBAction)changePMValue:(NSControl *)sender {
+	[self changeSldDgtValue:sender sld:sndPMValSld dgt:sndPMVal];
+	set_test_mode_pm(sender.floatValue);
+}
+- (IBAction)changePVolume:(NSControl *)sender {
+	[self changeSldDgtValue:sender sld:sndPVolSld dgt:sndPVol];
+	[self checkRevertable];
+	set_test_mode_vol(sender.floatValue);
+}
+// Delegate method for NSOpenPanel to disable MIDI files.
 - (BOOL)panel:(id)sender shouldEnableURL:(NSURL *)url {
 	return ![@[@"mid", @"midi"] containsObject:url.pathExtension];
 }
@@ -770,7 +880,7 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 	}
 	FDBits ^= fdFlipBits;
 	[self adjustControls];
-	[_undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
+	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[self setParamValuesFromDict:orgValues];
 	}];
 	for (NSString *key in postKeys) [NSNotificationCenter.defaultCenter
@@ -853,7 +963,7 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 		ptclColorMode = (PTCLColorMode)num.intValue;
 		for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
 		[self checkFDBits:FDBTDc cond:ptclColorMode == ptclColorModeFD];
-	} else [_undoManager undo];
+	} else [undoManager undo];
 }
 - (void)adjustDrawMethod:(NSDictionary *)info { // called when buffer allocation failed.
 	NSNumber *num = info[keyOldValue];
@@ -861,11 +971,11 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 		ptclDrawMethod = (PTCLDrawMethod)num.intValue;
 		for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
 		[self checkFDBits:FDBTDm cond:ptclDrawMethod == ptclDrawMethodFD];
-	} else [_undoManager undo];
+	} else [undoManager undo];
 }
 //
 - (NSUndoManager *)windowWillReturnUndoManager:(NSWindow *)window {
-	return _undoManager;
+	return (window == self.window)? undoManager : undoMng4SndPnl;
 }
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
 	SEL action = menuItem.action;

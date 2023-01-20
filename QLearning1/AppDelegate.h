@@ -42,7 +42,6 @@ extern NSUInteger col_to_ulong(NSColor *col);
 
 @interface ControlPanel : NSWindowController
 	<NSOpenSavePanelDelegate, NSSoundDelegate, NSWindowDelegate, NSMenuItemValidation>
-@property (readonly) NSUndoManager *undoManager;
 - (void)adjustNParticleDgt;
 - (void)adjustColorMode:(NSDictionary *)info;
 - (void)adjustDrawMethod:(NSDictionary *)info;

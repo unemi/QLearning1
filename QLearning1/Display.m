@@ -4,7 +4,19 @@
 //
 //  Created by Tatsuo Unemi on 2022/12/24.
 //
-
+/**#ifdef MEASURE_TIME
+static NSUInteger s[5] = {0,0,0,0,0}, cnt = 0;
+int ns = 0;
+#endif
+#ifdef MEASURE_TIME
+tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
+#endif
+#ifdef MEASURE_TIME
+tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
+if ((++ cnt) >= 60) { cnt = 0; for (int i = 0; i < ns; i ++)
+{ printf("%d:%ld ", i, s[i]); s[i] = 0; } printf("\n");}
+#endif
+*/
 #import "Display.h"
 #import "Agent.h"
 #import "AppDelegate.h"
@@ -20,7 +32,7 @@ NSColor *colBackground, *colObstacles, *colAgent,
 PTCLColorMode ptclColorMode = PTCLconstColor;
 PTCLDrawMethod ptclDrawMethod = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
-static NSInteger nCores;
+static int nCores;
 static BOOL useSharedBuffer;
 static NSColor *color_with_comp(CGFloat *comp) {
 	return [NSColor colorWithColorSpace:NSColorSpace.genericRGBColorSpace
@@ -57,12 +69,11 @@ static NSBitmapImageRep *create_rgb_bitmap(NSUInteger pixW, NSUInteger pixH,
 		bytesPerRow:pixW * 4 bitsPerPixel:32];
 }
 static void particle_force(Particle *p) {
-	vector_float4 Q;
 	vector_float2 q = p->p / TileSize, qF = floor(q);
 	vector_int2 idx = (vector_int2){qF.x, qF.y};
 	float w = simd_distance_squared(qF + .5, q);
 	if (w < 1e-12f) {
-		Q = QTable[idx.y][idx.x];
+		vector_float4 Q = QTable[idx.y][idx.x];
 		p->f = (vector_float2){Q.y - Q.w, Q.x - Q.z};
 		return;
 	}
@@ -74,7 +85,7 @@ static void particle_force(Particle *p) {
 	for (int iy = f.y; iy < t.y; iy ++)
 	if (Obstacles[iy][ix] == 0) {
 		w = simd_distance_squared((simd_float2){ix, iy} + .5, q);
-		Q = QTable[iy][ix];
+		vector_float4 Q = QTable[iy][ix];
 		p->f += (vector_float2){Q.y - Q.w, Q.x - Q.z} / w;
 		wsum += 1. / w;
 	}
@@ -92,16 +103,11 @@ static void particle_reset(Particle *p, BOOL isRandom) {
 	p->life = isRandom? lrand48() % LifeSpan : LifeSpan;
 }
 static void particle_step(Particle *p) {
-	if ((-- p->life) <= 0) particle_reset(p, NO);
-	else {
-		p->v = (p->v + p->f / Mass) * Friction;
-		float v = simd_length(p->v);
-		if (v > TileSize * .1)
-			p->v /= v * TileSize * MaxSpeed;
-		p->p += p->v;
-		if (p->p.x < 0 || p->p.x >= NGridW * TileSize
-		 || p->p.y < 0 || p->p.y >= NGridH * TileSize) particle_reset(p, NO);
-	}
+	p->v = (p->v + p->f / Mass) * Friction;
+	float v = simd_length(p->v);
+	if (v > TileSize * .1)
+		p->v /= v * TileSize * MaxSpeed;
+	p->p += p->v;
 }
 @implementation Display {
 	MTKView *view;
@@ -258,7 +264,7 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 }
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
 	if (!(self = [super init])) return nil;
-	nCores = NSProcessInfo.processInfo.activeProcessorCount;
+	nCores = (int)NSProcessInfo.processInfo.activeProcessorCount;
 	if (nCores > 8) nCores -= 2;
 	else if (nCores > 5) nCores --;
 	useSharedBuffer = USE_SHARED_BUFFER;
@@ -277,7 +283,7 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 	[self mtkView:view drawableSizeWillChange:view.drawableSize];
 	view.delegate = self;
 #ifdef DEBUG
-	NSLog(@"%ld Cores, Sample count = %ld, Use %@ buffer.", nCores, smplCnt,
+	NSLog(@"%d Cores, Sample count = %ld, Use %@ buffer.", nCores, smplCnt,
 		useSharedBuffer? @"shared" : @"managed" );
 #endif
 
@@ -457,10 +463,12 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		vector_float4 *colorsStart = colors + i * _nPtcls / NTHREADS;
 		int unit = (i < NTHREADS - 1)? _nPtcls / NTHREADS :
 			_nPtcls - (int)(_nPtcls * (NTHREADS - 1) / NTHREADS);
-		[opeQue addOperationWithBlock:^{
+		void (^block)(void) = ^{
 			for (int j = 0; j < unit; j ++)
 				colorsStart[j] = ptcl_rgb_color(pStart + j, ptclHSB, self->maxSpeed);
-		}];
+		};
+		if (i >= NTHREADS - 1) block();
+		[opeQue addOperationWithBlock:block];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
 	if (!useSharedBuffer) [colBuf didModifyRange:(NSRange){0, colBuf.length}];
@@ -476,16 +484,15 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 		float *mxSpdP = mxSpd + i;
 		int unit = (i < NTHREADS - 1)? _nPtcls / NTHREADS :
 			_nPtcls - (int)(_nPtcls * (NTHREADS - 1) / NTHREADS);
-		[opeQue addOperationWithBlock:^{
+		void (^block)(void) = ^{
 			for (int j = 0; j < unit; j ++) {
 				Particle *p = pStart + j;
 				float spd = simd_length(p->v);
 				if (*mxSpdP < spd) *mxSpdP = spd;
-				vector_float2 sz = particle_size(p);
+				vector_float2 sz = particle_size(p), *vp = lineStart + j * nVpL;
 				switch (nVpL) {
 					case 6: {
 						simd_float3x3 trs = particle_tr_mx(p);
-						vector_float2 *vp = lineStart + j * nVpL;
 						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
 						vp[1] = simd_mul(trs, (simd_float3){-sz.x, sz.y, 1.}).xy;
 						vp[2] = simd_mul(trs, (simd_float3){sz.x, -sz.y, 1.}).xy;
@@ -494,19 +501,19 @@ vector_float2 particle_size(Particle * _Nonnull p) {
 					} break;
 					case 3: {
 						simd_float3x3 trs = particle_tr_mx(p);
-						vector_float2 *vp = lineStart + j * nVpL;
 						vp[0] = simd_mul(trs, (simd_float3){sz.x, sz.y, 1.}).xy;
 						vp[1] = simd_mul(trs, (simd_float3){-sz.x, 0., 1.}).xy;
 						vp[2] = simd_mul(trs, (simd_float3){sz.x, -sz.y, 1.}).xy;
 					} break;
 					case 2: {
 						float v = simd_length(p->v);
-						vector_float2 *vp = lineStart + j * nVpL;
 						vp[0] = p->p + p->v / v * sz.x;
 						vp[1] = p->p - p->v / v * sz.x;
 					}}
 			}
-		}];
+		};
+		if (i >= NTHREADS - 1) block();
+		else [opeQue addOperationWithBlock:block];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
 	if (!useSharedBuffer) [vxBuf didModifyRange:(NSRange){0, vxBuf.length}];
@@ -788,24 +795,53 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, int *tileP, int nTiles) {
 	[vxBufLock unlock];
 }
 - (void)oneStepForParticles {
-	NSInteger unit = _nPtcls / NTHREADS;
-	for (int i = 0; i < _nPtcls; i += unit) {
-		Particle *pStart = _particles + i;
-		[opeQue addOperationWithBlock:^{
-			for (int j = 0; j < unit; j ++) {
+//#define MEASURE_TIME
+#ifdef MEASURE_TIME
+static NSUInteger s[5] = {0,0,0,0,0}, cnt = 0;
+int ns = 0;
+NSUInteger tm1, tm0 = current_time_us();
+#endif
+	static int *idxMem = NULL, memSz = 0;
+	if (memSz < _nPtcls) idxMem = realloc(idxMem, (memSz = _nPtcls) * sizeof(int));
+	int unit = (_nPtcls + NTHREADS - 1) / NTHREADS;
+	for (int i = 0; i < NTHREADS; i ++) {
+		Particle *pStart = _particles + i * unit;
+		int *idxs = idxMem + i * unit,
+			nn = (i < NTHREADS - 1)? unit : _nPtcls - i * unit;
+		void (^block)(void) = ^{
+			int k0 = 0, k1 = nn;
+			for (int j = 0; j < nn; j ++) {
 				Particle *p = pStart + j;
-				vector_float2 q = floor(p->p / TileSize);
-				int ix = q.x, iy = q.y;
-				if (ix >= 0 && ix < NGridW && iy >= 0 && iy < NGridH
-				 && Obstacles[iy][ix] == 0) particle_force(p);
-				else particle_reset(p, NO);
-				particle_step(p);
+				if (p->p.x > 0. && p->p.x < PTCLMaxX
+				 && p->p.y > 0. && p->p.y < PTCLMaxY
+				 && Obstacles[(int)(p->p.y / TileSize)][(int)(p->p.x / TileSize)] == 0
+				 && (-- p->life) > 0) idxs[k0 ++] = j;
+				else idxs[-- k1] = j;
 			}
-		}];
+			for (int j = 0; j < k0; j ++) {
+				particle_force(pStart + idxs[j]);
+				particle_step(pStart + idxs[j]);
+			}
+			for (int j = k1; j < nn; j ++)
+				particle_reset(pStart + idxs[j], NO);
+		};
+		if (i >= NTHREADS - 1) block();
+		else [opeQue addOperationWithBlock:block];
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
+#ifdef MEASURE_TIME
+tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
+#endif
 	[self setupVertices];
+#ifdef MEASURE_TIME
+tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
+#endif
 	[self setupParticleColors];
+#ifdef MEASURE_TIME
+tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
+if ((++ cnt) >= 60) { cnt = 0; for (int i = 0; i < ns; i ++)
+{ printf("%d:%ld ", i, s[i]); s[i] = 0; } printf("\n");}
+#endif
 }
 - (void)oneStep {
 	[ptclLock lock];

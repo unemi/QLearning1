@@ -29,7 +29,7 @@ typedef struct {
 	SoundPrm v, fd;
 	NSString *loaded;
 	UInt32 nFrames;
-	float *buf;
+	const float *buf;
 	int FDBit;
 } SoundSrc;
 

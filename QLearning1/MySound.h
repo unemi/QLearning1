@@ -24,3 +24,11 @@ extern void start_audio_out(void);
 extern void stop_audio_out(void);
 extern void set_audio_events(SoundQue *info);
 extern void set_audio_env_params(SoundEnvParam *prm);
+extern void enter_test_mode(NSString *path, float pm, float vol);
+extern void exit_test_mode(void);
+extern void set_test_mode_pm(float pm);
+extern void set_test_mode_vol(float vol);
+
+@interface MySound : NSObject
+- (instancetype)initWithPath:(NSString *)path nCh:(int)nCh;
+@end
