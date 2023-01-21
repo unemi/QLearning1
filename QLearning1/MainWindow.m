@@ -149,6 +149,10 @@ static void setup_obstacle_info(void) {
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS;
 	}];
+	[NSNotificationCenter.defaultCenter addObserverForName:keySoundTestExited
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		if (self->running) start_audio_out();
+	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		if (self->view.superview.inFullScreenMode)
@@ -294,24 +298,27 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 			if ([scrForFullScr isEqualToString:scr.localizedName])
 				{ screen = scr; break; }
 		infoViewFrame = infoView.frame;
-		CGFloat topMargin = cView.frame.size.height - NSMaxY(infoViewFrame),
-			scale = screen.frame.size.height / cView.frame.size.height;
+		NSRect scrFrm = screen.frame;
+		NSSize orgVSz = view.frame.size;
 		[cView enterFullScreenMode:screen
 			withOptions:@{NSFullScreenModeAllScreens:@NO}];
-		NSRect rect = {infoViewFrame.origin.x * scale, 0,
-			infoViewFrame.size.width * scale, infoViewFrame.size.height * scale};
-		rect.origin.y = screen.frame.size.height - topMargin * scale - rect.size.height;
-		[infoView setFrame:rect];
+		NSSize newVSz = view.frame.size;
+		CGFloat scale = (orgVSz.width / orgVSz.height <= newVSz.width / newVSz.height)?
+			newVSz.height / orgVSz.height : newVSz.width / orgVSz.width;
+		[infoView setFrame:(NSRect){
+			infoViewFrame.origin.x * scale, infoViewFrame.origin.y * scale,
+			infoViewFrame.size.width * scale, infoViewFrame.size.height * scale
+		}];
 		adjust_subviews_frame(infoView, scale);
 		fullScreenItem.label = labelFullScreenOff;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
-		if (NSPointInRect(NSEvent.mouseLocation, screen.frame))
+		if (NSPointInRect(NSEvent.mouseLocation, scrFrm))
 			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
-		CGFloat orgH = cView.frame.size.height;
+		CGFloat scale = infoViewFrame.size.width / infoView.frame.size.width;
 		[cView exitFullScreenModeWithOptions:nil];
 		[infoView setFrame:infoViewFrame];
-		adjust_subviews_frame(infoView, cView.frame.size.height / orgH);
+		adjust_subviews_frame(infoView, scale);
 		fullScreenItem.label = labelFullScreenOn;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
 		[self showSteps];

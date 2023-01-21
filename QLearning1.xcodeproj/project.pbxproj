@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23DB3560296EAA2B0008D821 /* AVFAudio.framework */; };
+		2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2309B4E1297C11C7008704F2 /* Localizable.strings */; };
 		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
 		2318A51E296697030025CCFB /* RecordView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A51D296697030025CCFB /* RecordView.m */; };
 		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
@@ -29,6 +30,7 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		2309B4E2297C11C7008704F2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
 		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		2318A51C296697030025CCFB /* RecordView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RecordView.h; sourceTree = "<group>"; };
 		2318A51D296697030025CCFB /* RecordView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RecordView.m; sourceTree = "<group>"; };
@@ -137,6 +139,7 @@
 				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
 				237780B3295BF81100789534 /* VecTypes.h */,
 				230F43A8296028AA006513E2 /* Credits.rtf */,
+				2309B4E1297C11C7008704F2 /* Localizable.strings */,
 			);
 			path = QLearning1;
 			sourceTree = "<group>";
@@ -242,6 +245,7 @@
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
+				2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
 			);
@@ -284,6 +288,14 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXVariantGroup section */
+		2309B4E1297C11C7008704F2 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				2309B4E2297C11C7008704F2 /* Base */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
 		23214954295C6980001A40D3 /* ControlPanel.xib */ = {
 			isa = PBXVariantGroup;
 			children = (

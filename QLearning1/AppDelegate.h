@@ -32,7 +32,7 @@ extern int Move[4][2], ObsP[NObstacles][2],
 	FieldP[NActiveGrids][2], Obstacles[NGridH][NGridW],
 	StartP[2], GoalP[2];
 extern NSString *keyCntlPnl;
-extern NSString *keyOldValue, *keyShouldRedraw, *keyShouldReviseVertices;
+extern NSString *keyOldValue, *keyShouldRedraw, *keyShouldReviseVertices, *keySoundTestExited;
 extern NSString *keyColorMode, *keyDrawMethod;
 extern unsigned long current_time_us(void);
 extern void in_main_thread(void (^block)(void));

@@ -49,6 +49,7 @@
                 <outlet property="playGoal" destination="eSR-jx-Fv7" id="f96-MC-JhT"/>
                 <outlet property="playGood" destination="FvM-Cs-qmk" id="GLy-eP-6Xf"/>
                 <outlet property="screenPopUp" destination="2Y9-Qt-O3c" id="SE8-ci-6xZ"/>
+                <outlet property="sndApplyBtn" destination="lF0-4N-gMN" id="wdk-ob-87a"/>
                 <outlet property="sndPInfo" destination="o5B-FE-Xsa" id="N9s-FL-grK"/>
                 <outlet property="sndPMMax" destination="XX6-rH-2Bg" id="VWh-Vr-tPC"/>
                 <outlet property="sndPMMin" destination="gZV-4s-wxu" id="EGh-JZ-hFO"/>
@@ -72,8 +73,8 @@
         </customObject>
         <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
         <customObject id="-3" userLabel="Application" customClass="NSObject"/>
-        <window title="Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
-            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
+        <window title="Preferences" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" visibleAtLaunch="NO" animationBehavior="default" id="QvC-M9-y7g">
+            <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
             <rect key="contentRect" x="196" y="240" width="658" height="415"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
@@ -1435,7 +1436,7 @@ Gw
                         <constraints>
                             <constraint firstAttribute="width" constant="62" id="suy-u1-rfH"/>
                         </constraints>
-                        <buttonCell key="cell" type="push" title="OK" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Y5N-Mx-pvc">
+                        <buttonCell key="cell" type="push" title="Apply" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Y5N-Mx-pvc">
                             <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                             <font key="font" metaFont="system"/>
                             <string key="keyEquivalent" base64-UTF8="YES">

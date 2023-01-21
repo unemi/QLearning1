@@ -30,5 +30,5 @@ extern void set_test_mode_pm(float pm);
 extern void set_test_mode_vol(float vol);
 
 @interface MySound : NSObject
-- (instancetype)initWithPath:(NSString *)path nCh:(int)nCh;
+- (instancetype)initWithPath:(NSString *)path;
 @end

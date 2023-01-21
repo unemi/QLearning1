@@ -17,6 +17,8 @@
 #define PTCLMaxX (NGridW*TileSize)
 #define PTCLMaxY (NGridH*TileSize)
 
+@class MySound;
+
 typedef enum {
 	SndBump, SndGoal, SndGood, SndBad, SndEnvNoise,
 	NVoices
@@ -25,11 +27,9 @@ typedef enum {
 typedef struct { NSString *path; float mmin, mmax, vol; } SoundPrm;
 typedef struct {
 	NSString *key;
-	UInt32 nCh;
 	SoundPrm v, fd;
 	NSString *loaded;
-	UInt32 nFrames;
-	const float *buf;
+	MySound *snd;
 	int FDBit;
 } SoundSrc;
 

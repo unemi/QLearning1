@@ -13,7 +13,6 @@
 #define SAMPLE_RATE 44100
 #define QUE_LENGTH 256
 
-typedef struct { const float *buf; int nCh; UInt32 nFrames; } SndSrcInfo;
 typedef enum { RenderModeNormal, RenderModeTest } RenderMode;
 static AudioUnit output = NULL;
 static BOOL isRunning = NO;
@@ -22,18 +21,17 @@ static NSRange sndQIdx = {0, 0};
 static SoundQue sndQue[QUE_LENGTH], envSndQ[NGridW], testSndQ;
 static CGFloat sndAmp = 1.;
 static RenderMode renderMode = RenderModeNormal, reqRndrMode = RenderModeNormal;
-static SndSrcInfo testSSInfo = { NULL, 2, 0 };
 static NSString *testSoundPath = nil;
+static MySound *testSound = nil;
 static NSMutableDictionary<NSString *, MySound *> *loadedSounds;
 
 @interface MySound ()
 @property NSUInteger refCount;
 @property (readonly) NSData *data;
-@property (readonly) int nChannels;
 @end
 
 @implementation MySound
-- (instancetype)initWithPath:(NSString *)path nCh:(int)nCh {
+- (instancetype)initWithPath:(NSString *)path {
 	if (!(self = [super init])) return nil;
 	OSStatus err;
 	@try {
@@ -43,8 +41,8 @@ static NSMutableDictionary<NSString *, MySound *> *loadedSounds;
 		err = ExtAudioFileOpenURL((__bridge CFURLRef)url, &file);
 		if (err) @throw [NSString stringWithFormat:@"Could not open %@.", url.path];
 		AudioStreamBasicDescription sbDesc = {SAMPLE_RATE, kAudioFormatLinearPCM,
-			kAudioFormatFlagIsFloat, sizeof(float) * nCh,
-			1, sizeof(float) * nCh, nCh, sizeof(float) * 8 };
+			kAudioFormatFlagIsFloat, sizeof(float) * 2,
+			1, sizeof(float) * 2, 2, sizeof(float) * 8 };
 		if ((err = ExtAudioFileSetProperty(file, kExtAudioFileProperty_ClientDataFormat,
 			sizeof(sbDesc), &sbDesc)))
 			@throw @"ExtAudioFileSetProperty ClientDataFormat";
@@ -56,24 +54,26 @@ static NSMutableDictionary<NSString *, MySound *> *loadedSounds;
 		if ((err = ExtAudioFileGetProperty(file, kExtAudioFileProperty_FileLengthFrames,
 			&dataSize, &nFrames))) @throw @"ExtAudioFileGetProperty FileLengthFrames";
 		if (sbDesc.mSampleRate != SAMPLE_RATE) nFrames *= SAMPLE_RATE / sbDesc.mSampleRate;
-		UInt32 bufSize = (UInt32)(sizeof(float) * nCh * nFrames);
+		UInt32 bufSize = (UInt32)(sizeof(float) * 2 * nFrames);
 		NSMutableData *newBuf = [NSMutableData dataWithLength:bufSize];
 		if (newBuf == nil)
 			@throw [NSString stringWithFormat:@"allocate buffer %d bytes.", bufSize];
-		AudioBufferList bufList = {1, {nCh, bufSize, newBuf.mutableBytes}};
+		AudioBufferList bufList = {1, {2, bufSize, newBuf.mutableBytes}};
 		UInt32 nbFrames = (UInt32)nFrames;
 		if ((err = ExtAudioFileRead(file, &nbFrames, &bufList)))
 			@throw @"ExtAudioFileRead";
 		if ((err = ExtAudioFileDispose(file))) @throw @"ExtAudioFileDispose";
 		_data = newBuf;
-		_nChannels = nCh;
 #ifdef DEBUG
-NSLog(@"%@: %d ch., %d frames loaded", path.lastPathComponent, nCh, nbFrames);
+NSLog(@"%@:%d frames loaded", path.lastPathComponent, nbFrames);
 #endif
 	} @catch (NSString *msg) {
 		err_msg(msg, err, NO);
 		return nil;
 	} @finally { return self; }
+}
+- (int)nFrames {
+	return (int)(_data.length / sizeof(float) / 2);
 }
 @end
 
@@ -82,43 +82,40 @@ static void release_mySound(NSString *path) {
 	MySound *orgSnd = loadedSounds[path];
 	if (orgSnd != nil && (-- orgSnd.refCount) == 0) loadedSounds[path] = nil;
 }
-static BOOL get_sound_buf(NSString *path, int nCh, const float **buf, UInt32 *nFrames) {
-	if (path.length == 0) { *buf = NULL; return YES; }
+static MySound *get_sound_object(NSString *path) {
+	if (path.length == 0) return nil;
 	MySound *mySnd = loadedSounds[path];
 	if (mySnd == nil) {
-		mySnd = [MySound.alloc initWithPath:path nCh:nCh];
-		if (mySnd == nil) return NO;
+		mySnd = [MySound.alloc initWithPath:path];
+		if (mySnd == nil) return nil;
 		if (loadedSounds == nil) loadedSounds = NSMutableDictionary.new;
 		loadedSounds[path] = mySnd;
 	}
 	mySnd.refCount ++;
-	*buf = mySnd.data.bytes;
-	*nFrames = (int)mySnd.data.length / sizeof(float) / nCh;
-	return YES;
+	return mySnd;
 }
 static void get_sound_data(SoundSrc *sp, OSStatus *err) {
 	*err = noErr;
 	if ([sp->v.path isEqualToString:sp->loaded]) return;
-	if (!get_sound_buf(sp->v.path, sp->nCh, &sp->buf, &sp->nFrames)) return;
+	MySound *mySnd = get_sound_object(sp->v.path);
+	if (mySnd == nil) return;
 	release_mySound(sp->loaded);
 	sp->loaded = sp->v.path;
+	sp->snd = mySnd;
 }
-static simd_float2 stereo_sample(SoundQue *p, SndSrcInfo *ssInfo, BOOL repeat) {
+static simd_float2 stereo_sample(SoundQue *p, MySound *snd, BOOL repeat) {
+	int nFrames = snd.nFrames;
+	simd_float2 *src = (simd_float2 *)snd.data.bytes;
 	p->fPos += p->pitchShift;
-	if (repeat && p->fPos >= ssInfo->nFrames) p->fPos -= ssInfo->nFrames;
+	if (repeat && p->fPos >= nFrames) p->fPos -= nFrames;
 	long fPos = floor(p->fPos);
 	float fPosR = p->fPos - fPos;
-	if (fPos < 0 || fPos >= ssInfo->nFrames) return 0.;
-	simd_float2 amp = {
-		(p->pan < 0.)? 1. : 1. - p->pan,
-		(p->pan > 0.)? 1. : 1. + p->pan };
-	amp *= p->amp;
-	if (ssInfo->nCh == 2) {
-		simd_float2 *src = (simd_float2 *)ssInfo->buf;
-		return (src[fPos] * (1. - fPosR) +
-			((fPos + 1 < ssInfo->nFrames)? src[fPos + 1] * fPosR : 0.)) * amp;
-	} else return (ssInfo->buf[fPos] * (1. - fPosR) +
-		((fPos + 1 < ssInfo->nFrames)? ssInfo->buf[fPos + 1] * fPosR : 0.)) * amp;
+	if (fPos < 0 || fPos >= nFrames) return 0.;
+	return (src[fPos] * (1. - fPosR) +
+		((fPos + 1 < nFrames)? src[fPos + 1] * fPosR : 0.)) *
+		(simd_float2){
+			(p->pan < 0.)? 1. : 1. - p->pan,
+			(p->pan > 0.)? 1. : 1. + p->pan } * p->amp;
 }
 static void set_adjusted_sample(float *bL, float *bR, simd_float2 smp) {
 	float maxS = simd_reduce_max(simd_abs(smp));
@@ -132,7 +129,7 @@ static OSStatus my_render_callback(void *inRefCon,
 	AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
 	UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
 	float *data0 = ioData->mBuffers[0].mData, *data1 = ioData->mBuffers[1].mData;
-	if (sndQIdx.length == 0 && sndData[SndEnvNoise].buf == NULL) {
+	if (sndQIdx.length == 0 && sndData[SndEnvNoise].snd == nil) {
 		memset(data0, 0, inNumberFrames * sizeof(float));
 		memset(data1, 0, inNumberFrames * sizeof(float));
 		return noErr;
@@ -140,23 +137,25 @@ static OSStatus my_render_callback(void *inRefCon,
 	[soundBufLock lock];
 	for (NSInteger i = 0; i < inNumberFrames; i ++) {
 		simd_float2 smp = { 0., 0. };
-		SoundSrc *sndDt = &sndData[SndEnvNoise];
-		SndSrcInfo ssInfo = {sndDt->buf, sndDt->nCh, sndDt->nFrames};
-		for (NSInteger j = 0; j < NGridW; j ++)
-			smp += stereo_sample(&envSndQ[j], &ssInfo, YES);
-		smp /= NGridW / 1.5;
+		MySound *snd = sndData[SndEnvNoise].snd;
+		if (snd == nil) {
+			memset(data0, 0, inNumberFrames * sizeof(float));
+			memset(data1, 0, inNumberFrames * sizeof(float));
+		} else {
+			for (NSInteger j = 0; j < NGridW; j ++)
+				smp += stereo_sample(&envSndQ[j], snd, YES);
+			smp /= NGridW / 1.5;
+		}
 		for (NSInteger j = 0; j < sndQIdx.length; j ++) {
 			SoundQue *sq = &sndQue[(sndQIdx.location + j) % QUE_LENGTH];
-			sndDt = &sndData[sq->type];
-			ssInfo = (SndSrcInfo){sndDt->buf, sndDt->nCh, sndDt->nFrames};
-			smp += stereo_sample(sq, &ssInfo, NO);
+			smp += stereo_sample(sq, sndData[sq->type].snd, NO);
 		}
 		set_adjusted_sample(&data0[i], &data1[i], smp);
 	}
 	NSInteger i = 0;
 	for (NSInteger j = 0; j < sndQIdx.length; j ++) {
 		SoundQue *p = &sndQue[(sndQIdx.location + j) % QUE_LENGTH];
-		if (p->fPos < sndData[p->type].nFrames) {
+		if (p->fPos < sndData[p->type].snd.nFrames) {
 			if (i == j) i ++;
 			else sndQue[(sndQIdx.location + (i ++)) % QUE_LENGTH] = *p;
 		}
@@ -169,7 +168,7 @@ static OSStatus test_render_callback(void *inRefCon,
 	AudioUnitRenderActionFlags *ioActionFlags, const AudioTimeStamp *inTimeStamp,
 	UInt32 inBusNumber, UInt32 inNumberFrames, AudioBufferList *ioData) {
 	float *data0 = ioData->mBuffers[0].mData, *data1 = ioData->mBuffers[1].mData;
-	if (testSSInfo.buf == NULL) {
+	if (testSound == nil) {
 		memset(data0, 0, inNumberFrames * sizeof(float));
 		memset(data1, 0, inNumberFrames * sizeof(float));
 		return noErr;
@@ -177,7 +176,7 @@ static OSStatus test_render_callback(void *inRefCon,
 	[soundBufLock lock];
 	for (NSInteger i = 0; i < inNumberFrames; i ++)
 		set_adjusted_sample(&data0[i], &data1[i],
-			stereo_sample(&testSndQ, &testSSInfo, YES));
+			stereo_sample(&testSndQ, testSound, YES));
 	[soundBufLock unlock];
 	return noErr;
 }
@@ -190,7 +189,7 @@ static OSStatus set_render_callback(AURenderCallback callback) {
 BOOL init_audio_out(void) {
 	if (output) return YES;
 	OSStatus err = noErr;
-	for (SoundType type = 0; type < NVoices; type ++) sndData[type].buf = NULL;
+	for (SoundType type = 0; type < NVoices; type ++) sndData[type].snd = nil;
 	@try {
 		AudioComponentDescription desc = {kAudioUnitType_Output,
 			kAudioUnitSubType_DefaultOutput, kAudioUnitManufacturer_Apple, 0, 0};
@@ -295,13 +294,14 @@ void set_audio_env_params(SoundEnvParam *prm) {
 void enter_test_mode(NSString *path, float pm, float vol) {
 	if (!output) return;
 	stop_audio_out();
+	MySound *mySnd = get_sound_object(path);
+	if (mySnd == nil) return;
+	if (testSoundPath != nil) release_mySound(testSoundPath);
 	reqRndrMode = RenderModeTest;
 	testSndQ = (SoundQue){ -1, powf(2.f, pm), 0., vol, 0 };
-	if (get_sound_buf(path, 2, &testSSInfo.buf, &testSSInfo.nFrames)) {
-		if (testSoundPath != nil) release_mySound(testSoundPath);
-		testSoundPath = path;
-		start_audio_out();
-	}
+	testSoundPath = path;
+	testSound = mySnd;
+	start_audio_out();
 }
 void exit_test_mode(void) {
 	if (!output) return;

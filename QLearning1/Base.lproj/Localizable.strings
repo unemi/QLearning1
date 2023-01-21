@@ -1,0 +1,34 @@
+/* 
+  Localizable.strings
+  QLearning1
+
+  Created by Tatsuo Unemi on 2023/01/21.
+  
+*/
+"memSize" = "Memory Size";
+"memTrials" = "Memory Trails";
+"nParticles" = "Number of Particles";
+"ptclLifeSpan" = "Life Span";
+"T0" = "Initial T";
+"T1" = "Final T";
+"cooling" = "Cooling Factor";
+"initQValue" = "Initial Q";
+"gamma" = "Discount Rate";
+"alpha" = "Learning Rate";
+"ptclMass" = "Mass";
+"ptclFriction" = "Friction";
+"ptclLength" = "Line Length";
+"ptclWeight" = "Line Weight";
+"ptclMaxSpeed" = "Max Speed";
+"colorBackground" = "Background Color";
+"colorObstacles" = "Obstacle Color";
+"colorAgent" = "Agent Color";
+"colorGridLines" = "Grid Line Color";
+"colorSymbols" = "Symbol Color";
+"colorParticles" = "Particle Color";
+"maxSteps" = "Max Steps";
+"maxGoalCount" = "Max Goal Count";
+"startWithFullScreenMode" = "Start with Full Screen Mode";
+"ptclColorMode" = "Color Style";
+"ptclDrawMethod" = "Shape Style";
+"screenForFullScreenMode" = "Screen for Full Screen";

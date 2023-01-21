@@ -12,7 +12,7 @@ typedef enum { DispParticle, DispVector, DispQValues } DisplayMode;
 typedef enum { PTCLconstColor, PTCLangleColor, PTCLspeedColor } PTCLColorMode;
 typedef enum { PTCLbyRectangles, PTCLbyTriangles, PTCLbyLines } PTCLDrawMethod;
 typedef struct {
-  vector_float2 p, v, f;
+  vector_float2 p, v;
   int life;
 } Particle;
 typedef id<MTLRenderCommandEncoder> RCE;
