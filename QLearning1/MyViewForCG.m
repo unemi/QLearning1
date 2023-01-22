@@ -40,7 +40,7 @@ static NSPoint trans_point(simd_float3x3 trs, float x, float y) {
 static void set_particle_path(Particle *p, NSBezierPath *path) {
 	vector_float2 sz = particle_size(p);
 	[path removeAllPoints];
-	switch (ptclDrawMethod) {
+	switch (ptclShapeMode) {
 		case PTCLbyLines: {
 			vector_float2 vv = p->v / simd_length(p->v) * sz.x, pp = p->p - vv;
 			[path moveToPoint:(NSPoint){pp.x, pp.y}];
@@ -63,7 +63,7 @@ static void set_particle_path(Particle *p, NSBezierPath *path) {
 	}
 }
 static void draw_particle(NSColor *color, NSBezierPath *path) {
-	if (ptclDrawMethod == PTCLbyLines) { [color setStroke]; [path stroke]; }
+	if (ptclShapeMode == PTCLbyLines) { [color setStroke]; [path stroke]; }
 	else { [color setFill]; [path fill]; }
 }
 static NSColor *col_from_vec(vector_float4 vc) {
@@ -71,7 +71,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 }
 - (void)drawParticles {
 	NSBezierPath *path = NSBezierPath.new;
-	Particle *particles = display.particles;
+	Particle *particles = display.particleMem.mutableBytes;
 	int np = display.nPtcls;
 	float maxSpeed = TileSize * .005;
 	switch (ptclColorMode) {
@@ -191,6 +191,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		case DispParticle: [self drawParticles]; break;
 		case DispVector: [self drawVectors:N_VECTORS]; break;
 		case DispQValues: [self drawVectors:NActiveGrids * NActs];
+		default: break;
 	}
 	// Grid lines
 	NSBezierPath *path = NSBezierPath.new;

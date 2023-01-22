@@ -8,9 +8,15 @@
 @import Cocoa;
 @import MetalKit;
 @class Agent;
-typedef enum { DispParticle, DispVector, DispQValues } DisplayMode;
+typedef enum { DispParticle, DispVector, DispQValues, DispNone } DisplayMode;
 typedef enum { PTCLconstColor, PTCLangleColor, PTCLspeedColor } PTCLColorMode;
-typedef enum { PTCLbyRectangles, PTCLbyTriangles, PTCLbyLines } PTCLDrawMethod;
+typedef enum { PTCLbyRectangles, PTCLbyTriangles, PTCLbyLines } PTCLShapeMode;
+typedef struct {
+	DisplayMode displayMode;
+	PTCLColorMode colorMode;
+	PTCLShapeMode shapeMode;
+	int nPtcls;
+} DisplaySetups;
 typedef struct {
   vector_float2 p, v;
   int life;
@@ -30,7 +36,7 @@ extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 	* _Nonnull colAgent, * _Nonnull colGridLines,
 	* _Nonnull colSymbols, * _Nonnull colParticles;
 extern PTCLColorMode ptclColorMode;
-extern PTCLDrawMethod ptclDrawMethod;
+extern PTCLShapeMode ptclShapeMode;
 extern void init_default_colors(void);
 extern void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
 	void (^ _Nonnull block)(NSBitmapImageRep * _Nonnull bm));
@@ -44,12 +50,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface Display : NSObject<MTKViewDelegate>
 @property (readonly) Agent *agent;
-@property (readonly) Particle *particles;
-@property (readonly) int nPtcls;
+@property (readonly) NSMutableData *particleMem;
 @property (readonly) vector_float2 *arrowVec;
 @property (readonly) vector_float4 *arrowCol;
-@property (nonatomic) DisplayMode displayMode;
+@property (readonly) CGFloat FPS;
 - (instancetype)initWithView:(MTKView *)view agent:(Agent *)a;
+- (int)nPtcls;
+- (DisplayMode)displayMode;
+- (void)setDisplayMode:(DisplayMode)newMode;
 - (void)reset;
 - (void)oneStep;
 - (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)scaleFactor

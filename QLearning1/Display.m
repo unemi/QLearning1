@@ -17,6 +17,7 @@ if ((++ cnt) >= 60) { cnt = 0; for (int i = 0; i < ns; i ++)
 { printf("%d:%ld ", i, s[i]); s[i] = 0; } printf("\n");}
 #endif
 */
+#include <sys/sysctl.h>
 #import "Display.h"
 #import "Agent.h"
 #import "AppDelegate.h"
@@ -37,10 +38,10 @@ float Mass = 2., Friction = 0.9, StrokeLength = 0.2, StrokeWidth = .01, MaxSpeed
 NSColor *colBackground, *colObstacles, *colAgent,
 	*colGridLines, *colSymbols, *colParticles;
 PTCLColorMode ptclColorMode = PTCLconstColor;
-PTCLDrawMethod ptclDrawMethod = PTCLbyLines;
+PTCLShapeMode ptclShapeMode = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
 static int nCores;
-static BOOL useSharedBuffer;
+static BOOL isARM;
 static NSColor *color_with_comp(CGFloat *comp) {
 	return [NSColor colorWithColorSpace:NSColorSpace.genericRGBColorSpace
 		components:comp count:4];
@@ -159,14 +160,18 @@ static void particle_step(Particle *p, simd_float2 f) {
 	id<MTLRenderPipelineState> shapePSO, texPSO;
 	id<MTLCommandQueue> commandQueue;
 	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex;
-	id<MTLBuffer> vxBuf, colBuf;
-	NSMutableData *vxMem, *colMem;
+	id<MTLBuffer> vxBuf, colBuf, vxBufD[2], colBufD[2];
+	NSInteger vxBufIndex, colBufIndex;
 	NSMutableDictionary *symbolAttr;
 	LogoDrawerMTL *logoDrawer;
-	NSLock *vxBufLock, *ptclLock;
+	NSLock *loopLock;
 	simd_uint2 viewportSize;
+	DisplaySetups setups;
 	float maxSpeed;
+	unsigned long time_us;
 }
+- (int)nPtcls { return setups.nPtcls; }
+- (DisplayMode)displayMode { return setups.displayMode; }
 - (id<MTLTexture>)textureDrawnBy:(void (^)(NSBitmapImageRep *bm))block
 	size:(NSSize)size scaleFactor:(CGFloat)sclFctr {
 //	sclFctr *= view.sampleCount * viewportSize.y / PTCLMaxY;
@@ -221,61 +226,75 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 	equLTex = [self texFromImageName:@"equationL"];
 	equPTex = [self texFromImageName:@"equationP"];
 }
-- (Particle *)adjustPtclMemory {
-	Particle *newMem = _particles;
-	if (_nPtcls != NParticles) {
-		newMem = realloc(_particles, sizeof(Particle) * NParticles);
+- (NSMutableData *)adjustPtclMemory:(DisplaySetups)req {
+	NSMutableData *newMem = _particleMem;
+	if (setups.nPtcls != req.nPtcls) {
+		newMem = [NSMutableData dataWithLength:sizeof(Particle) * req.nPtcls];
 		if (newMem == NULL) {
 			error_msg(@"Could not allocate memory for particles.", nil);
 			@throw @(FailPtclMem);
 		}
-		if (_nPtcls < NParticles)
-			for (int i = _nPtcls; i < NParticles; i ++)
-				particle_reset(newMem + i, YES);
+		if (_particleMem != nil)
+			memcpy(newMem.mutableBytes, _particleMem.bytes,
+				(setups.nPtcls > req.nPtcls)? newMem.length : _particleMem.length);
+		if (setups.nPtcls < req.nPtcls) {
+			Particle *p = newMem.mutableBytes;
+			for (int i = setups.nPtcls; i < req.nPtcls; i ++)
+				particle_reset(p + i, YES);
+		}
+#ifdef DEBUG
+NSLog(@"Ptcl=%ld", newMem.length / sizeof(Particle));
+#endif
 	}
 	return newMem;
 }
-- (id<MTLBuffer>)adjustColBufferSize:(NSMutableData **)memp {
-	id<MTLBuffer> newColBuf = colBuf;
-	NSMutableData *newColMem = colMem;
-	NSInteger nColBuf = (colBuf == nil)? 0 : colBuf.length / sizeof(simd_float4);
-	NSInteger newNC = (_displayMode == DispParticle)?
-			(ptclColorMode == PTCLconstColor)? 0 : NParticles :
-		(_displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs;
+- (NSArray<id<MTLBuffer>> *)adjustColBufferSize:(DisplaySetups)req {
+	id<MTLBuffer> newColBuf[2] = { colBufD[0], colBufD[1] };
+	NSInteger nColBuf = (colBufD[0] == nil)? 0 : colBufD[0].length / sizeof(simd_float4);
+	NSInteger newNC = (req.displayMode == DispParticle)?
+			(req.colorMode == PTCLconstColor)? 0 : req.nPtcls :
+		(req.displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs;
 	if (nColBuf != newNC) {
 		if (newNC > 0) {
-			newColBuf = [view.device newBufferWithLength:
-				sizeof(simd_float4) * newNC options:useSharedBuffer? 
+			newColBuf[0] = [view.device newBufferWithLength:
+				sizeof(simd_float4) * newNC options:isARM? 
 				MTLResourceStorageModeShared : MTLResourceStorageModeManaged];
-			newColMem = [NSMutableData dataWithLength:sizeof(simd_float4) * newNC];
-			if (newColBuf == nil || newColMem == nil) {
+			if (isARM) newColBuf[1] = [view.device newBufferWithLength:
+				sizeof(simd_float4) * newNC options:MTLResourceStorageModeShared];
+			if (newColBuf[0] == nil || (isARM && newColBuf[1] == nil)) {
 				error_msg(@"Could not allocate buffer for colors.", nil);
 				@throw @(FailColBuf);
 			}
-		} else { newColBuf = nil; newColMem = nil; }
+		} else newColBuf[0] = newColBuf[1] = nil;
+#ifdef DEBUG
+NSLog(@"colBuf=%ld", newColBuf[0].length / sizeof(simd_float4));
+#endif
 	}
-	*memp = newColMem;
-	return newColBuf;
+	return (newColBuf[0] == nil)? @[] :
+		(newColBuf[1] == nil)? @[newColBuf[0]] : @[newColBuf[0], newColBuf[1]];
 }
-- (id<MTLBuffer>)adjustVxBufferSize:(NSMutableData **)memp {
-	id<MTLBuffer> newVxBuf = vxBuf;
-	NSMutableData *newVxMem = vxMem;
-	NSInteger nVertices = (vxBuf == nil)? 0 : vxBuf.length / sizeof(simd_float2);
-	int newNV = (_displayMode == DispParticle)?
-		NParticles * ((ptclDrawMethod == PTCLbyRectangles)? 6 :
-			(ptclDrawMethod == PTCLbyTriangles)? 3 : 2) :
-		((_displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs) * NVERTICES_ARROW;
+- (NSArray<id<MTLBuffer>> *)adjustVxBufferSize:(DisplaySetups)req {
+	id<MTLBuffer> newVxBuf[2] = { vxBufD[0], vxBufD[1] };
+	NSInteger nVertices = (vxBufD[0] == nil)? 0 : vxBufD[0].length / sizeof(simd_float2);
+	int newNV = (req.displayMode == DispParticle)?
+		req.nPtcls * ((req.shapeMode == PTCLbyRectangles)? 6 :
+			(req.shapeMode == PTCLbyTriangles)? 3 : 2) :
+		((req.displayMode == DispVector)? N_VECTORS : NActiveGrids * NActs) * NVERTICES_ARROW;
 	if (newNV != nVertices) {
-		newVxBuf = [view.device newBufferWithLength:
-			sizeof(simd_float2) * newNV options:useSharedBuffer? 
+		newVxBuf[0] = [view.device newBufferWithLength:
+			sizeof(simd_float2) * newNV options:isARM? 
 			MTLResourceStorageModeShared : MTLResourceStorageModeManaged];
-		newVxMem = [NSMutableData dataWithLength:sizeof(simd_float2) * newNV];
-		if (newVxBuf == nil || newVxMem == nil) {
+		if (isARM) newVxBuf[1] = [view.device newBufferWithLength:
+			sizeof(simd_float2) * newNV options:MTLResourceStorageModeShared];
+		if (newVxBuf[0] == nil || (isARM && newVxBuf[1] == nil)) {
 			error_msg(@"Could not allocate buffer for vertices.", nil);
 			@throw @(FailVxBuf);
 		}
+#ifdef DEBUG
+NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
+#endif
 	}
-	if (_displayMode != DispParticle && _arrowVec == NULL) {
+	if (req.displayMode != DispParticle && _arrowVec == NULL) {
 		_arrowVec = malloc(sizeof(simd_float2) * N_VECTORS * NVERTICES_ARROW);
 		if (_arrowVec == NULL) {
 			error_msg(@"Could not allocate memory for arrow vectors.", nil);
@@ -289,40 +308,51 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 			@throw @(FailArrowMem);
 		}
 	}
-	*memp = newVxMem;
-	return newVxBuf;
+	return (newVxBuf[0] == nil)? @[] :
+		(newVxBuf[1] == nil)? @[newVxBuf[0]] : @[newVxBuf[0], newVxBuf[1]];
 }
-- (BOOL)adjustMemoryForNParticles {
-	[ptclLock lock];
-	[vxBufLock lock];
+- (BOOL)adjustMemoryFor:(DisplaySetups)req lock:(BOOL)lock{
+	if (lock) [loopLock lock];
 	BOOL result = YES;
 	@try {
-		Particle *newPTCLs = [self adjustPtclMemory];
-		NSMutableData *newColMem, *newVxMem;
-		id<MTLBuffer> newColBuf = [self adjustColBufferSize:&newColMem];
-		id<MTLBuffer> newVxBuf = [self adjustVxBufferSize:&newVxMem];
-		_particles = newPTCLs; _nPtcls = NParticles;
-		colBuf = newColBuf; colMem = newColMem;
-		vxBuf = newVxBuf; vxMem = newVxMem;
-		[self setupVertices:YES];
-		[self setupParticleColors:YES];
-	} @catch (NSNumber *num) {
-		if (_nPtcls > 0) NParticles = _nPtcls;
-		if (num.intValue == FailArrowMem) _displayMode = DispParticle;
-		result = NO;
-	}
-	[vxBufLock unlock];
-	[ptclLock unlock];
+		NSMutableData *newPTCLs = [self adjustPtclMemory:req];
+		NSArray<id<MTLBuffer>> *newColBuf = [self adjustColBufferSize:req];
+		NSArray<id<MTLBuffer>> *newVxBuf = [self adjustVxBufferSize:req];
+		_particleMem = newPTCLs;
+		colBufD[0] = (newColBuf.count > 0)? newColBuf[0] : nil;
+		colBufD[1] = (newColBuf.count > 1)? newColBuf[1] : nil;
+		vxBufD[0] = (newVxBuf.count > 0)? newVxBuf[0] : nil;
+		vxBufD[1] = (newVxBuf.count > 1)? newVxBuf[1] : nil;
+		BOOL vxRev, colRev;
+		if (req.displayMode == DispParticle) {
+			if (req.nPtcls != setups.nPtcls) vxRev = colRev = YES;
+			else {
+				vxRev = (req.shapeMode != setups.shapeMode);
+				colRev = (req.colorMode != setups.colorMode);
+			}
+			setups = req;
+			if (vxRev) [self setupVertices];
+			if (colRev) [self setupParticleColors];
+		} else setups = req;
+	} @catch (NSNumber *num) { result = NO; }
+	if (lock) [loopLock unlock];
 	return result;
 }
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
 	if (!(self = [super init])) return nil;
+	int mib[2] = { CTL_HW, HW_MACHINE };
+	size_t dataSize = 128;
+	char archName[128];
+	memset(archName, 0, 128);
+	if (sysctl(mib, 2, archName, &dataSize, NULL, 0) < 0) {
+		fprintf(stderr, "sysctl err = %d\n", errno);
+		[NSApp terminate:nil];
+	}
+	isARM = strcmp(archName, "x86_64") != 0;
 	nCores = (int)NSProcessInfo.processInfo.activeProcessorCount;
 	if (nCores > 8) nCores -= 2;
 	else if (nCores > 5) nCores --;
-	useSharedBuffer = USE_SHARED_BUFFER;
-	vxBufLock = NSLock.new;
-	ptclLock = NSLock.new;
+	loopLock = NSLock.new;
 	opeQue = NSOperationQueue.new;
 	_agent = a;
 	view = mtkView;
@@ -336,8 +366,8 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 	[self mtkView:view drawableSizeWillChange:view.drawableSize];
 	view.delegate = self;
 #ifdef DEBUG
-	NSLog(@"%d Cores, Sample count = %ld, Use %@ buffer.", nCores, smplCnt,
-		useSharedBuffer? @"shared" : @"managed" );
+	NSLog(@"%d Cores, Sample count = %ld, %@.", nCores, smplCnt,
+		isARM? @"ARM_64" : @"x86_64" );
 #endif
 
 	NSError *error;
@@ -367,63 +397,73 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"colorParticles"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		[self->vxBufLock lock];
-		[self setupParticleColors:YES];
-		[self->vxBufLock unlock];
-		if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
+		if (self->setups.displayMode != DispParticle) return;
+		[self->loopLock lock];
+		[self setupParticleColors];
+		[self->loopLock unlock];
+		self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"nParticles"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (![self adjustMemoryForNParticles]) {
+		DisplaySetups req = self->setups;
+		req.nPtcls = NParticles;
+		if (![self adjustMemoryFor:req lock:YES]) {
 			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustNParticleDgt];
 		}
-		else if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
+		else if (self->setups.displayMode == DispParticle) self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"ptclLifeSpan"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		NSNumber *oldValue = note.userInfo[keyOldValue];
 		if (oldValue == nil) return;
 		int orgVal = oldValue.intValue;
+		Particle *p = self.particleMem.mutableBytes;
 		for (int i = 0; i < self.nPtcls; i ++)
-			self.particles[i].life = self.particles[i].life * LifeSpan / orgVal;
-		if (self.displayMode == DispParticle) self->view.needsDisplay = YES;
+			p[i].life = p[i].life * LifeSpan / orgVal;
+		if (self->setups.displayMode == DispParticle) self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:keyColorMode
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (self.displayMode != DispParticle) return;
-		[self->vxBufLock lock];
+		if (self->setups.displayMode != DispParticle) return;
+		[self->loopLock lock];
 		@try {
-			NSMutableData *mem;
-			self->colBuf = [self adjustColBufferSize:&mem];
-			self->colMem = mem;
-			[self setupParticleColors:YES];
+			DisplaySetups req = self->setups;
+			req.colorMode = ptclColorMode;
+			NSArray<id<MTLBuffer>> *newColBuf = [self adjustColBufferSize:req];
+			self->colBufD[0] = (newColBuf.count > 0)? newColBuf[0] : nil;
+			self->colBufD[1] = (newColBuf.count > 1)? newColBuf[1] : nil;
+			self->setups.colorMode = req.colorMode;
+			[self setupParticleColors];
 		} @catch (id x) {
 			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustColorMode:note.userInfo];
 		}
-		[self->vxBufLock unlock];
+		[self->loopLock unlock];
 		self->view.needsDisplay = YES;
 	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:keyDrawMethod
+	[NSNotificationCenter.defaultCenter addObserverForName:keyShapeMode
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (self.displayMode != DispParticle) return;
-		[self->vxBufLock lock];
+		if (self->setups.displayMode != DispParticle) return;
+		[self->loopLock lock];
 		@try {
-			NSMutableData *mem;
-			self->vxBuf = [self adjustVxBufferSize:&mem];
-			self->vxMem = mem;
-			[self setupVertices:YES];
+			DisplaySetups req = self->setups;
+			req.shapeMode = ptclShapeMode;
+			NSArray<id<MTLBuffer>> *newVxBuf = [self adjustVxBufferSize:req];
+			self->colBufD[0] = (newVxBuf.count > 0)? newVxBuf[0] : nil;
+			self->colBufD[1] = (newVxBuf.count > 1)? newVxBuf[1] : nil;
+			self->setups.shapeMode = req.shapeMode;
+			[self setupVertices];
 		} @catch (id x) {
-			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustDrawMethod:note.userInfo];
+			[(ControlPanel *)note.userInfo[keyCntlPnl] adjustShapeMode:note.userInfo];
 		}
-		[self->vxBufLock unlock];
+		[self->loopLock unlock];
 		self->view.needsDisplay = YES;
 	}];
 	[NSNotificationCenter.defaultCenter addObserverForName:keyShouldReviseVertices
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (self.displayMode != DispParticle) return;
-		[self->vxBufLock lock];
-		[self setupVertices:YES];
-		[self->vxBufLock unlock];
+		if (self->setups.displayMode != DispParticle) return;
+		[self->loopLock lock];
+		[self setupVertices];
+		[self->loopLock unlock];
 		self->view.needsDisplay = YES;
 	}];
 	return self;
@@ -512,31 +552,35 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 	if (LifeSpan - p->life < 10) sz *= (LifeSpan - p->life) / 9.;
 	return sz;
 }
-- (void)setupParticleColors:(BOOL)copy {
-	if (colBuf == nil) return;
-	simd_float4 *colors = colMem.mutableBytes, ptclHSB = ptcl_hsb_color();
-	THREADS_PRE(long, _nPtcls)
+- (void)setupParticleColors {
+	if (colBufD[colBufIndex] == nil) { colBuf = nil; return; }
+	simd_float4 *colors = colBufD[colBufIndex].contents,
+		ptclHSB = ptcl_hsb_color();
+	Particle *p = _particleMem.mutableBytes;
+	THREADS_PRE(long, setups.nPtcls)
 	for (int i = 0; i < nThreads; i ++) {
 		THREADS_ST(long)
 		void (^block)(void) = ^{
 			for (int j = 0; j < nn; j ++) colors[idxStart + j] =
-				ptcl_rgb_color(self.particles + idxStart + j, ptclHSB, self->maxSpeed);
+				ptcl_rgb_color(p + idxStart + j, ptclHSB, self->maxSpeed);
 		};
 		THREADS_DO
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
-	if (copy) memcpy(colBuf.contents, colors, colMem.length);
-	if (!useSharedBuffer) [colBuf didModifyRange:(NSRange){0, colBuf.length}];
+	colBuf = colBufD[colBufIndex];
+	if (isARM) colBufIndex = 1 - colBufIndex;
+	else [colBuf didModifyRange:(NSRange){0, colBuf.length}];
 }
-- (void)setupVertices:(BOOL)copy {
-	int nVpL = (int)(vxBuf.length / sizeof(simd_float2) / _nPtcls);
-	simd_float2 *lines = vxMem.mutableBytes;
+- (void)setupVertices {
+	int nVpL = (int)(vxBufD[vxBufIndex].length / sizeof(simd_float2) / setups.nPtcls);
+	simd_float2 *lines = vxBufD[vxBufIndex].contents;
+	Particle *p = _particleMem.mutableBytes;
 	float mxSpd[NTHREADS];
 	memset(mxSpd, 0, sizeof(mxSpd));
-	THREADS_PRE(long, _nPtcls)
+	THREADS_PRE(long, setups.nPtcls)
 	for (int i = 0; i < nThreads; i ++) {
 		THREADS_ST(long)
-		Particle *pStart = _particles + idxStart;
+		Particle *pStart = p + idxStart;
 		simd_float2 *lineStart = lines + idxStart * nVpL;
 		float *mxSpdP = mxSpd + i;
 		void (^block)(void) = ^{
@@ -568,8 +612,9 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 		THREADS_DO
 	}
 	[opeQue waitUntilAllOperationsAreFinished];
-	if (copy) memcpy(vxBuf.contents, lines, vxMem.length);
-	if (!useSharedBuffer) [vxBuf didModifyRange:(NSRange){0, vxBuf.length}];
+	vxBuf = vxBufD[vxBufIndex];
+	if (isARM) vxBufIndex = 1 - vxBufIndex;
+	else [vxBuf didModifyRange:(NSRange){0, vxBuf.length}];
 	maxSpeed = fmaxf(mxSpd[0], TileSize * .005);
 	for (int i = 1; i < NTHREADS; i ++) if (maxSpeed < mxSpd[i]) maxSpeed = mxSpd[i];
 }
@@ -614,6 +659,17 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 	for (int i = 0; i < NVERTICES_ARROW; i ++)
 		v[i] = simd_mul(*trs, v3[i]).xy;
 }
+- (void)setupArrowInfo:(int)n {
+	int nv = NVERTICES_ARROW;
+	vxBuf = vxBufD[vxBufIndex];
+	colBuf = colBufD[colBufIndex];
+	memcpy(vxBuf.contents, _arrowVec, sizeof(simd_float2) * n * nv);
+	memcpy(colBuf.contents, _arrowCol, sizeof(simd_float4) * n);
+	if (!isARM) {
+		[vxBuf didModifyRange:(NSRange){0, sizeof(simd_float2) * n * nv}];
+		[colBuf didModifyRange:(NSRange){0, sizeof(simd_float4) * n}];
+	} else { vxBufIndex = 1 - vxBufIndex; colBufIndex = 1 - colBufIndex; }
+}
 - (void)setupArrowsForVecFld {
 #ifdef USE_FORCE_GRID
 	[self calcForceGrids];
@@ -648,6 +704,7 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 		float grade = .1 + vec[i].z / maxV * .9;
 		_arrowCol[i] = bgCol * (1. - grade) + maxCol * grade;
 	}
+	[self setupArrowInfo:N_VECTORS];
 }
 - (void)setupArrowsForQValues {
 	float minQ = 1e10, maxQ = -1e10;
@@ -680,54 +737,49 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 			_arrowCol[vIdx] = bgCol * (1. - grade) + maxCol * grade;
 		}
 	}
+	[self setupArrowInfo:NActiveGrids * NActs];
 }
 - (void)setDisplayMode:(DisplayMode)newMode {
-	if (_displayMode == newMode) return;
-	[vxBufLock lock];
-	DisplayMode orgMode = _displayMode;
-	_displayMode = newMode;
-	@try {
-		NSMutableData *newColMem, *newVxMem;
-		id<MTLBuffer> newColBuf = [self adjustColBufferSize:&newColMem];
-		id<MTLBuffer> newVxBuf = [self adjustVxBufferSize:&newVxMem];
-		colBuf = newColBuf; colMem = newColMem;
-		vxBuf = newVxBuf; vxMem = newVxMem;
-	} @catch (id _) {
-		_displayMode = orgMode;
-	} @finally {
-		switch (_displayMode) {
+	if (setups.displayMode == newMode) return;
+	DisplaySetups req = { newMode, ptclColorMode, ptclShapeMode, NParticles };
+	[loopLock lock];
+	if ([self adjustMemoryFor:req lock:NO]) {
+		setups.displayMode = newMode;
+		switch (newMode) {
 			case DispParticle:
-			[self setupVertices:YES];
-			[self setupParticleColors:YES]; break;
+			[self setupVertices];
+			[self setupParticleColors]; break;
 			case DispVector: [self setupArrowsForVecFld]; break;
 			case DispQValues: [self setupArrowsForQValues];
+			default: break;
 		}
 		view.needsDisplay = YES;
 	}
-	[vxBufLock unlock];
+	[loopLock unlock];
 }
 - (void)reset {
 #ifdef USE_FORCE_GRID
 	memset(ForceGrid, 0, sizeof(ForceGrid));
 #endif
-	if (_particles != NULL) {
-		[ptclLock lock];
-		for (int i = 0; i < _nPtcls; i ++)
-			particle_reset(_particles + i, YES);
-		[vxBufLock lock];
-		if (_displayMode == DispParticle && ptclColorMode != PTCLconstColor)
-			[self setupParticleColors:YES];
-		[self setupVertices:YES];
-		[vxBufLock unlock];
-		[ptclLock unlock];
-	} else if (![self adjustMemoryForNParticles]) {
-		int NpFDv = 100;
-		for (IntVarInfo *p = IntVars; p->key != nil; p ++)
-			if (p->v == &NParticles) { NpFDv = p->fd; break; }
-		if (NParticles <= NpFDv) [NSApp terminate:nil];
-		NParticles = NpFDv;
-		if (![self adjustMemoryForNParticles]) [NSApp terminate:nil];
-	}
+	if (_particleMem != nil) {
+		[loopLock lock];
+		Particle *p = _particleMem.mutableBytes;
+		for (int i = 0; i < setups.nPtcls; i ++) particle_reset(p + i, YES);
+		if (setups.displayMode == DispParticle && setups.colorMode != PTCLconstColor)
+			[self setupParticleColors];
+		[self setupVertices];
+		[loopLock unlock];
+	} else {
+		DisplaySetups req = { DispParticle, ptclColorMode, ptclShapeMode, NParticles };
+		setups.displayMode = DispNone;
+		if (![self adjustMemoryFor:req lock:NO]) {
+			int NpFDv = 100;
+			for (IntVarInfo *p = IntVars; p->key != nil; p ++)
+				if (p->v == &NParticles) { NpFDv = p->fd; break; }
+			if (NParticles <= NpFDv) [NSApp terminate:nil];
+			req.nPtcls = NParticles = NpFDv;
+			if (![self adjustMemoryFor:req lock:NO]) [NSApp terminate:nil];
+	}}
 	view.needsDisplay = YES;
 }
 - (void)mtkView:(nonnull MTKView *)view drawableSizeWillChange:(CGSize)size {
@@ -786,12 +838,6 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, int *tileP, int nTiles) {
 }
 - (void)setupArrows:(RCE)rce n:(int)n {
 	uint nv = NVERTICES_ARROW;
-	memcpy(vxBuf.contents, _arrowVec, sizeof(simd_float2) * n * nv);
-	memcpy(colBuf.contents, _arrowCol, sizeof(simd_float4) * n);
-	if (!useSharedBuffer) {
-		[vxBuf didModifyRange:(NSRange){0, sizeof(simd_float2) * n * nv}];
-		[colBuf didModifyRange:(NSRange){0, sizeof(simd_float4) * n}];
-	}
 	[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
 	[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
 	[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
@@ -824,22 +870,23 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, int *tileP, int nTiles) {
 	// particles, vectors, or Q values
 	[rce setRenderPipelineState:shapePSO];
 	uint nv = 0;
-	switch (_displayMode) {
-		case DispParticle: if (_particles != NULL) {
+	switch (setups.displayMode) {
+		case DispParticle: if (_particleMem != nil) {
 			uint nVertices = (vxBuf == NULL)? 0 :
 				(uint)(vxBuf.length / sizeof(simd_float2));
 			if (colBuf != nil) {
-				nv = nVertices / _nPtcls;
+				nv = nVertices / setups.nPtcls;
 				[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
 			} else set_color(rce, col_to_vec(colParticles));
 			[rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
 			[rce setVertexBuffer:vxBuf offset:0 atIndex:IndexVertices];
-			[rce drawPrimitives:(ptclDrawMethod == PTCLbyLines)?
+			[rce drawPrimitives:(ptclShapeMode == PTCLbyLines)?
 				MTLPrimitiveTypeLine : MTLPrimitiveTypeTriangle
 				vertexStart:0 vertexCount:nVertices];
 		} break;
 		case DispVector: [self setupArrows:rce n:N_VECTORS]; break;
 		case DispQValues: [self setupArrows:rce n:NActiveGrids * NActs];
+		default: break;
 	}
 	// grid lines
 	nv = 0; [rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
@@ -880,21 +927,14 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, int *tileP, int nTiles) {
 - (void)drawInMTKView:(nonnull MTKView *)view {
 	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
 	cmdBuf.label = @"MyCommand";
-	[vxBufLock lock];
 	[self drawScene:view commandBuffer:cmdBuf];
 	[cmdBuf presentDrawable:view.currentDrawable];
 	[cmdBuf commit];
 	[cmdBuf waitUntilCompleted];
-	[vxBufLock unlock];
-}
-- (void)bigCopyTo:(char *)dst from:(const char *)src size:(long)size {
-	THREADS_PRE(long, size)
-	for (int i = 0; i < nThreads; i ++) {
-		THREADS_ST(long)
-		void (^block)(void) = ^{ memcpy(dst + idxStart, src + idxStart, nn); };
-		THREADS_DO
-	}
-	[opeQue waitUntilAllOperationsAreFinished];
+	unsigned long tm = current_time_us(), elapsed_us = tm - time_us;
+	if (elapsed_us < 1000000)
+		_FPS += (1e6 / elapsed_us - _FPS) * .02;
+	time_us = tm;
 }
 - (void)oneStepForParticles {
 //#define MEASURE_TIME
@@ -909,13 +949,14 @@ NSUInteger tm1, tm0 = current_time_us();
 //tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
 //#endif
 #endif
-	[ptclLock lock];
 	static int *idxMem = NULL, memSz = 0;
-	if (memSz < _nPtcls) idxMem = realloc(idxMem, (memSz = _nPtcls) * sizeof(int));
-	THREADS_PRE(int, _nPtcls);
+	if (memSz < setups.nPtcls)
+		idxMem = realloc(idxMem, (memSz = setups.nPtcls) * sizeof(int));
+	Particle *p = _particleMem.mutableBytes;
+	THREADS_PRE(int, setups.nPtcls);
 	for (int i = 0; i < nThreads; i ++) {
 		THREADS_ST(int)
-		Particle *pStart = _particles + idxStart;
+		Particle *pStart = p + idxStart;
 		int *idxs = idxMem + idxStart;
 		void (^block)(void) = ^{
 			int k0 = 0, k1 = nn;
@@ -938,33 +979,27 @@ NSUInteger tm1, tm0 = current_time_us();
 #ifdef MEASURE_TIME
 tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
 #endif
-	[self setupVertices:NO];
+	[self setupVertices];
 #ifdef MEASURE_TIME
 tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
 #endif
-	[self setupParticleColors:NO];
-#ifdef MEASURE_TIME
-tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
-#endif
-	[vxBufLock lock];
-	if (colBuf != nil)
-		[self bigCopyTo:colBuf.contents from:colMem.bytes size:colMem.length];
-		[self bigCopyTo:vxBuf.contents from:vxMem.bytes size:vxMem.length];
-	[vxBufLock unlock];
+	[self setupParticleColors];
 #ifdef MEASURE_TIME
 tm1 = current_time_us(); s[ns ++] += tm1-tm0; tm0 = tm1;
 if ((++ cnt) >= 60) { cnt = 0; for (int i = 0; i < ns; i ++)
 { printf("%d:%ld ", i, s[i]); s[i] = 0; } printf("\n");}
 #endif
-	[ptclLock unlock];
 }
 - (void)oneStep {
-	switch (_displayMode) {
+	[loopLock lock];
+	switch (setups.displayMode) {
 		case DispParticle: [self oneStepForParticles]; break;
 		case DispVector: [self setupArrowsForVecFld]; break;
 		case DispQValues: [self setupArrowsForQValues];
+		default: break;
 	}
 	in_main_thread(^{ self->view.needsDisplay = YES; });
+	[loopLock unlock];
 }
 - (NSBitmapImageRep *)imageBitmapWithSize:(NSSize)size scaleFactor:(CGFloat)sclFactor
 	drawBlock:(void (^)(NSBitmapImageRep *bm))block {

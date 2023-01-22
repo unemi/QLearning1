@@ -30,5 +30,5 @@
 "maxGoalCount" = "Max Goal Count";
 "startWithFullScreenMode" = "Start with Full Screen Mode";
 "ptclColorMode" = "Color Style";
-"ptclDrawMethod" = "Shape Style";
+"ptclShapeMode" = "Shape Style";
 "screenForFullScreenMode" = "Screen for Full Screen";

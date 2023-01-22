@@ -94,19 +94,16 @@
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                     </customView>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="H0m-zG-uDg">
-                                        <rect key="frame" x="5" y="1" width="44" height="15"/>
+                                        <rect key="frame" x="0.0" y="0.0" width="91" height="15"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
-                                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="99.99" id="mCl-53-hwV">
-                                            <numberFormatter key="formatter" formatterBehavior="custom10_4" allowsFloats="NO" formatWidth="-1" minimumIntegerDigits="1" maximumIntegerDigits="42" minimumFractionDigits="2" maximumFractionDigits="2" id="Zie-I7-hUQ">
-                                                <integer key="multiplier" value="1"/>
-                                            </numberFormatter>
+                                        <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="--.--/--.--" id="mCl-53-hwV">
                                             <font key="font" size="13" name="Menlo-Regular"/>
-                                            <color key="textColor" red="0.99999600649999998" green="1" blue="1" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
+                                            <color key="textColor" name="controlTextColor" catalog="System" colorSpace="catalog"/>
                                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                         </textFieldCell>
                                     </textField>
                                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="qiJ-Hc-6MK">
-                                        <rect key="frame" x="53" y="0.0" width="24" height="16"/>
+                                        <rect key="frame" x="95" y="-1" width="24" height="16"/>
                                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMaxY="YES"/>
                                         <textFieldCell key="cell" lineBreakMode="clipping" title="fps" id="15N-Dl-RXH">
                                             <font key="font" usesAppearanceFont="YES"/>

@@ -123,7 +123,6 @@ static void setup_obstacle_info(void) {
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
 	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
 	for (NSTextField *txt in infoTexts) txt.textColor = colSymbols;
-	fpsDgt.doubleValue = 0.;
 	[recordView loadImages];
 	[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
 	[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
@@ -184,13 +183,13 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 static float mag_to_scl(float mag, SoundPrm *p) {
 	return powf(2.f, mag * (p->mmax - p->mmin) + p->mmin);
 }
-static void play_agent_sound(Agent *agent, SoundType sndType) {
+static void play_agent_sound(Agent *agent, SoundType sndType, float age) {
 	int ix, iy;
 	SoundPrm *p = &sndData[sndType].v;
 	SoundQue sndQue = { sndType, 1., 0., p->vol, 0 };
 	[agent getPositionX:&ix Y:&iy];
 	sndQue.pan = (float)ix / (NGridW - 1) * 1.8 - .9;
-	sndQue.pitchShift = mag_to_scl((float)iy / (NGridH - 1), p);
+	sndQue.pitchShift = mag_to_scl(((float)iy / (NGridH - 1) * .2 + 1. - age) / 1.2, p);
 	set_audio_events(&sndQue);
 }
 static void play_sound_effect(SoundType sndType, float pitchShift) {
@@ -220,7 +219,8 @@ static void feed_env_noise_params(void) {
 		NSUInteger tm = current_time_us();
 		switch ([agent oneStep]) {
 			case AgentStepped: break;
-			case AgentBumped: play_agent_sound(agent, SndBump); break;
+			case AgentBumped:
+			play_agent_sound(agent, SndBump, (float)steps / MAX_STEPS); break;
 			case AgentReached:
 			goalCount ++;
 			in_main_thread(^{ [self showGoals]; });
@@ -240,7 +240,8 @@ static void feed_env_noise_params(void) {
 		FPS += (1e6 / elapsed_us - FPS) * .02;
 		in_main_thread(^{
 			[self showSteps];
-			self->fpsDgt.doubleValue = self->FPS;
+			if (SHOW_FPS) self->fpsDgt.stringValue =
+				[NSString stringWithFormat:@"%5.2f/%5.2f", self->FPS, self->display.FPS];
 		});
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
 		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT)) {

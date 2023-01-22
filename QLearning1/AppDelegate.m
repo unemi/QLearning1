@@ -22,10 +22,10 @@ int StartP[] = {0,3}, GoalP[] = {8,5};
 NSString *keyCntlPnl = @"controlPanel";
 NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw",
 	*keyShouldReviseVertices = @"shouldReviseVertices", *keySoundTestExited = @"soundTextExited";
-NSString *keyColorMode = @"ptclColorMode", *keyDrawMethod = @"ptclDrawMethod";
+NSString *keyColorMode = @"ptclColorMode", *keyShapeMode = @"ptclShapeMode";
 static NSString *scrForFullScrFD, *keyScrForFullScr = @"screenForFullScreenMode";
 static PTCLColorMode ptclColorModeFD;
-static PTCLDrawMethod ptclDrawMethodFD;
+static PTCLShapeMode ptclShapeModeFD;
 enum {
 	ShouldPostNotification = 1,
 	ShouldRedrawScreen = 2,
@@ -69,7 +69,6 @@ UIntegerVarInfo UIntegerVars[] = {
 BoolVarInfo BoolVars[] = {
 	{ @"startWithFullScreenMode", NO },
 	{ @"recordFinalImage", NO, NO, ShouldPostNotification },
-	{ @"useSharedBuffer", YES, },
 	{ @"showFPS", YES, YES, ShouldPostNotification },
 	{ nil }
 };
@@ -206,12 +205,12 @@ static BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
 		*p->v = ulong_to_col(rgba);
 	});
 	ptclColorModeFD = ptclColorMode;
-	ptclDrawMethodFD = ptclDrawMethod;
+	ptclShapeModeFD = ptclShapeMode;
 	scrForFullScrFD = scrForFullScr;
 	NSNumber *nm = [ud objectForKey:keyColorMode];
 	if (nm != nil) ptclColorMode = nm.intValue;
-	nm = [ud objectForKey:keyDrawMethod];
-	if (nm != nil) ptclDrawMethod = nm.intValue;
+	nm = [ud objectForKey:keyShapeMode];
+	if (nm != nil) ptclShapeMode = nm.intValue;
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
 	NSFileManager *fm = NSFileManager.defaultManager;
@@ -282,8 +281,8 @@ static BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
 	});
 	if (ptclColorMode == ptclColorModeFD) [ud removeObjectForKey:keyColorMode];
 	else [ud setInteger:ptclColorMode forKey:keyColorMode];
-	if (ptclDrawMethod == ptclDrawMethodFD) [ud removeObjectForKey:keyDrawMethod];
-	else [ud setInteger:ptclDrawMethod forKey:keyDrawMethod];
+	if (ptclShapeMode == ptclShapeModeFD) [ud removeObjectForKey:keyShapeMode];
+	else [ud setInteger:ptclShapeMode forKey:keyShapeMode];
 	if (scrForFullScr == scrForFullScrFD) [ud removeObjectForKey:keyScrForFullScr];
 	else [ud setObject:scrForFullScr forKey:keyScrForFullScr];
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -344,7 +343,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 		*dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;
 	IBOutlet NSButton *btnDrawByRects, *btnDrawByTriangles, *btnDrawByLines,
 		*btnColConst, *btnColAngle, *btnColSpeed,
-		*cboxStartFullScr, *cboxRecordImages, *cboxUseSharedBuffer, *cBoxShowFPS,
+		*cboxStartFullScr, *cboxRecordImages, *cBoxShowFPS,
 		*btnRevertToFD, *btnExport;
 	IBOutlet NSPopUpButton *screenPopUp;
 	IBOutlet NSTextField *txtBump, *txtGaol, *txtGood, *txtBad, *txtAmbience;
@@ -375,8 +374,8 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	for (NSTextField *dgt in uvDgts) dgt.integerValue = UIntegerVars[dgt.tag].v;
 	for (NSButton *btn in boolVBtns) btn.state = BoolVars[btn.tag].v;
 	for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
-	for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
-	dgtStrokeWidth.enabled = (ptclDrawMethod != PTCLbyLines);
+	for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
+	dgtStrokeWidth.enabled = (ptclShapeMode != PTCLbyLines);
 	[screenPopUp selectItemWithTitle:scrForFullScr];
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
@@ -414,7 +413,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	fvDgts = @[dgtT0, dgtT1, dgtCoolingRate, dgtInitQValue, dgtGamma, dgtAlpha,
 		dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed];
 	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
-	boolVBtns = @[cboxStartFullScr, cboxRecordImages, cboxUseSharedBuffer, cBoxShowFPS];
+	boolVBtns = @[cboxStartFullScr, cboxRecordImages, cBoxShowFPS];
 	colBtns = @[btnColConst, btnColAngle, btnColSpeed];
 	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
 	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
@@ -427,7 +426,7 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	SETUP_CNTRL(FDBTUInt, NSTextField, uvDgts, , , UIntegerVars, changeUIntegerValue)
 	SETUP_CNTRL(FDBTBool, NSButton, boolVBtns, , , BoolVars, switchBoolValue)
 	SETUP_RADIOBTN(FDBTDc, ptclColorMode, ptclColorModeFD, colBtns, chooseColorMode)
-	SETUP_RADIOBTN(FDBTDm, ptclDrawMethod, ptclDrawMethodFD, dmBtns, chooseDrawMethod)
+	SETUP_RADIOBTN(FDBTDm, ptclShapeMode, ptclShapeModeFD, dmBtns, chooseShapeMode)
 	FDBTFulScr = (int)bit;
 	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -537,19 +536,19 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		keyColorMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
-- (IBAction)chooseDrawMethod:(NSButton *)btn {
-	PTCLDrawMethod newValue = (PTCLDrawMethod)btn.tag;
-	if (ptclDrawMethod == newValue) return;
-	NSButton *orgBtn = dmBtns[ptclDrawMethod];
+- (IBAction)chooseShapeMode:(NSButton *)btn {
+	PTCLShapeMode newValue = (PTCLShapeMode)btn.tag;
+	if (ptclShapeMode == newValue) return;
+	NSButton *orgBtn = dmBtns[ptclShapeMode];
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[orgBtn performClick:nil];
 	}];
-	undoManager.actionName = NSLocalizedString(keyDrawMethod, nil);
-	ptclDrawMethod = newValue;
+	undoManager.actionName = NSLocalizedString(keyShapeMode, nil);
+	ptclShapeMode = newValue;
 	dgtStrokeWidth.enabled = (newValue != PTCLbyLines);
-	[self checkFDBits:FDBTDm cond:newValue == ptclDrawMethodFD];
+	[self checkFDBits:FDBTDm cond:newValue == ptclShapeModeFD];
 	[NSNotificationCenter.defaultCenter postNotificationName:
-		keyDrawMethod object:NSApp userInfo:@{keyCntlPnl:self}];
+		keyShapeMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
 - (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {
 	NSString *newValue = popUp.titleOfSelectedItem;
@@ -794,7 +793,7 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 		if (col_to_ulong(*p->v) != col_to_ulong(p->fd)) md[p->key] = p->fd;
 	});
 	if (ptclColorMode != ptclColorModeFD) md[keyColorMode] = @(ptclColorModeFD);
-	if (ptclDrawMethod != ptclDrawMethodFD) md[keyDrawMethod] = @(ptclDrawMethodFD);
+	if (ptclShapeMode != ptclShapeModeFD) md[keyShapeMode] = @(ptclShapeModeFD);
 	if (![scrForFullScr isEqualToString:scrForFullScrFD])
 		md[keyScrForFullScr] = scrForFullScrFD;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -874,15 +873,15 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 			[postKeys addObject:keyColorMode];
 		}
 	}
-	num = dict[keyDrawMethod];
+	num = dict[keyShapeMode];
 	if (num != nil) {
-		PTCLDrawMethod newValue = num.intValue;
-		if (ptclDrawMethod != newValue) {
-			orgValues[keyDrawMethod] = @(ptclDrawMethod);
-			if (ptclDrawMethod == ptclDrawMethodFD || newValue == ptclDrawMethodFD)
+		PTCLShapeMode newValue = num.intValue;
+		if (ptclShapeMode != newValue) {
+			orgValues[keyShapeMode] = @(ptclShapeMode);
+			if (ptclShapeMode == ptclShapeModeFD || newValue == ptclShapeModeFD)
 				fdFlipBits |= 1 << FDBTDm;
-			ptclDrawMethod = newValue;
-			[postKeys addObject:keyDrawMethod];
+			ptclShapeMode = newValue;
+			[postKeys addObject:keyShapeMode];
 		}
 	}
 	NSString *newValue = dict[keyScrForFullScr];
@@ -939,7 +938,7 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 			md[p->key] = [NSString stringWithFormat:@"%08lX", uIntCol];
 	});
 	if (ptclColorMode != ptclColorModeFD) md[keyColorMode] = @(ptclColorMode);
-	if (ptclDrawMethod != ptclDrawMethodFD) md[keyDrawMethod] = @(ptclDrawMethod);
+	if (ptclShapeMode != ptclShapeModeFD) md[keyShapeMode] = @(ptclShapeMode);
 	if (![scrForFullScr isEqualToString:scrForFullScrFD])
 		md[keyScrForFullScr] = scrForFullScr;
 	return md;
@@ -996,12 +995,12 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 		[self checkFDBits:FDBTDc cond:ptclColorMode == ptclColorModeFD];
 	} else [undoManager undo];
 }
-- (void)adjustDrawMethod:(NSDictionary *)info { // called when buffer allocation failed.
+- (void)adjustShapeMode:(NSDictionary *)info { // called when buffer allocation failed.
 	NSNumber *num = info[keyOldValue];
 	if (num != nil) {
-		ptclDrawMethod = (PTCLDrawMethod)num.intValue;
-		for (NSButton *btn in dmBtns) btn.state = (ptclDrawMethod == btn.tag);
-		[self checkFDBits:FDBTDm cond:ptclDrawMethod == ptclDrawMethodFD];
+		ptclShapeMode = (PTCLShapeMode)num.intValue;
+		for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
+		[self checkFDBits:FDBTDm cond:ptclShapeMode == ptclShapeModeFD];
 	} else [undoManager undo];
 }
 //
