@@ -1,0 +1,224 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+    <dependencies>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
+    </dependencies>
+    <objects>
+        <customObject id="-2" userLabel="File's Owner"/>
+        <customObject id="-1" userLabel="First Responder" customClass="FirstResponder"/>
+        <customObject id="-3" userLabel="Application" customClass="NSObject">
+            <connections>
+                <outlet property="delegate" destination="Voe-Tx-rLC" id="z7a-uk-ruN"/>
+            </connections>
+        </customObject>
+        <customObject id="Voe-Tx-rLC" customClass="AppDelegate"/>
+        <customObject id="YLy-65-1bz" customClass="NSFontManager"/>
+        <menu title="Main Menu" systemMenu="main" id="AYu-sK-qS6">
+            <items>
+                <menuItem title="Learning is Life" id="1Xt-HY-uBw">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Learning is Life" systemMenu="apple" id="uQy-DD-JDr">
+                        <items>
+                            <menuItem title="About Learning is Life" id="5kV-Vb-QxS">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="orderFrontStandardAboutPanel:" target="-1" id="Exp-CZ-Vem"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="VOq-y0-SEH"/>
+                            <menuItem title="Preferences…" keyEquivalent="," id="BOF-NM-1cW">
+                                <connections>
+                                    <action selector="openControlPanel:" target="Voe-Tx-rLC" id="Ae4-GM-WXY"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="wFC-TO-SCJ"/>
+                            <menuItem title="Services" id="NMo-om-nkz">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <menu key="submenu" title="Services" systemMenu="services" id="hz9-B4-Xy5"/>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="4je-JR-u6R"/>
+                            <menuItem title="Hide Learning is Life" keyEquivalent="h" id="Olw-nP-bQN">
+                                <connections>
+                                    <action selector="hide:" target="-1" id="PnN-Uc-m68"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Hide Others" keyEquivalent="h" id="Vdr-fp-XzO">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="hideOtherApplications:" target="-1" id="VT4-aY-XCT"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Show All" id="Kd2-mp-pUS">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="unhideAllApplications:" target="-1" id="Dhg-Le-xox"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="kCx-OE-vgT"/>
+                            <menuItem title="Quit Learning is Life" keyEquivalent="q" id="4sb-4s-VLi">
+                                <connections>
+                                    <action selector="terminate:" target="-1" id="Te7-pn-YzF"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="File" id="mjG-U3-dt2">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="File" id="7Fa-df-rCH">
+                        <items>
+                            <menuItem title="Import ..." keyEquivalent="i" id="iPH-RO-rK6">
+                                <connections>
+                                    <action selector="importSettings:" target="-1" id="Tp0-D6-gTz"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Export ..." keyEquivalent="e" id="PDT-Dh-mqI">
+                                <connections>
+                                    <action selector="exportSettings:" target="-1" id="2DC-hb-jec"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Factory Defaults" keyEquivalent="R" id="hgL-3u-osx">
+                                <connections>
+                                    <action selector="revertToFactoryDefault:" target="-1" id="06z-Yo-4qR"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Close" keyEquivalent="w" id="2ul-Dn-cvC">
+                                <connections>
+                                    <action selector="performClose:" target="-1" id="12s-FX-Z3C"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="1pH-Qp-57i"/>
+                            <menuItem title="Page Setup…" keyEquivalent="P" id="rot-dZ-CfI">
+                                <connections>
+                                    <action selector="runPageLayout:" target="-1" id="ftr-Tv-EzM"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Print…" keyEquivalent="p" id="gaY-4S-SLa">
+                                <connections>
+                                    <action selector="printScene:" target="-1" id="Lac-Mg-G06"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Edit" id="5QF-Oa-p0T">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Edit" id="W48-6f-4Dl">
+                        <items>
+                            <menuItem title="Undo" keyEquivalent="z" id="dRJ-4n-Yzg">
+                                <connections>
+                                    <action selector="undo:" target="-1" id="M6e-cu-g7V"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Redo" keyEquivalent="Z" id="6dh-zS-Vam">
+                                <connections>
+                                    <action selector="redo:" target="-1" id="oIA-Rs-6OD"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WRV-NI-Exz"/>
+                            <menuItem title="Cut" keyEquivalent="x" id="uRl-iY-unG">
+                                <connections>
+                                    <action selector="cut:" target="-1" id="YJe-68-I9s"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Copy" keyEquivalent="c" id="x3v-GG-iWU">
+                                <connections>
+                                    <action selector="copy:" target="-1" id="G1f-GL-Joy"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Paste" keyEquivalent="v" id="gVA-U4-sdL">
+                                <connections>
+                                    <action selector="paste:" target="-1" id="UvS-8e-Qdg"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Delete" id="pa3-QI-u2k">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="delete:" target="-1" id="0Mk-Ml-PaM"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Select All" keyEquivalent="a" id="Ruw-6m-B2m">
+                                <connections>
+                                    <action selector="selectAll:" target="-1" id="VNm-Mi-diN"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Run/View" id="bxb-iI-qZU">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Run/View" id="Z4f-OF-CYf">
+                        <items>
+                            <menuItem title="Start" keyEquivalent="g" id="UhA-84-zGi">
+                                <connections>
+                                    <action selector="startStop:" target="-1" id="7CK-Am-bKY"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Reset" keyEquivalent="r" id="I2C-MS-5NY">
+                                <connections>
+                                    <action selector="reset:" target="-1" id="aXZ-gH-Qks"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Full Screen" keyEquivalent="f" id="sVR-tQ-D3r">
+                                <connections>
+                                    <action selector="fullScreen:" target="-1" id="MZ7-3k-UZc"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem isSeparatorItem="YES" id="WTn-Ph-69b"/>
+                            <menuItem title="Particles" keyEquivalent="p" id="tzd-WL-wrU">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="DIa-Fv-KQL"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Vector Field" tag="1" keyEquivalent="v" id="lDd-S5-Tu5">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="TKG-fb-GAO"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Q Values" tag="2" keyEquivalent="q" id="A0a-eb-dZe">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="chooseDisplayMode:" target="-1" id="m3R-0f-YuK"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Window" id="ZdA-1B-AUm">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Window" systemMenu="window" id="5wG-Y5-fbK">
+                        <items>
+                            <menuItem title="Minimize" keyEquivalent="m" id="piK-se-B3g">
+                                <connections>
+                                    <action selector="performMiniaturize:" target="-1" id="zmx-ya-dPB"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Zoom" id="o55-gu-teH">
+                                <modifierMask key="keyEquivalentModifierMask"/>
+                                <connections>
+                                    <action selector="performZoom:" target="-1" id="MhG-UO-OiS"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+                <menuItem title="Help" id="wpr-3q-Mcd">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <menu key="submenu" title="Help" systemMenu="help" id="F2S-fz-NVQ">
+                        <items>
+                            <menuItem title="Learning is Life Help" keyEquivalent="?" id="FKE-Sm-Kum">
+                                <connections>
+                                    <action selector="showHelp:" target="-1" id="y7X-2Q-9no"/>
+                                </connections>
+                            </menuItem>
+                        </items>
+                    </menu>
+                </menuItem>
+            </items>
+            <point key="canvasLocation" x="104" y="-38"/>
+        </menu>
+    </objects>
+</document>

@@ -1,4 +1,4 @@
-# QLearning1
+# Learning is Life
 by Tatsuo Unemi, Soka University.
 
 Classical example of Q-Learning, a type of Reinforcement Learning.
@@ -7,4 +7,4 @@ Thanks to Metal framework to utilize GPU power, it runs more than 100,000 partic
 smoothly on Apple M1/M2 machines. 
 
 ---
-Created Dec. 30, 2022, Modified Jan. 3, 2023.
+Created Dec. 30, 2022, Modified Jan. 24, 2023.
