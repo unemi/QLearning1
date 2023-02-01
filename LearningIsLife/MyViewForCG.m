@@ -6,6 +6,7 @@
 //
 
 #import "MyViewForCG.h"
+#import "Comm.h"
 #import "Display.h"
 #import "AppDelegate.h"
 #import "Agent.h"
@@ -193,7 +194,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	switch (display.displayMode) {
 		case DispParticle: [self drawParticles]; break;
 		case DispVector: [self drawVectors:N_VECTORS]; break;
-		case DispQValues: [self drawVectors:NActiveGrids * NActs];
+		case DispQValues: [self drawVectors:nActiveGrids * NActs];
 		default: break;
 	}
 	// Grid lines

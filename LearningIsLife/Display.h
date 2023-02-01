@@ -8,9 +8,8 @@
 @import Cocoa;
 @import MetalKit;
 @class Agent;
-typedef enum { DispParticle, DispVector, DispQValues, DispNone } DisplayMode;
-typedef enum { PTCLconstColor, PTCLangleColor, PTCLspeedColor } PTCLColorMode;
-typedef enum { PTCLbyRectangles, PTCLbyTriangles, PTCLbyLines } PTCLShapeMode;
+#import "CommonTypes.h"
+
 typedef struct {
 	DisplayMode displayMode;
 	PTCLColorMode colorMode;
@@ -24,7 +23,8 @@ typedef struct {
 typedef id<MTLRenderCommandEncoder> RCE;
 
 #define N_VECTOR_GRID 5
-#define N_VECTORS (NActiveGrids*N_VECTOR_GRID*N_VECTOR_GRID)
+#define N_VECTORS (nActiveGrids*N_VECTOR_GRID*N_VECTOR_GRID)
+#define N_MAX_VECTORS (NGrids*N_VECTOR_GRID*N_VECTOR_GRID)
 #define NVERTICES_ARROW 9
 // Dimensions of arrow shape
 #define AR_TAIL_Y .4
@@ -37,6 +37,8 @@ extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 	* _Nonnull colSymbols, * _Nonnull colParticles;
 extern PTCLColorMode ptclColorMode;
 extern PTCLShapeMode ptclShapeMode;
+extern void add_observer(NSString * _Nonnull noteName,
+	void (^ _Nonnull block)(NSNotification * _Nonnull));
 extern void init_default_colors(void);
 extern void draw_in_bitmap(NSBitmapImageRep * _Nonnull imgRep,
 	void (^ _Nonnull block)(NSBitmapImageRep * _Nonnull bm));

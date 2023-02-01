@@ -9,6 +9,7 @@
 #import <AudioToolbox/AudioToolbox.h>
 #import <AudioUnit/AudioUnit.h>
 #import "MySound.h"
+#import "Comm.h"
 #import "AppDelegate.h"
 #define SAMPLE_RATE 44100
 #define QUE_LENGTH 256
@@ -202,7 +203,6 @@ BOOL init_audio_out(void) {
 		AudioComponentDescription desc = {kAudioUnitType_Output,
 			kAudioUnitSubType_DefaultOutput, kAudioUnitManufacturer_Apple, 0, 0};
 		AudioComponent audioComponent = AudioComponentFindNext(NULL, &desc);
-		double sampleRate = SAMPLE_RATE;
 		if (!audioComponent) @throw @"AudioComponent Failed.";
 		if ((err = AudioComponentInstanceNew(audioComponent, &output)))
 			@throw @"AudioUnit Component Failed.";
@@ -210,6 +210,7 @@ BOOL init_audio_out(void) {
 		auCallback.inputProc = my_render_callback;
 		if ((err = set_render_callback(my_render_callback)))
 			@throw @"AudioUnitSetProperty RenderCallback";
+		double sampleRate = SAMPLE_RATE;
 		if ((err = AudioUnitSetProperty(output, kAudioUnitProperty_SampleRate,
 			kAudioUnitScope_Input, 0, &sampleRate, sizeof(double))))
 			@throw @"AudioUnitSetProperty SampleRate";
@@ -285,7 +286,7 @@ void reset_audio_events(void) {
 	sndAmp = 0.;
 }
 void set_audio_events(SoundQue *info) {
-	if (renderMode != RenderModeNormal) return;
+	if (!SOUNDS_ON || renderMode != RenderModeNormal) return;
 	[soundBufLock lock];
 	sndQue[NSMaxRange(sndQIdx) % QUE_LENGTH] = *info;
 	if (sndQIdx.length < QUE_LENGTH) sndQIdx.length ++;
@@ -293,7 +294,7 @@ void set_audio_events(SoundQue *info) {
 	[soundBufLock unlock];
 }
 void set_audio_env_params(SoundEnvParam *prm) {
-	if (renderMode != RenderModeNormal) return;
+	if (!SOUNDS_ON || renderMode != RenderModeNormal) return;
 	for (NSInteger i = 0; i < NGridW; i ++) {
 		envSndQ[i].pitchShift = prm[i].pitchShift;
 		envSndQ[i].amp = prm[i].amp;
@@ -301,7 +302,7 @@ void set_audio_env_params(SoundEnvParam *prm) {
 }
 CGFloat enter_test_mode(NSString *path, float pm, float vol, void (^block)(CGFloat)) {
 	if (!output) return 0.;
-	stop_audio_out();
+	if (SOUNDS_ON) stop_audio_out();
 	MySound *mySnd = get_sound_object(path);
 	if (mySnd == nil) return 0.;
 	if (testSoundPath != nil) release_mySound(testSoundPath);

@@ -9,6 +9,7 @@
 //
 
 #import "LogoDrawer.h"
+#import "Comm.h"
 #import "AppDelegate.h"
 #import "Display.h"
 #import "VecTypes.h"

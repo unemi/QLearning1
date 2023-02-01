@@ -6,6 +6,7 @@
 //
 
 #import "RecordView.h"
+#import "Comm.h"
 #import "AppDelegate.h"
 #import "Display.h"
 #import "MyViewForCG.h"

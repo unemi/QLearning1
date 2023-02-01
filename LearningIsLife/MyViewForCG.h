@@ -5,7 +5,7 @@
 //  Created by Tatsuo Unemi on 2023/01/05.
 //
 
-#import <Cocoa/Cocoa.h>
+@import Cocoa;
 
 NS_ASSUME_NONNULL_BEGIN
 @class Display, RecordView;

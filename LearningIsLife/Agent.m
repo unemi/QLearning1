@@ -9,7 +9,7 @@
 
 int MemSize = 256, MemTrials = 32;
 float T0 = 0.5, T1 = 0.02, CoolingRate = 0.05,
-	InitQValue = 0.5, Gamma = 0.96, Alpha = 0.05;
+	InitQValue = 0.5, Gamma = 0.96, Alpha = 0.05, StepsPerSec = 60.;
 vector_float4 QTable[NGridH][NGridW];
 
 typedef struct {

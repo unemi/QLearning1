@@ -29,7 +29,7 @@
         <window title="Learning is Life" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" tabbingMode="disallowed" toolbarStyle="expanded" id="GIJ-S5-3zk">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="335" y="390" width="960" height="540"/>
+            <rect key="contentRect" x="494" y="389" width="960" height="540"/>
             <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1055"/>
             <view key="contentView" id="xAg-fM-7Js" customClass="MyContentView">
                 <rect key="frame" x="0.0" y="0.0" width="960" height="540"/>
@@ -129,14 +129,14 @@
                 <allowedToolbarItems>
                     <toolbarItem implicitItemIdentifier="NSToolbarSpaceItem" id="Ydd-da-QT8"/>
                     <toolbarItem implicitItemIdentifier="NSToolbarFlexibleSpaceItem" id="evG-RI-wuo"/>
-                    <toolbarItem implicitItemIdentifier="2F685F69-59DB-4D4E-811E-BA40BE27BE1C" label="Start" paletteLabel="Start" tag="-1" image="forward.frame.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="JEb-1J-SwZ">
-                        <connections>
-                            <action selector="startStop:" target="-2" id="DQ8-GE-wrv"/>
-                        </connections>
-                    </toolbarItem>
                     <toolbarItem implicitItemIdentifier="D58BBDA3-71A7-49C4-89C4-AD721AA499E9" label="Reset" paletteLabel="Reset" tag="-1" image="backward.end.alt.fill" catalog="system" bordered="YES" sizingBehavior="auto" id="d57-WY-s7I">
                         <connections>
                             <action selector="reset:" target="-2" id="Yic-il-cyu"/>
+                        </connections>
+                    </toolbarItem>
+                    <toolbarItem implicitItemIdentifier="2F685F69-59DB-4D4E-811E-BA40BE27BE1C" label="Start" paletteLabel="Start" tag="-1" image="NSTouchBarPlayTemplate" bordered="YES" sizingBehavior="auto" id="JEb-1J-SwZ">
+                        <connections>
+                            <action selector="startStop:" target="-2" id="DQ8-GE-wrv"/>
                         </connections>
                     </toolbarItem>
                     <toolbarItem implicitItemIdentifier="DBF1DF0D-44FE-4D06-A815-690A3D05A990" label="Full Screen On" paletteLabel="Full Screen" tag="-1" image="NSEnterFullScreenTemplate" bordered="YES" sizingBehavior="auto" id="7YG-rz-idg">
@@ -244,8 +244,8 @@
     <resources>
         <image name="NSEnterFullScreenTemplate" width="16" height="15"/>
         <image name="NSPreferencesGeneral" width="32" height="32"/>
+        <image name="NSTouchBarPlayTemplate" width="12" height="13"/>
         <image name="backward.end.alt.fill" catalog="system" width="24" height="13"/>
-        <image name="forward.frame.fill" catalog="system" width="17" height="13"/>
         <image name="printer" catalog="system" width="18" height="16"/>
     </resources>
 </document>

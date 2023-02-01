@@ -45,5 +45,5 @@ fragment float4 fragmentShaderTex(RasterizerDataTex in [[stage_in]],
 	constant vector_float4 *color [[buffer(IndexFrgColor)]]) {
 	constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
 	const half4 s = colorTexture.sample(textureSampler, in.textureCoordinate);
-    return float4(color->rgb, s.a);
+    return *color * (float4){1.,1.,1.,s.a};
 }

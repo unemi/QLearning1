@@ -202,6 +202,13 @@
                                     <action selector="performZoom:" target="-1" id="MhG-UO-OiS"/>
                                 </connections>
                             </menuItem>
+                            <menuItem isSeparatorItem="YES" id="8bS-KJ-gcU"/>
+                            <menuItem title="Comm Panel" keyEquivalent="c" id="ue2-Wo-JX0">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="openCommPanel:" target="Voe-Tx-rLC" id="ATf-ig-lyq"/>
+                                </connections>
+                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>

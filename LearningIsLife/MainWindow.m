@@ -13,16 +13,22 @@
 #import "MyViewForCG.h"
 #import "MySound.h"
 
+ObstaclesMode obstaclesMode = ObsFixed;
 NSString *scrForFullScr = @"Screen the main window placed";
 static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
+MainWindow *theMainWindow = nil;
 
 @implementation MyProgressBar
-- (instancetype)initWithCoder:(NSCoder *)coder {
-	if (!(self = [super initWithCoder:coder])) return nil;
-	_maxValue = 1.;
+- (void)setupAsDefault {
 	_background = colBackground;
 	_foreground = colSymbols;
-	return self;
+	CGFloat r1, r2, g1, g2, b1, b2, a1, a2;
+	NSColorSpace *colspc = NSColorSpace.genericRGBColorSpace;
+	[[_background colorUsingColorSpace:colspc] getRed:&r1 green:&g1 blue:&b1 alpha:&a1];
+	[[_foreground colorUsingColorSpace:colspc] getRed:&r2 green:&g2 blue:&b2 alpha:&a2];
+	_dimmed = [NSColor colorWithSRGBRed:(r1 + r2) / 2. green:(g1 + g2) / 2.
+		blue:(b1 + b2) / 2. alpha:(a1 + a2) / 2.];
+	in_main_thread(^{ self.needsDisplay = YES; });
 }
 - (void)drawRect:(NSRect)dirtyRect {
 	[super drawRect:dirtyRect];
@@ -38,12 +44,7 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 			[NSBezierPath fillRect:rect];
 		}
 	} else {
-		CGFloat r1, r2, g1, g2, b1, b2, a1, a2;
-		NSColorSpace *colspc = NSColorSpace.genericRGBColorSpace;
-		[[_background colorUsingColorSpace:colspc] getRed:&r1 green:&g1 blue:&b1 alpha:&a1];
-		[[_foreground colorUsingColorSpace:colspc] getRed:&r2 green:&g2 blue:&b2 alpha:&a2];
-		[[NSColor colorWithSRGBRed:(r1 + r2) / 2. green:(g1 + g2) / 2.
-			blue:(b1 + b2) / 2. alpha:(a1 + a2) / 2.] setFill];
+		[_dimmed setFill];
 		[NSBezierPath fillRect:rect];
 	}
 }
@@ -52,7 +53,7 @@ static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Ful
 static void setup_obstacle_info(void) {
 	memset(Obstacles, 0, sizeof(Obstacles));
 	for (int i = 0; i < NObstacles; i ++)
-		Obstacles[ObsP[i][1]][ObsP[i][0]] = 1;
+		Obstacles[ObsP[i].y][ObsP[i].x] = 1;
 	int k1 = 0, k2 = 0;
 	for (int j = 0; j < NGridW; j ++)
 	for (int i = 0; i < NGridH; i ++) {
@@ -63,9 +64,11 @@ static void setup_obstacle_info(void) {
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
+	NSLock *agentEnvLock;
 	CGFloat interval;
 	BOOL running;
 	NSUInteger steps, goalCount;
+	NSInteger sendingSPP;
 	NSRect infoViewFrame;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
@@ -121,12 +124,22 @@ static void setup_obstacle_info(void) {
 		goalsPrg.needsDisplay = YES;
 	}
 }
+static BOOL is_symbol_color_visible(void) {
+	NSInteger nc = colSymbols.numberOfComponents;
+	if (nc == 2 || nc == 4) {
+		CGFloat c[4];
+		[colSymbols getComponents:c];
+		return (c[nc - 1] > 0.);
+	} else return YES;
+}
 - (void)windowDidLoad {
 	[super windowDidLoad];
+	theMainWindow = self;
 	setup_obstacle_info();
 	interval = 1. / 60.;
 	expectedGoals = MAX_GOALCNT / 2.;
 	expectedSteps = MAX_STEPS / 2.;
+	agentEnvLock = NSLock.new;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
 	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
@@ -134,33 +147,38 @@ static void setup_obstacle_info(void) {
 	[recordView loadImages];
 	[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
 	[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
+	[stepsPrg setupAsDefault];
+	[goalsPrg setupAsDefault];
 	fpsDgt.hidden = fpsUnit.hidden = !SHOW_FPS;
+	stepsDgt.superview.hidden = !is_symbol_color_visible();
 //	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustViewFrame:)
 		name:NSViewFrameDidChangeNotification object:view.superview];
-	[NSNotificationCenter.defaultCenter addObserverForName:@"maxSteps"
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
-	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:@"maxGoalCount"
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
-	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:@"colorSymbols"
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+	add_observer(@"maxSteps", ^(NSNotification * _Nonnull note) {
+		[self adjustMaxStepsOrGoals:MAX_STEPS_TAG]; });
+	add_observer(@"maxGoalCount", ^(NSNotification * _Nonnull note) {
+		[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG]; });
+	add_observer(@"colorBackground", ^(NSNotification * _Nonnull note) {
+		self->view.needsDisplay = YES;
+		[self->stepsPrg setupAsDefault]; [self->goalsPrg setupAsDefault]; });
+	add_observer(@"colorSymbols", ^(NSNotification * _Nonnull note) {
+		self->view.needsDisplay = YES;
 		for (NSTextField *txt in self->infoTexts) txt.textColor = colSymbols;
-	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:@"showFPS"
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS;
-	}];
-	[NSNotificationCenter.defaultCenter addObserverForName:keySoundTestExited
-		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (self->running) start_audio_out();
-	}];
+		[self->stepsPrg setupAsDefault]; [self->goalsPrg setupAsDefault];
+		self->stepsDgt.superview.hidden = !is_symbol_color_visible();
+	});
+	add_observer(@"showFPS", ^(NSNotification * _Nonnull note) {
+		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS; });
+	add_observer(@"sounds", ^(NSNotification * _Nonnull note) {
+		if (self->running) {
+			if (SOUNDS_ON) start_audio_out();
+			else stop_audio_out();
+		}});
+	add_observer(keySoundTestExited, ^(NSNotification * _Nonnull note) {
+		if (SOUNDS_ON && self->running) start_audio_out(); });
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		if (self->view.superview.inFullScreenMode)
@@ -190,7 +208,7 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 - (void)showSteps { show_count(stepsPrg, stepsDgt, stepsUnit, steps); }
 - (void)showGoals { show_count(goalsPrg, goalsDgt, goalsUnit, goalCount); }
 - (void)recordImageIfNeeded {
-	if (RECORD_IMAGES && steps > 0)
+	if (RECORD_IMAGES && steps > 0 && view.frame.size.height > 700)
 		[recordView addImage:display infoText:self.infoText];
 }
 static float mag_to_scl(float mag, SoundPrm *p) {
@@ -227,10 +245,13 @@ static void feed_env_noise_params(void) {
 	}
 	set_audio_env_params(sep);
 }
-- (void)loopThread {
+- (void)loopThreadForAgent {
 	while (running) {
 		NSUInteger tm = current_time_us();
-		switch ([agent oneStep]) {
+		[agentEnvLock lock];
+		AgentStepResult result = [agent oneStep];
+		[agentEnvLock unlock];
+		switch (result) {
 			case AgentStepped: break;
 			case AgentBumped:
 			play_agent_sound(agent, SndBump, (float)steps / MAX_STEPS); break;
@@ -241,21 +262,16 @@ static void feed_env_noise_params(void) {
 			play_sound_effect(SndGoal, (MAX_GOALCNT == 0)? 1. :
 				mag_to_scl((float)goalCount / MAX_GOALCNT, p));
 		}
+		if (sendingSPP > 0 && steps % sendingSPP == 0) [self sendPacket];
 		steps ++;
-		[display oneStep];
-		feed_env_noise_params();
 		unsigned long elapsed_us = current_time_us() - tm;
-		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
+		NSInteger timeRemain = (StepsPerSec > 0.)? 1e6 / StepsPerSec - elapsed_us : 0;
 		if (timeRemain > 0) {
-			elapsed_us = interval * 1e6;
+			elapsed_us = 1e6 / StepsPerSec;
 			usleep((useconds_t)timeRemain);
 		}
-		FPS += (1e6 / elapsed_us - FPS) * .05;
-		in_main_thread(^{
-			[self showSteps];
-			if (SHOW_FPS) self->fpsDgt.stringValue =
-				[NSString stringWithFormat:@"%5.2f/%5.2f", self->FPS, self->display.FPS];
-		});
+		FPS += (1e6 / elapsed_us - FPS) * fmax(.05, 1. / steps);
+		in_main_thread(^{ [self showSteps]; });
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
 		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT)) {
 			running = NO;
@@ -277,8 +293,24 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 #endif
 	}}
 }
+- (void)loopThreadForDisplay {
+	while (running) {
+		NSUInteger tm = current_time_us();
+		[display oneStep];
+		feed_env_noise_params();
+		unsigned long elapsed_us = current_time_us() - tm;
+		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
+		if (timeRemain > 0) {
+			elapsed_us = interval * 1e6;
+			usleep((useconds_t)timeRemain);
+		}
+		in_main_thread(^{ if (SHOW_FPS) self->fpsDgt.stringValue =
+			[NSString stringWithFormat:@"%5.2f/%5.2f", self->FPS, self->display.FPS];
+		});
+	}
+}
 - (IBAction)reset:(id)sender {
-	if (RANDOM_OBST) {
+	if (obstaclesMode == ObsRandom) {
 		ObsP[0] = (simd_int2){(drand48() < .5)? 1 : 2, (drand48() < .5)? 1 : 2};
 		ObsP[3] = (simd_int2){(drand48() < .5)? 4 : 5, (drand48() < .5)? 1 : 2};
 	} else {
@@ -298,15 +330,17 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 }
 - (IBAction)startStop:(id)sender {
 	if ((running = !running)) {
-		[NSThread detachNewThreadSelector:@selector(loopThread)
+		[NSThread detachNewThreadSelector:@selector(loopThreadForDisplay)
+			toTarget:self withObject:nil];
+		[NSThread detachNewThreadSelector:@selector(loopThreadForAgent)
 			toTarget:self withObject:nil];
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPauseTemplate];
 		startStopItem.label = @"Stop";
-		start_audio_out();
+		if (SOUNDS_ON) start_audio_out();
 	} else {
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPlayTemplate];
 		startStopItem.label = @"Start";
-		stop_audio_out();
+		if (SOUNDS_ON) stop_audio_out();
 	}
 }
 static void adjust_subviews_frame(NSView *view, CGFloat scale) {
@@ -387,6 +421,14 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 		[dispModePopUp selectItemAtIndex:newMode];
 	} else return;
 	display.displayMode = (DisplayMode)newMode;
+}
+// Comm Delegate
+- (void)receive:(char *)buf length:(ssize_t)length {
+}
+- (void)sendPacket {
+}
+- (void)setSendersStepsPerPacket:(NSInteger)spp {
+	sendingSPP = spp;
 }
 // Window Delegate
 - (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
