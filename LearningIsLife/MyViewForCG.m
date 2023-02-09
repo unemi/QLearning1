@@ -6,9 +6,8 @@
 //
 
 #import "MyViewForCG.h"
-#import "Comm.h"
+#import "MainWindow.h"
 #import "Display.h"
-#import "AppDelegate.h"
 #import "Agent.h"
 #import "LogoDrawer.h"
 #import "RecordView.h"
@@ -30,8 +29,8 @@
 }
 static void draw_symbol(NSString *str, NSDictionary *attr, simd_int2 p) {
 	NSSize size = [str sizeWithAttributes:attr];
-	simd_float2 fp = simd_float(p * TileSize) +
-		TileSize / 2.f - (simd_float2){size.width, size.height} / 2.f;
+	simd_float2 fp = simd_float(p * tileSize) +
+		simd_float(tileSize) / 2.f - (simd_float2){size.width, size.height} / 2.f;
 	[str drawAtPoint:(NSPoint){fp.x, fp.y} withAttributes:attr];
 }
 static NSPoint trans_point(simd_float3x3 trs, float x, float y) {
@@ -39,11 +38,11 @@ static NSPoint trans_point(simd_float3x3 trs, float x, float y) {
 	return (NSPoint){p.x, p.y};
 }
 static void set_particle_path(Particle *p, NSBezierPath *path) {
-	vector_float2 sz = particle_size(p);
+	simd_float2 sz = particle_size(p);
 	[path removeAllPoints];
 	switch (ptclShapeMode) {
 		case PTCLbyLines: {
-			vector_float2 vv = p->v / simd_length(p->v) * sz.x, pp = p->p - vv;
+			simd_float2 vv = p->v / simd_length(p->v) * sz.x, pp = p->p - vv;
 			[path moveToPoint:(NSPoint){pp.x, pp.y}];
 			pp = p->p + p->v / simd_length(p->v) * sz.x;
 			[path lineToPoint:(NSPoint){pp.x, pp.y}];
@@ -67,14 +66,14 @@ static void draw_particle(NSColor *color, NSBezierPath *path) {
 	if (ptclShapeMode == PTCLbyLines) { [color setStroke]; [path stroke]; }
 	else { [color setFill]; [path fill]; }
 }
-static NSColor *col_from_vec(vector_float4 vc) {
+static NSColor *col_from_vec(simd_float4 vc) {
 	return [NSColor colorWithRed: vc.x green:vc.y blue:vc.z alpha:vc.w];
 }
 - (void)drawParticles {
 	NSBezierPath *path = NSBezierPath.new;
 	Particle *particles = display.particleMem.mutableBytes;
 	int np = display.nPtcls;
-	float maxSpeed = TileSize * .005;
+	float maxSpeed = tileSize.x * .005;
 	switch (ptclColorMode) {
 		case PTCLconstColor:
 		for (int i = 0; i < np; i ++) {
@@ -87,7 +86,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 			if (maxSpeed < spd) maxSpeed = spd;
 		}
 		case PTCLangleColor: {
-			vector_float4 ptclHSB = ptcl_hsb_color();
+			simd_float4 ptclHSB = ptcl_hsb_color();
 			for (int i = 0; i < np; i ++) {
 				Particle *p = particles + i;
 				set_particle_path(p, path);
@@ -98,11 +97,11 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	static int vIndices[] = {1, 5, 8, 6, 7, 2};
 	NSBezierPath *path = NSBezierPath.new;
 	for (NSInteger i = 0; i < n; i ++) {
-		vector_float2 *vec = display.arrowVec + i * NVERTICES_ARROW;
+		simd_float2 *vec = display.arrowVec + i * NVERTICES_ARROW;
 		[path removeAllPoints];
 		[path moveToPoint:(NSPoint){vec[0].x, vec[0].y}];
 		for (NSInteger j = 0; j < 6; j ++) {
-			vector_float2 v = vec[vIndices[j]];
+			simd_float2 v = vec[vIndices[j]];
 			[path lineToPoint:(NSPoint){v.x, v.y}];
 		}
 		[path closePath];
@@ -112,7 +111,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 }
 - (void)drawEqu:(NSString *)name at:(NSPoint)p {
 	NSImage *img = [NSImage imageNamed:name];
-	NSRect imgRect = {0., 0, TileSize * 2.8, };
+	NSRect imgRect = {0., 0, tileSize.y * 2.8, };
 	NSSize imgSz = img.size;
 	imgRect.size.height = imgRect.size.width * imgSz.height / imgSz.width;
 	NSBitmapImageRep *imgRep = [self bitmapImageRepForCachingDisplayInRect:imgRect];
@@ -136,11 +135,11 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	}
 	[NSGraphicsContext saveGraphicsState];
 	NSAffineTransform *trsMx = NSAffineTransform.transform;
-	[trsMx translateXBy:TileSize * (p.x + .1) yBy:TileSize * (p.y - .1)];
+	[trsMx translateXBy:tileSize.x * (p.x + .1) yBy:tileSize.y * (p.y - .1)];
 	[trsMx rotateByRadians:M_PI / -2.];
 	[trsMx concat];
 	NSRect dstRect = imgRect;
-	dstRect.origin.y = (TileSize * 0.8 - imgRect.size.height) / 2.;
+	dstRect.origin.y = (tileSize.x * 0.8 - imgRect.size.height) / 2.;
 //	[imgRep drawInRect:imgRect];
 	[imgRep drawInRect:dstRect fromRect:imgRect
 		operation:NSCompositingOperationSourceOver
@@ -158,7 +157,7 @@ static NSColor *col_from_vec(vector_float4 vc) {
 		CGFloat d = pSize.width; pSize.width = pSize.height; pSize.height = d;
 	}
 	NSPoint offset = {0., 0.};
-	CGFloat scale = 1., dWhRate = recordView.hidden? (CGFloat)NGridW / NGridH : 16. / 9.;
+	CGFloat scale = 1., dWhRate = recordView.hidden? (CGFloat)PTCLMaxX / PTCLMaxY : 16. / 9.;
 	if (whRate > dWhRate) {
 		scale = pSize.height / PTCLMaxY;
 		offset.x = (pSize.width - pSize.height * dWhRate) / 2.;
@@ -181,12 +180,14 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	[colBackground setFill];
 	[NSBezierPath fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
 	// Agent
-	simd_float2 aPos = (simd_float(display.agent.position) + .05) * TileSize;
 	[colAgent setFill];
+	float agentDiameter = simd_reduce_min(tileSize) * .9f;
+	simd_float2 aPos = (simd_float(display.agent.position) + .5f) * simd_float(tileSize)
+		- agentDiameter / 2.f;
 	[[NSBezierPath bezierPathWithOvalInRect:(NSRect)
-		{aPos.x, aPos.y, TileSize * .9, TileSize * .9}] fill];
+		{aPos.x, aPos.y, agentDiameter, agentDiameter}] fill];
 	// Symbols
-	NSDictionary *attr = @{NSFontAttributeName:[NSFont userFontOfSize:TileSize / 2],
+	NSDictionary *attr = @{NSFontAttributeName:[NSFont userFontOfSize:tileSize.x / 2],
 		NSForegroundColorAttributeName:colSymbols};
 	draw_symbol(@"S", attr, StartP);
 	draw_symbol(@"G", attr, GoalP);
@@ -199,33 +200,37 @@ static NSColor *col_from_vec(vector_float4 vc) {
 	}
 	// Grid lines
 	NSBezierPath *path = NSBezierPath.new;
-	for (int i = 1; i < NGridH; i ++) {
-		[path moveToPoint:(NSPoint){0., i * TileSize}];
-		[path relativeLineToPoint:(NSPoint){NGridW * TileSize, 0}];
+	for (int i = 1; i < nGridH; i ++) {
+		[path moveToPoint:(NSPoint){0., i * tileSize.y}];
+		[path relativeLineToPoint:(NSPoint){PTCLMaxX, 0}];
 	}
-	for (int i = 1; i < NGridW; i ++) {
-		[path moveToPoint:(NSPoint){i * TileSize, 0.}];
-		[path relativeLineToPoint:(NSPoint){0., NGridH * TileSize}];
+	for (int i = 1; i < nGridW; i ++) {
+		[path moveToPoint:(NSPoint){i * tileSize.x, 0.}];
+		[path relativeLineToPoint:(NSPoint){0., PTCLMaxY}];
 	}
 	[colGridLines setStroke];
 	[path stroke];
 	// Obstacles
 	[path removeAllPoints];
-	NSRect obstRect = {0., 0., TileSize, TileSize};
-	for (int i = 0; i < NObstacles; i ++) {
-		obstRect.origin = (NSPoint){ObsP[i][0] * TileSize, ObsP[i][1] * TileSize};
+	NSRect obstRect = {0., 0., tileSize.x, tileSize.y};
+	for (int i = 0; i < nObstacles; i ++) {
+		simd_int2 oo = ObsP[i] * tileSize;
+		obstRect.origin = (NSPoint){oo.x, oo.y};
 		[path appendBezierPathWithRect:obstRect];
 	}
 	[colObstacles setFill];
 	[path fill];
-	// Equations
-	[self drawEqu:@"equationL" at:(NSPoint){ObsP[0][0], ObsP[0][1] + 3}];
-	[self drawEqu:@"equationP" at:(NSPoint){ObsP[4][0], ObsP[4][1] + 3}];
-	// Project Logo
-	if (logoDrawer == nil) logoDrawer = LogoDrawerCG.new;
-	[colSymbols set];
-	[logoDrawer drawByCGinRect:
-		(NSRect){ObsP[3][0] * TileSize, ObsP[3][1] * TileSize, TileSize, TileSize}];
+	if (obstaclesMode != ObsExternal) {
+		// Equations
+		[self drawEqu:@"equationL" at:(NSPoint){ObsP[0].x, ObsP[0].y + 3}];
+		[self drawEqu:@"equationP" at:(NSPoint){ObsP[4].x, ObsP[4].y + 3}];
+		// Project Logo
+		if (logoDrawer == nil) logoDrawer = LogoDrawerCG.new;
+		[colSymbols set];
+		float logoDim = simd_reduce_min(tileSize);
+		simd_float2 logoP = (simd_float(ObsP[3]) + .5) * simd_float(tileSize) - logoDim / 2.;
+		[logoDrawer drawByCGinRect:(NSRect){logoP.x, logoP.y, logoDim, logoDim}];
+	}
 	// Info view -- steps, goals and FPS
 	[NSGraphicsContext saveGraphicsState];
 	trans = NSAffineTransform.transform;

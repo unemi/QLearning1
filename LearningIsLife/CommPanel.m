@@ -6,13 +6,12 @@
 //
 
 #import "CommPanel.h"
-#import "AppDelegate.h"
 #import "MainWindow.h"
 
 static Comm *theComm = nil;
 static NSString *keyCommEnabled = @"commEnabled", *keyDstAddress = @"dstAddress",
 	*keyDstPort = @"dstPort", *keyRcvPort = @"rcvPort",
-	*keyStepsPerPkt = @"sndStepsPerPkt";
+	*keyPktPerSec = @"dstPktPerSec";
 static void comm_setup_defaults(void) {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	NSString *str; NSNumber *num;
@@ -21,17 +20,17 @@ static void comm_setup_defaults(void) {
 	if ((num = [ud objectForKey:keyDstPort]) != nil)
 		theComm.destinationPort = num.intValue;
 }
-BOOL start_communication(in_port_t rcvPort, NSInteger sndStepsPerPkt) {
+BOOL start_communication(in_port_t rcvPort, float pktPerSec) {
 	if (theComm == nil) {
 		theComm = Comm.new;
 		comm_setup_defaults();
 	}
 	if (![theComm startReceiverWithPort:rcvPort delegate:theMainWindow]) return NO;
-	[theMainWindow setSendersStepsPerPacket:sndStepsPerPkt];
+	[theMainWindow setSendersPacketsPerSec:pktPerSec];
 	return YES;
 }
 void stop_communication(void) {
-	[theMainWindow setSendersStepsPerPacket:0];
+	[theMainWindow setSendersPacketsPerSec:0];
 	[theComm invalidate]; theComm = nil;
 }
 void check_initial_communication(void) {
@@ -40,14 +39,33 @@ void check_initial_communication(void) {
 	if ((num = [ud objectForKey:keyCommEnabled]) == nil) return;
 	if (!num.boolValue) return;
 	in_port_t rcvPort = (num = [ud objectForKey:keyRcvPort])? num.intValue : OSC_PORT;
-	NSInteger spp = (num = [ud objectForKey:keyStepsPerPkt])? num.doubleValue : SND_STEPS_PER_PKT;
-	start_communication(rcvPort, spp);
+	float pps = (num = [ud objectForKey:keyPktPerSec])? num.floatValue : DST_PKT_PER_SEC;
+	start_communication(rcvPort, pps);
+}
+BOOL communication_is_running(void) {
+	return (theComm != nil && theComm.valid);
+}
+ssize_t send_packet(const char *buf, int length) {
+	if (theComm == nil || !theComm.valid) return 0;
+	return [theComm send:buf length:length];
+}
+typedef struct {
+	unsigned long prevTime;
+	CGFloat pps, bps;
+} TraficMeasure;
+static void measure_trafic(TraficMeasure *tm, ssize_t nBytes) {
+	unsigned long t = current_time_us(), interval = t - tm->prevTime;
+	CGFloat a = fmin(1., interval / 1e6);
+	tm->pps += (1e6 / interval - tm->pps) * a;
+	tm->bps += (nBytes * 1e6 / interval - tm->bps) * a;
+	tm->prevTime = t;
 }
 @interface CommPanel () {
 	IBOutlet NSButton *cboxCommEnabled, *btnDelUsrDflt;
 	IBOutlet NSTextField *txtMyAddr, *txtMyBcAdr,
 		*txtDstAddr, *txtDstPort, *txtSndInfo, *txtRcvPort, *txtRcvInfo,
-		*dgtStepsPerPkt, *dgtSndPPS, *dgtSndBPS, *dgtRcvPPS, *dgtRcvBPS;
+		*dgtPktPerSec, *dgtSndPPS, *dgtSndBPS, *dgtRcvPPS, *dgtRcvBPS;
+	TraficMeasure sndTM, rcvTM;
 	BOOL handlersReady;
 }
 @end
@@ -66,10 +84,12 @@ static NSString *bytes_number(CGFloat b) {
     if (enabled) {
 		txtMyAddr.stringValue = theComm.myAddress;
 		txtMyBcAdr.stringValue = theComm.myBroadcastAddress;
+	} else txtMyAddr.stringValue = txtMyBcAdr.stringValue = @"";
+	if (theComm != nil) {
 		txtDstAddr.stringValue = theComm.destinationAddress;
 		txtDstPort.intValue = theComm.destinationPort;
 		txtRcvPort.intValue = theComm.receiverPort;
-	} else txtMyAddr.stringValue = txtMyBcAdr.stringValue = @"";
+	}
 	dgtSndPPS.doubleValue = dgtRcvPPS.doubleValue = 0.;
 	dgtSndBPS.stringValue = dgtRcvBPS.stringValue = bytes_number(0);
 }
@@ -77,16 +97,16 @@ static NSString *bytes_number(CGFloat b) {
     [super windowDidLoad];
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	NSString *str = [ud objectForKey:keyDstAddress]; 
+	NSNumber *num;
     if (theComm == nil) {
-		NSNumber *num;
 		txtDstAddr.stringValue = (str != nil)? str : @"";
 		txtDstPort.intValue = (num = [ud objectForKey:keyDstPort])?
 			num.intValue : OSC_PORT;
 		txtRcvPort.intValue = (num = [ud objectForKey:keyRcvPort])?
 			num.intValue : OSC_PORT;
-		dgtStepsPerPkt.integerValue = (num = [ud objectForKey:keyStepsPerPkt])?
-			num.integerValue : SND_STEPS_PER_PKT;
 	}
+	dgtPktPerSec.floatValue = (num = [ud objectForKey:keyPktPerSec])?
+		num.floatValue : DST_PKT_PER_SEC;
 	[self adjustControls];
     btnDelUsrDflt.enabled = (str != nil);
 }
@@ -99,7 +119,7 @@ static NSString *bytes_number(CGFloat b) {
 			theComm.destinationPort = txtDstPort.intValue;
 			txtRcvPort.intValue = OSC_PORT;
 		}
-		start_communication(txtRcvPort.intValue, dgtStepsPerPkt.integerValue);
+		start_communication(txtRcvPort.intValue, dgtPktPerSec.floatValue);
 	} else stop_communication();
 	[self adjustControls];
 }
@@ -109,7 +129,7 @@ static NSString *bytes_number(CGFloat b) {
 	[ud setObject:txtDstAddr.stringValue forKey:keyDstAddress];
 	[ud setInteger:txtDstPort.intValue forKey:keyDstPort];
 	[ud setInteger:txtRcvPort.intValue forKey:keyRcvPort];
-	[ud setDouble:dgtStepsPerPkt.integerValue forKey:keyStepsPerPkt];
+	[ud setFloat:dgtPktPerSec.floatValue forKey:keyPktPerSec];
 	btnDelUsrDflt.enabled = YES;
 }
 - (IBAction)deleteDefaults:(id)sender {
@@ -124,23 +144,45 @@ static NSString *bytes_number(CGFloat b) {
 			if (returnCode != NSAlertFirstButtonReturn) return;
 			NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 			for (NSString *key in
-				@[keyCommEnabled, keyDstAddress, keyDstPort, keyRcvPort, keyStepsPerPkt])
+				@[keyCommEnabled, keyDstAddress, keyDstPort, keyRcvPort, keyPktPerSec])
 				[ud removeObjectForKey:key];
 			self->btnDelUsrDflt.enabled = NO;
 	}];
 }
+- (NSString *)commInfoString:(ssize_t)nBytes
+	propo:(NSString *)propo addr:(NSString *)addr {
+	static NSDateFormatter *dtFmt = nil;
+	if (dtFmt == nil) {
+		dtFmt = NSDateFormatter.new;
+		dtFmt.dateStyle = NSDateFormatterNoStyle;
+		dtFmt.timeStyle = NSDateFormatterShortStyle;
+	}
+	NSDate *now = NSDate.now;
+	NSTimeInterval msec = now.timeIntervalSinceReferenceDate;
+	msec = (msec - floor(msec)) * 1000.;
+	return [NSString stringWithFormat:@"%@.%03.0f: %ld bytes %@ %@.",
+		[dtFmt stringFromDate:now], msec, nBytes, propo, addr];
+}
 //
 - (void)windowDidBecomeMain:(NSNotification *)notification {
 	if (handlersReady) return;
-	[theComm setStatHandlersSnd:^(CGFloat pps, CGFloat bps) {
+	[theComm setStatHandlersSnd:^(ssize_t nBytes) {
+		measure_trafic(&self->sndTM, nBytes);
+		NSString *bpsStr = bytes_number(self->sndTM.bps), *info =
+			[self commInfoString:nBytes propo:@"to" addr:theComm.destinationAddress];
 		in_main_thread(^{
-			self->dgtSndPPS.doubleValue = pps;
-			self->dgtSndBPS.stringValue = bytes_number(bps);
+			self->dgtSndPPS.doubleValue = self->sndTM.pps;
+			self->dgtSndBPS.stringValue = bpsStr;
+			self->txtSndInfo.stringValue = info;
 		});
-	} rcv:^(CGFloat pps, CGFloat bps) {
+	} rcv:^(ssize_t nBytes) {
+		measure_trafic(&self->rcvTM, nBytes);
+		NSString *bpsStr = bytes_number(self->rcvTM.bps), *info =
+			[self commInfoString:nBytes propo:@"from" addr:theComm.senderAddress];
 		in_main_thread(^{
-			self->dgtRcvPPS.doubleValue = pps;
-			self->dgtRcvBPS.stringValue = bytes_number(bps);
+			self->dgtRcvPPS.doubleValue = self->rcvTM.pps;
+			self->dgtRcvBPS.stringValue = bpsStr;
+			self->txtRcvInfo.stringValue = info;
 		});
 	}];
 	handlersReady = YES;

@@ -9,14 +9,15 @@
 #define CommonTypes_h
 
 #define NActs 4
-#define NGridW 9
-#define NGridH 6
-#define NGrids (NGridW*NGridH)
-#define NObstacles 7
-#define NActiveGrids (NGridW*NGridH-NObstacles)
-#define TileSize 100
-#define PTCLMaxX (NGridW*TileSize)
-#define PTCLMaxY (NGridH*TileSize)
+#define NGridWDF 9
+#define NGridHDF 6
+#define nGrids (nGridW*nGridH)
+#define NObstaclesDF 7
+#define nActiveGrids (nGrids-nObstacles)
+#define TileSizeWDF 100
+#define TileSizeHDF 100
+#define PTCLMaxX (nGridW*tileSize.x)
+#define PTCLMaxY (nGridH*tileSize.y)
 
 enum {
 	ShouldPostNotification = 1,
@@ -38,10 +39,12 @@ typedef enum {
 typedef struct { NSString *path; float mmin, mmax, vol; } SoundPrm;
 typedef struct {
 	NSString *key;
-	SoundPrm v, fd;
+	SoundPrm v, fd, ud;
 	NSString *loaded;
 	MySound *snd;
 	int FDBit;
 } SoundSrc;
+
+extern unsigned long current_time_us(void);
 
 #endif /* CommonTypes_h */

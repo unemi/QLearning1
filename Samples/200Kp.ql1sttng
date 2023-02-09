@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>T0</key>
+	<real>0.5</real>
+	<key>T1</key>
+	<real>0.01999999955296516</real>
+	<key>alpha</key>
+	<real>0.05000000074505806</real>
+	<key>colorAgent</key>
+	<string>4C4C4CFF</string>
+	<key>colorBackground</key>
+	<string>000000FF</string>
+	<key>colorGridLines</key>
+	<string>7F7F7FFF</string>
+	<key>colorObstacles</key>
+	<string>4C4C4CFF</string>
+	<key>colorParticles</key>
+	<string>FEECAD19</string>
+	<key>colorSymbols</key>
+	<string>B2B2B2FF</string>
+	<key>cooling</key>
+	<real>0.05000000074505806</real>
+	<key>gamma</key>
+	<real>0.9599999785423279</real>
+	<key>initQValue</key>
+	<real>0.5</real>
+	<key>maxGoalCount</key>
+	<integer>60</integer>
+	<key>maxSteps</key>
+	<integer>8000</integer>
+	<key>memSize</key>
+	<integer>256</integer>
+	<key>memTrials</key>
+	<integer>32</integer>
+	<key>nParticles</key>
+	<integer>200000</integer>
+	<key>obstaclesMode</key>
+	<integer>0</integer>
+	<key>ptclColorMode</key>
+	<integer>2</integer>
+	<key>ptclFriction</key>
+	<real>0.8999999761581421</real>
+	<key>ptclLength</key>
+	<real>0.2000000029802322</real>
+	<key>ptclLifeSpan</key>
+	<integer>80</integer>
+	<key>ptclMass</key>
+	<real>2</real>
+	<key>ptclMaxSpeed</key>
+	<real>0.05000000074505806</real>
+	<key>ptclShapeMode</key>
+	<integer>2</integer>
+	<key>ptclWeight</key>
+	<real>0.009999999776482582</real>
+	<key>recordFinalImage</key>
+	<false/>
+	<key>screenForFullScreenMode</key>
+	<string>Main window&apos;s screen</string>
+	<key>showFPS</key>
+	<true/>
+	<key>sounds</key>
+	<true/>
+	<key>startWithFullScreenMode</key>
+	<false/>
+	<key>stepsPerSec</key>
+	<real>60</real>
+</dict>
+</plist>

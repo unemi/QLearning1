@@ -12,7 +12,7 @@
 #import "MySound.h"
 @import UniformTypeIdentifiers;
 
-static BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
+BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
 	return [a->path isEqualToString:b->path] &&
 		a->mmin == b->mmin && a->mmax == b->mmax && a->vol == b->vol;
 }
@@ -56,14 +56,15 @@ static void displayReconfigCB(CGDirectDisplayID display,
 	NSArray<NSColorWell *> *colWels;
 	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts, *sndTxts;
 	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns, *editBtns, *playBtns;
-	NSArray<NSControl *> *sndContrls;
+	NSArray<NSStepper *> *ivStps;
+	NSArray<NSControl *> *sndContrls, *wrldControls;
 	NSSound *soundNowPlaying;
 	NSUndoManager *undoManager, *undoMng4SndPnl;
 	SoundType playingSoundType, openingSoundType;
 	SoundPrm orgSndParams;
 	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
 		FDBTDm, FDBTObs, FDBTFulScr;
-	UInt64 FDBits;
+	UInt64 UDBits, FDBits;
 }
 - (NSString *)windowNibName { return @"ControlPanel"; }
 static NSString *sound_name(SoundType type) {
@@ -104,20 +105,31 @@ static NSAttributedString *sound_info(SoundType type) {
 		editBtns[type].enabled = playBtns[type].enabled = NO;
 	}
 }
+static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteger mx) {
+	((NSNumberFormatter *)dgt.formatter).maximum = @(stp.maxValue = mx - 1);
+} 
 - (void)adjustControls {
 	for (NSColorWell *cwl in colWels) cwl.color = *ColVars[cwl.tag].v;
 	for (NSTextField *dgt in ivDgts) dgt.intValue = *IntVars[dgt.tag].v;
 	for (NSTextField *dgt in fvDgts) dgt.floatValue = *FloatVars[dgt.tag].v;
 	for (NSTextField *dgt in uvDgts) dgt.integerValue = UIntegerVars[dgt.tag].v;
+	for (NSStepper *stp in ivStps) stp.intValue = *IntVars[stp.tag].v;
 	for (NSButton *btn in boolVBtns) btn.state = BoolVars[btn.tag].v;
 	for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
 	for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
 	dgtStrokeWidth.enabled = (ptclShapeMode != PTCLbyLines);
-	[obsPopUp selectItemAtIndex:obstaclesMode];
+	[obsPopUp selectItemAtIndex:newObsMode];
 	[screenPopUp selectItemWithTitle:scrForFullScr];
 	[self adjustSoundsCtrls];
+	for (NSControl *ctrl in wrldControls) ctrl.enabled = (newObsMode == ObsExternal);
+	cboxRecordImages.enabled = (obstaclesMode != ObsExternal);
+	adjust_position_max_values(dgtStartX, stpStartX, newGridW);
+	adjust_position_max_values(dgtStartY, stpStartY, newGridH);
+	adjust_position_max_values(dgtGoalX, stpGoalX, newGridW);
+	adjust_position_max_values(dgtGoalY, stpGoalY, newGridH);
 	dgtCoolingRate.enabled = (MAX_STEPS == 0);
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
+	btnSaveAsUD.enabled = btnRevertToUD.enabled = (UDBits != 0);
 }
 #define SETUP_CNTRL(b,class,list,fn,var,ref,act)	b = (int)bit; tag = 0;\
 	for (class *ctr in list) {\
@@ -143,17 +155,21 @@ static NSAttributedString *sound_info(SoundType type) {
 	if (error != kCGErrorSuccess)
 		NSLog(@"CGDisplayRegisterReconfigurationCallback error = %d", error);
 	colWels = @[cwlBackground, cwObstacles, cwAgent, cwGridLines, cwSymbols, cwParticles];
-	ivDgts = @[dgtMemSize, dgtMemTrials, dgtNParticles, dgtLifeSpan];
+	ivDgts = @[dgtGridW, dgtGridH, dgtTileH, dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
+		dgtMemSize, dgtMemTrials, dgtNParticles, dgtLifeSpan];
+	ivStps = @[stpGridW, stpGridH, stpTileH, stpStartX, stpStartY, stpGoalX, stpGoalY];
 	fvDgts = @[dgtT0, dgtT1, dgtCoolingRate, dgtInitQValue, dgtGamma, dgtAlpha,
-		dgtStpPS, dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed];
+		dgtStpPS, dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed, dgtLifeSpan];
 	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
-	boolVBtns = @[cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS];
+	boolVBtns = @[cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS, cBoxSAUDWT];
 	colBtns = @[btnColConst, btnColAngle, btnColSpeed];
 	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
 	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
 	editBtns = @[editBump, editGoal, editGood, editBad, editAmbience];
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
 	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
+	wrldControls = @[dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
+		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtLifeSpan];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
@@ -162,8 +178,16 @@ static NSAttributedString *sound_info(SoundType type) {
 	SETUP_CNTRL(FDBTBool, NSButton, boolVBtns, , , BoolVars, switchBoolValue)
 	SETUP_RADIOBTN(FDBTDc, ptclColorMode, ptclColorModeFD, colBtns, chooseColorMode)
 	SETUP_RADIOBTN(FDBTDm, ptclShapeMode, ptclShapeModeFD, dmBtns, chooseShapeMode)
+	for (NSInteger i = 0; i < ivStps.count; i ++) {
+		ivStps[i].tag = i;
+		ivStps[i].target = self;
+		ivStps[i].action = @selector(changeIntValue:);
+		NSNumberFormatter *fmt = ivDgts[i].formatter;
+		ivStps[i].minValue = fmt.minimum.integerValue;
+		ivStps[i].maxValue = fmt.maximum.integerValue;
+	}
 	FDBTObs = (int)bit;
-	if (obstaclesMode != obsModeFD) FDBits |= 1 << bit;
+	if (newObsMode != obsModeFD) FDBits |= 1 << bit;
 	FDBTFulScr = (int)(++ bit);
 	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -172,12 +196,17 @@ static NSAttributedString *sound_info(SoundType type) {
 		if (!prm_equal(&s->v, &s->fd)) FDBits |= 1 << bit;
 	}
 	[self adjustControls];
+	[NSNotificationCenter.defaultCenter addObserverForName:@"obsModeChangedByReset"
+		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
+		self->cboxRecordImages.enabled = (obstaclesMode != ObsExternal);
+	}];
 }
-- (void)checkFDBits:(NSInteger)bitPosition cond:(BOOL)cond {
+- (void)checkFDBits:(NSInteger)bitPosition fd:(BOOL)fdc ud:(BOOL)udc {
 	UInt64 mask = 1ULL << bitPosition;
-	if (cond) FDBits &= ~ mask;
-	else FDBits |= mask;
+	if (fdc) FDBits &= ~ mask; else FDBits |= mask;
+	if (udc) UDBits &= ~ mask; else UDBits |= mask;
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
+	btnSaveAsUD.enabled = btnRevertToUD.enabled = (UDBits != 0);
 }
 - (IBAction)chooseColorWell:(NSColorWell *)colWl {
 	ColVarInfo *info = &ColVars[colWl.tag];
@@ -192,22 +221,39 @@ static NSAttributedString *sound_info(SoundType type) {
 	undoManager.actionName = NSLocalizedString(info->key, nil);
 	*var = newValue;
 	[self checkFDBits:FDBTCol + (int)colWl.tag
-		cond:newValUlong == col_to_ulong(info->fd)];
+		fd:newValUlong == col_to_ulong(info->fd)
+		ud:newValUlong == col_to_ulong(info->ud)];
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		(info->flag & ShouldPostNotification)? info->key : keyShouldRedraw object:NSApp];
 }
-- (IBAction)changeIntValue:(NSTextField *)dgt {
-	IntVarInfo *info = &IntVars[dgt.tag];
-	int *var = info->v, newValue = dgt.intValue;
+- (void)checkWorldContrl:(NSControl *)ctl newValue:(int)newValue {
+	if (ctl.tag >= ivStps.count) return;
+	NSControl *cp;
+	if ([ctl isKindOfClass:NSStepper.class]) cp = ivDgts[ctl.tag];
+	else cp = ivStps[ctl.tag];
+	cp.intValue = newValue;
+	if (ctl.tag == GRID_W_TAG) {
+		adjust_position_max_values(dgtStartX, stpStartX, newValue);
+		adjust_position_max_values(dgtGoalX, stpGoalX, newValue);
+	} else if (ctl.tag == GRID_H_TAG) {
+		adjust_position_max_values(dgtStartY, stpStartY, newValue);
+		adjust_position_max_values(dgtGoalY, stpGoalY, newValue);
+	}
+}
+- (IBAction)changeIntValue:(NSControl *)ctl {
+	IntVarInfo *info = &IntVars[ctl.tag];
+	int *var = info->v, newValue = ctl.intValue;
 	if (*var == newValue) return;
 	int orgValue = *var;
+	[self checkWorldContrl:ctl newValue:newValue];
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
-		dgt.intValue = orgValue;
-		[dgt sendAction:dgt.action to:target];
+		ctl.intValue = orgValue;
+		[ctl sendAction:ctl.action to:target];
 	}];
 	undoManager.actionName = NSLocalizedString(info->key, nil);
 	*var = newValue;
-	[self checkFDBits:FDBTInt + dgt.tag cond:newValue == info->fd];
+	[self checkFDBits:FDBTInt + ctl.tag
+		fd:newValue == info->fd ud:newValue == info->ud];
 	if (info->flag & ShouldPostNotification)
 		[NSNotificationCenter.defaultCenter postNotificationName:
 			info->key object:NSApp userInfo:@{keyOldValue:@(orgValue), keyCntlPnl:self}];
@@ -223,7 +269,8 @@ static NSAttributedString *sound_info(SoundType type) {
 	}];
 	undoManager.actionName = NSLocalizedString(info->key, nil);
 	*var = newValue;
-	[self checkFDBits:FDBTFloat + dgt.tag cond:newValue == info->fd];
+	[self checkFDBits:FDBTFloat + dgt.tag
+		fd:newValue == info->fd ud:newValue == info->ud];
 	if (info->flag & ShouldRedrawScreen) [NSNotificationCenter.defaultCenter
 		postNotificationName:keyShouldRedraw object:NSApp];
 	if (info->flag & ShouldReviseVertices) [NSNotificationCenter.defaultCenter
@@ -239,7 +286,8 @@ static NSAttributedString *sound_info(SoundType type) {
 	}];
 	undoManager.actionName = NSLocalizedString(info->key, nil);
 	info->v = newValue;
-	[self checkFDBits:FDBTUInt + dgt.tag cond:newValue == info->fd];
+	[self checkFDBits:FDBTUInt + dgt.tag
+		fd:newValue == info->fd ud:newValue == info->ud];
 	if (dgt.tag == MAX_STEPS_TAG)
 		dgtCoolingRate.enabled = (MAX_STEPS == 0);
 	[NSNotificationCenter.defaultCenter
@@ -255,7 +303,8 @@ static NSAttributedString *sound_info(SoundType type) {
 	}];
 	undoManager.actionName = btn.title;
 	info->v = newValue;
-	[self checkFDBits:FDBTBool + btn.tag cond:newValue == info->fd];
+	[self checkFDBits:FDBTBool + btn.tag
+		fd:newValue == info->fd ud:newValue == info->ud];
 	if (info->flag & ShouldPostNotification)
 		[NSNotificationCenter.defaultCenter
 			postNotificationName:info->key object:NSApp];
@@ -270,7 +319,7 @@ static NSAttributedString *sound_info(SoundType type) {
 	}];
 	undoManager.actionName = NSLocalizedString(keyColorMode, nil);
 	ptclColorMode = newValue;
-	[self checkFDBits:FDBTDc cond:newValue == ptclColorModeFD];
+	[self checkFDBits:FDBTDc fd:newValue == ptclColorModeFD ud:newValue == ptclColorModeUD];
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		keyColorMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
@@ -284,20 +333,21 @@ static NSAttributedString *sound_info(SoundType type) {
 	undoManager.actionName = NSLocalizedString(keyShapeMode, nil);
 	ptclShapeMode = newValue;
 	dgtStrokeWidth.enabled = (newValue != PTCLbyLines);
-	[self checkFDBits:FDBTDm cond:newValue == ptclShapeModeFD];
+	[self checkFDBits:FDBTDm fd:newValue == ptclShapeModeFD ud:newValue == ptclShapeModeUD];
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		keyShapeMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
 - (IBAction)chooseObstaclesMode:(NSPopUpButton *)popUp {
 	ObstaclesMode newValue = (ObstaclesMode)popUp.indexOfSelectedItem;
-	if (obstaclesMode == newValue) return;
-	ObstaclesMode orgValue = obstaclesMode;
+	if (newObsMode == newValue) return;
+	ObstaclesMode orgValue = newObsMode;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[popUp selectItemAtIndex:orgValue];
 		[popUp sendAction:popUp.action to:popUp.target];
 	}];
 	undoManager.actionName = NSLocalizedString(keyObsMode, nil);
-	obstaclesMode = newValue;
+	newObsMode = newValue;
+	for (NSControl *cntrl in wrldControls) cntrl.enabled = (newValue == ObsExternal);
 	[NSNotificationCenter.defaultCenter postNotificationName:keyObsMode object:NSApp];
 }
 - (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {
@@ -312,15 +362,17 @@ static NSAttributedString *sound_info(SoundType type) {
 	}];
 	undoManager.actionName = NSLocalizedString(keyScrForFullScr, nil);
 	scrForFullScr = newValue;
-	[self checkFDBits:FDBTFulScr cond:newValue == scrForFullScrFD];
+	[self checkFDBits:FDBTFulScr fd:newValue == scrForFullScrFD ud:newValue == scrForFullScrUD];
 }
 - (void)setSoundType:(SoundType)type prm:(SoundPrm)prm {
 	SoundSrc *s = &sndData[type];
+	if (prm_equal(&prm, &s->v)) return;
 	SoundPrm orgPrm = s->v;
 	change_sound_data(type, prm.path);
 	s->v = prm;
 	sndTxts[type].attributedStringValue = sound_info(type);
-	[self checkFDBits:sndData[type].FDBit cond:prm_equal(&orgPrm, &prm)];
+	[self checkFDBits:sndData[type].FDBit
+		fd:prm_equal(&prm, &s->fd) ud:prm_equal(&prm, &s->ud)];
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[self setSoundType:type prm:orgPrm];
 	}];
@@ -532,76 +584,82 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 	if (a->vol != b->vol) md[@"vol"] = @(b->vol);
 	return md;
 }
+void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
+	NSNumber *num; NSString *str;
+	if ((str = dict[@"path"]) != nil) prm->path = str;
+	if ((num = dict[@"mmin"]) != nil) prm->mmin = num.floatValue;
+	if ((num = dict[@"mmax"]) != nil) prm->mmax = num.floatValue;
+	if ((num = dict[@"vol"]) != nil) prm->vol = num.floatValue;
+}
+- (IBAction)exhibitionMode:(id)sender {
+	NSColor *transparent = [NSColor colorWithWhite:0. alpha:0.];
+	[self setParamValuesFromDict:@{
+		@"colorGridLines":transparent, @"colorSymbols":transparent,
+		@"sounds":@NO, @"recordFinalImage":@NO,@"startWithFullScreenMode":@YES,
+		keyObsMode:@(ObsExternal)
+	}];
+}
+#define CLCT_DF(elm,forAll,infoType,valType,valGetter,star)	forAll(^(infoType *p) {\
+	if (star p->v != p->elm) md[p->key] = @(p->elm); });
+#define CLCT_DF_ENM(key,dfVar,var)	if (var != dfVar) md[key] = @(dfVar);
+#define CLCT_DF_STR(key,dfVar,var) if (![var isEqualToString:dfVar]) md[key] = dfVar;
+#define REVERT_TO_DF(elm) \
+	NSMutableDictionary *md = NSMutableDictionary.new;\
+	CLCT_DF(elm, for_all_int_vars, IntVarInfo, int, intValue, *)\
+	CLCT_DF(elm, for_all_float_vars, FloatVarInfo, float, floatValue, *)\
+	CLCT_DF(elm, for_all_uint_vars, UIntegerVarInfo, NSUInteger, integerValue, )\
+	CLCT_DF(elm, for_all_bool_vars, BoolVarInfo, BOOL, boolValue, )\
+	for_all_color_vars(^(ColVarInfo *p) {\
+		if (col_to_ulong(*p->v) != col_to_ulong(p->elm)) md[p->key] = p->elm; });\
+	for (SoundType type = 0; type < NVoices; type ++) {\
+		SoundSrc *s = &sndData[type];\
+		if (!prm_equal(&s->v, &s->elm)) md[s->key] = param_diff_dict(&s->v, &s->elm); }
+- (IBAction)revertToUserDefault:(id)sender {
+	REVERT_TO_DF(ud)
+	CLCT_DF_ENM(keyColorMode, ptclColorModeUD, ptclColorMode)
+	CLCT_DF_ENM(keyShapeMode, ptclShapeModeUD, ptclShapeMode)
+	CLCT_DF_ENM(keyObsMode, obsModeUD, newObsMode)
+	CLCT_DF_STR(keyScrForFullScr, scrForFullScrUD, keyScrForFullScr)
+	[self setParamValuesFromDict:md];
+	undoManager.actionName = btnRevertToUD.title;
+}
 - (IBAction)revertToFactoryDefault:(id)sender {
-	NSMutableDictionary *md = NSMutableDictionary.new;
-	for_all_int_vars(^(IntVarInfo *p) {
-		if (*p->v != p->fd) md[p->key] = @(p->fd);
-	});
-	for_all_float_vars(^(FloatVarInfo *p) {
-		if (*p->v != p->fd) md[p->key] = @(p->fd);
-	});
-	for_all_uint_vars(^(UIntegerVarInfo *p) {
-		if (p->v != p->fd) md[p->key] = @(p->fd);
-	});
-	for_all_bool_vars(^(BoolVarInfo *p) {
-		if (p->v != p->fd) md[p->key] = @(p->fd);
-	});
-	for_all_color_vars(^(ColVarInfo *p) {
-		if (col_to_ulong(*p->v) != col_to_ulong(p->fd)) md[p->key] = p->fd;
-	});
-	if (ptclColorMode != ptclColorModeFD) md[keyColorMode] = @(ptclColorModeFD);
-	if (ptclShapeMode != ptclShapeModeFD) md[keyShapeMode] = @(ptclShapeModeFD);
-	if (obstaclesMode != obsModeFD) md[keyObsMode] = @(obsModeFD);
-	if (![scrForFullScr isEqualToString:scrForFullScrFD])
-		md[keyScrForFullScr] = scrForFullScrFD;
-	for (SoundType type = 0; type < NVoices; type ++) {
-		SoundSrc *s = &sndData[type];
-		if (!prm_equal(&s->v, &s->fd)) md[s->key] = param_diff_dict(&s->v, &s->fd);
-	}
+	REVERT_TO_DF(fd)
+	CLCT_DF_ENM(keyColorMode, ptclColorModeFD, ptclColorMode)
+	CLCT_DF_ENM(keyShapeMode, ptclShapeModeFD, ptclShapeMode)
+	CLCT_DF_ENM(keyObsMode, obsModeFD, newObsMode)
+	CLCT_DF_STR(keyScrForFullScr, scrForFullScrFD, keyScrForFullScr)
 	[self setParamValuesFromDict:md];
 	undoManager.actionName = btnRevertToFD.title;
 }
+#define SETPRM_DICT(forAll,iType,vType,getter,tbl,bt,star)	forAll(^(iType *p) {\
+		NSNumber *num = dict[p->key]; if (num == nil) return;\
+		vType newValue = num.getter; if (star p->v == newValue) return;\
+		if (p->flag & ShouldPostNotification) [postKeys addObject:p->key];\
+		orgValues[p->key] = @(star p->v);\
+		UInt64 bit = 1 << (self->bt + (p - tbl));\
+		if (newValue == p->fd || star p->v == p->fd) *fbP |= bit;\
+		if (newValue == p->ud || star p->v == p->ud) *ubP |= bit;\
+		star p->v = newValue; });
+#define SETENM_DICT(key,type,fdVar,udVar,var,bt) 	if ((num = dict[key]) != nil) {\
+	type newValue = num.intValue;\
+	if (var != newValue) {\
+		orgValues[key] = @(var);\
+		UInt64 bit = 1 << bt;\
+		if (var == fdVar || newValue == fdVar) *fbP |= bit;\
+		if (var == udVar || newValue == udVar) *ubP |= bit;\
+		var = newValue;\
+		[postKeys addObject:key]; }}
+
 - (void)setParamValuesFromDict:(NSDictionary *)dict {
 	NSMutableArray<NSString *> *postKeys = NSMutableArray.new;
 	NSMutableDictionary *orgValues = NSMutableDictionary.new;
 	BOOL shouldRedraw = NO, *srP = &shouldRedraw;
-	UInt64 fdFlipBits = 0, *fbP = &fdFlipBits;
-	for_all_int_vars(^(IntVarInfo *p) {
-		NSNumber *num = dict[p->key]; if (num == nil) return;
-		int newValue = num.intValue; if (*p->v == newValue) return;
-		if (p->flag & ShouldPostNotification) [postKeys addObject:p->key];
-		orgValues[p->key] = @(*p->v);
-		if (newValue == p->fd || *p->v == p->fd)
-			*fbP |= 1 << (self->FDBTInt + (p - IntVars));
-		*p->v = newValue;
-	});
-	for_all_float_vars(^(FloatVarInfo *p) {
-		NSNumber *num = dict[p->key]; if (num == nil) return;
-		float newValue = num.floatValue; if (*p->v == newValue) return;
-		if (p->flag & ShouldRedrawScreen) *srP = YES;
-		orgValues[p->key] = @(*p->v);
-		if (newValue == p->fd || *p->v == p->fd)
-			*fbP |= 1 << (self->FDBTFloat + (p - FloatVars));
-		*p->v = newValue;
-	});
-	for_all_uint_vars(^(UIntegerVarInfo *p) {
-		NSNumber *num = dict[p->key]; if (num == nil) return;
-		NSUInteger newValue = num.integerValue; if (p->v == newValue) return;
-		[postKeys addObject:p->key];
-		orgValues[p->key] = @(p->v);
-		if (newValue == p->fd || p->v == p->fd)
-			*fbP |= 1 << (self->FDBTUInt + (p - UIntegerVars));
-		p->v = newValue;
-	});
-	for_all_bool_vars(^(BoolVarInfo *p) {
-		NSNumber *num = dict[p->key]; if (num == nil) return;
-		BOOL newValue = num.boolValue; if (p->v == newValue) return;
-		if (p->flag & ShouldPostNotification) [postKeys addObject:p->key];
-		orgValues[p->key] = @(p->v);
-		if (newValue == p->fd || p->v == p->fd)
-			*fbP |= 1 << (self->FDBTBool + (p - BoolVars));
-		p->v = newValue;
-	});
+	UInt64 fdFlipBits = 0, *fbP = &fdFlipBits, udFlipBits = 0, *ubP = &udFlipBits;
+	SETPRM_DICT(for_all_int_vars, IntVarInfo, int, intValue, IntVars, FDBTInt, *)
+	SETPRM_DICT(for_all_float_vars, FloatVarInfo, float, floatValue, FloatVars, FDBTFloat, *)
+	SETPRM_DICT(for_all_uint_vars, UIntegerVarInfo, NSUInteger, integerValue, UIntegerVars, FDBTUInt, )
+	SETPRM_DICT(for_all_bool_vars, BoolVarInfo, BOOL, boolValue, BoolVars, FDBTBool, )
 	for_all_color_vars(^(ColVarInfo *p) {
 		NSObject *newValue = dict[p->key];
 		if (newValue == nil) return;
@@ -610,52 +668,28 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 			newCol = (NSColor *)newValue;
 			uIntCol = col_to_ulong(newCol);
 		} else if ([newValue isKindOfClass:NSString.class]) {
-			uIntCol = hex_string_to_uint((NSString *)newValue);
+			uIntCol = hex_string_to_ulong((NSString *)newValue);
 		} else return;
-		if (col_to_ulong(*p->v) == uIntCol) return;
+		NSInteger vCol = col_to_ulong(*p->v);
+		if (vCol == uIntCol) return;
 		if (p->flag & ShouldPostNotification) [postKeys addObject:p->key];
 		else *srP = YES;
 		orgValues[p->key] = *p->v;
-		NSInteger fdCol = col_to_ulong(p->fd);
-		if (uIntCol == fdCol || col_to_ulong(*p->v) == fdCol)
-			*fbP |= 1 << (self->FDBTCol + (p - ColVars));
+		UInt64 bit = 1 << (self->FDBTCol + (p - ColVars));
+		NSInteger fdCol = col_to_ulong(p->fd), udCol = col_to_ulong(p->ud);
+		if (uIntCol == fdCol || vCol == fdCol) *fbP |= bit; 
+		if (uIntCol == udCol || vCol == udCol) *ubP |= bit; 
 		*p->v = (newCol != nil)? newCol : ulong_to_col(uIntCol); });
 	NSNumber *num;
-	if ((num = dict[keyColorMode]) != nil) {
-		PTCLColorMode newValue = num.intValue;
-		if (ptclColorMode != newValue) {
-			orgValues[keyColorMode] = @(ptclColorMode);
-			if (ptclColorMode == ptclColorModeFD || newValue == ptclColorModeFD)
-				*fbP |= 1 << FDBTDc;
-			ptclColorMode = newValue;
-			[postKeys addObject:keyColorMode];
-		}
-	}
-	if ((num = dict[keyShapeMode]) != nil) {
-		PTCLShapeMode newValue = num.intValue;
-		if (ptclShapeMode != newValue) {
-			orgValues[keyShapeMode] = @(ptclShapeMode);
-			if (ptclShapeMode == ptclShapeModeFD || newValue == ptclShapeModeFD)
-				fdFlipBits |= 1 << FDBTDm;
-			ptclShapeMode = newValue;
-			[postKeys addObject:keyShapeMode];
-		}
-	}
-	if ((num = dict[keyObsMode]) != nil) {
-		ObstaclesMode newValue = num.intValue;
-		if (obstaclesMode != newValue) {
-			orgValues[keyObsMode] = @(obstaclesMode);
-			if (obstaclesMode == obsModeFD || newValue == obsModeFD)
-				fdFlipBits |= 1 << FDBTObs;
-			obstaclesMode = newValue;
-			[postKeys addObject:keyObsMode];
-		}
-	}
+	SETENM_DICT(keyColorMode, PTCLColorMode, ptclColorModeFD, ptclColorModeUD, ptclColorMode, FDBTDc)
+	SETENM_DICT(keyShapeMode, PTCLShapeMode, ptclShapeModeFD, ptclShapeModeUD, ptclShapeMode, FDBTDm)
+	SETENM_DICT(keyObsMode, ObstaclesMode, obsModeFD, obsModeUD, newObsMode, FDBTObs)
 	NSString *newValue = dict[keyScrForFullScr];
 	if (newValue != nil && ![scrForFullScr isEqualToString:newValue]) {
 		orgValues[keyScrForFullScr] = scrForFullScr;
-		if (scrForFullScr == scrForFullScrFD || newValue == scrForFullScrFD)
-			fdFlipBits |= 1 << FDBTFulScr;
+		UInt64 bit = 1 << FDBTFulScr;
+		if (scrForFullScr == scrForFullScrFD || newValue == scrForFullScrFD) fdFlipBits |= bit;
+		if (scrForFullScr == scrForFullScrUD || newValue == scrForFullScrUD) udFlipBits |= bit;
 		scrForFullScr = newValue;
 	}
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -663,18 +697,17 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 		NSDictionary *dc = dict[s->key];
 		if (dc == nil) continue;
 		SoundPrm prm = s->v;
-		if ((newValue = dc[@"path"]) != nil) prm.path = newValue;
-		if ((num = dc[@"mmin"]) != nil) prm.mmin = num.floatValue;
-		if ((num = dc[@"mmax"]) != nil) prm.mmax = num.floatValue;
-		if ((num = dc[@"vol"]) != nil) prm.vol = num.floatValue;
+		set_param_from_dict(&prm, dc);
 		if (prm_equal(&s->v, &prm)) continue;
 		orgValues[s->key] = param_diff_dict(&prm, &s->v);
-		if (prm_equal(&prm, &s->fd) || prm_equal(&s->v, &s->fd))
-			fdFlipBits |= 1 << s->FDBit;
+		UInt64 bit = 1 << s->FDBit;
+		if (prm_equal(&prm, &s->fd) || prm_equal(&s->v, &s->fd)) fdFlipBits |= bit;
+		if (prm_equal(&prm, &s->ud) || prm_equal(&s->v, &s->ud)) udFlipBits |= bit;
 		if (![prm.path isEqualToString:s->v.path])
 			change_sound_data(type, prm.path);
 	}
 	FDBits ^= fdFlipBits;
+	UDBits ^= udFlipBits;
 	[self adjustControls];
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		[self setParamValuesFromDict:orgValues];
@@ -696,7 +729,7 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 	});
 	md[keyColorMode] = @(ptclColorMode);
 	md[keyShapeMode] = @(ptclShapeMode);
-	md[keyObsMode] = @(obstaclesMode);
+	md[keyObsMode] = @(newObsMode);
 	md[keyScrForFullScr] = scrForFullScr;
 	return md;
 }
@@ -737,19 +770,24 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 			error_msg(error, self.window);
 	}];
 }
+- (IBAction)saveAsUserDefaults:(id)sender {
+	save_as_user_defaults();
+}
 - (void)adjustNParticleDgt { // called when memory allocation failed.
 	dgtNParticles.integerValue = NParticles;
 	int idx;
 	for (idx = 0; IntVars[idx].key != nil; idx ++)
 		if (IntVars[idx].v == &NParticles) break;
-	[self checkFDBits:FDBTInt + idx cond:NParticles == IntVars[idx].fd];
+	[self checkFDBits:FDBTInt + idx
+		fd:NParticles == IntVars[idx].fd ud:NParticles == IntVars[idx].ud];
 }
 - (void)adjustColorMode:(NSDictionary *)info { // called when buffer allocation failed.
 	NSNumber *num = info[keyOldValue];
 	if (num != nil) {
 		ptclColorMode = (PTCLColorMode)num.intValue;
 		for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
-		[self checkFDBits:FDBTDc cond:ptclColorMode == ptclColorModeFD];
+		[self checkFDBits:FDBTDc
+			fd:ptclColorMode == ptclColorModeFD ud:ptclColorMode == ptclColorModeUD];
 	} else [undoManager undo];
 }
 - (void)adjustShapeMode:(NSDictionary *)info { // called when buffer allocation failed.
@@ -757,7 +795,8 @@ static NSDictionary *param_diff_dict(SoundPrm *a, SoundPrm *b) {
 	if (num != nil) {
 		ptclShapeMode = (PTCLShapeMode)num.intValue;
 		for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
-		[self checkFDBits:FDBTDm cond:ptclShapeMode == ptclShapeModeFD];
+		[self checkFDBits:FDBTDm
+			fd:ptclShapeMode == ptclShapeModeFD ud:ptclShapeMode == ptclShapeModeUD];
 	} else [undoManager undo];
 }
 //

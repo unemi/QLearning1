@@ -12,9 +12,11 @@
 #import "RecordView.h"
 #import "MyViewForCG.h"
 #import "MySound.h"
+#import "CommPanel.h"
 
-ObstaclesMode obstaclesMode = ObsFixed;
-NSString *scrForFullScr = @"Screen the main window placed";
+ObstaclesMode obstaclesMode = ObsFixed, newObsMode = ObsFixed;
+float ManObsLifeSpan = 1.f;
+NSString *scrForFullScr = @"Main window's screen";
 static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
 MainWindow *theMainWindow = nil;
 
@@ -50,25 +52,15 @@ MainWindow *theMainWindow = nil;
 }
 @end
 
-static void setup_obstacle_info(void) {
-	memset(Obstacles, 0, sizeof(Obstacles));
-	for (int i = 0; i < NObstacles; i ++)
-		Obstacles[ObsP[i].y][ObsP[i].x] = 1;
-	int k1 = 0, k2 = 0;
-	for (int j = 0; j < NGridW; j ++)
-	for (int i = 0; i < NGridH; i ++) {
-		if (k1 < NObstacles && ObsP[k1][0] == j && ObsP[k1][1] == i) k1 ++;
-		else { FieldP[k2][0] = j; FieldP[k2][1] = i; k2 ++; }
-	}
-}
+typedef enum { TrackRight, TrackFront, TrackLeft, NTrackings } TrackingIndex;
+
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
-	NSLock *agentEnvLock;
 	CGFloat interval;
 	BOOL running;
 	NSUInteger steps, goalCount;
-	NSInteger sendingSPP;
+	float sendingPPS;
 	NSRect infoViewFrame;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
@@ -79,21 +71,32 @@ static void setup_obstacle_info(void) {
 		*fpsDgt, *fpsUnit;
 	NSArray<NSTextField *> *infoTexts;
 	CGFloat FPS, expectedGoals, expectedSteps;
+	unsigned long *manObsTOB;	// time in micro second of birth
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
-- (void)adjustViewFrame:(NSNotification *)note {
+static inline BOOL rec_enabled(void) {
+	return RECORD_IMAGES && obstaclesMode != ObsExternal;
+}
+static inline CGFloat field_aspect_ratio(void) {
+	return (CGFloat)nGridW * tileSize.x / (nGridH * tileSize.y);
+}
+static CGFloat drawn_area_aspaect_ratio(void) {
+	CGFloat far = field_aspect_ratio();
+	return (!rec_enabled())? far : far + 5. / 18.;
+}
+- (void)adjustViewFrame:(NSNotification *)note {	// called when contentview size changed
 	NSSize cSize = view.superview.frame.size;
 	CGFloat cAspect = cSize.width / cSize.height,
-		iAspect = RECORD_IMAGES? 16. / 9. : (CGFloat)NGridW / NGridH;
+		iAspect = drawn_area_aspaect_ratio();
 	NSRect vFrame = (cAspect == iAspect)? (NSRect){0., 0., cSize} :
 		(cAspect > iAspect)?
 			(NSRect){(cSize.width - cSize.height * iAspect) / 2., 0.,
 				cSize.height * iAspect, cSize.height} :
 			(NSRect){0., (cSize.height - cSize.width / iAspect) / 2.,
 				cSize.width, cSize.width / iAspect};
-	if (RECORD_IMAGES) {
+	if (rec_enabled()) {
 		NSRect rFrame = vFrame;
-		vFrame.size.width = vFrame.size.height * NGridW / NGridH;
+		vFrame.size.width = vFrame.size.height * field_aspect_ratio();
 		rFrame.size.width -= vFrame.size.width;
 		rFrame.origin.x += vFrame.size.width;
 		[recordView setFrame:rFrame];
@@ -104,14 +107,12 @@ static void setup_obstacle_info(void) {
 	if (!view.superview.inFullScreenMode) {
 		NSRect wFrame = view.window.frame;
 		NSSize cSize = view.superview.frame.size;
-		CGFloat deltaWidth = view.frame.size.height *
-			(RECORD_IMAGES? 16. / 9. : (CGFloat)NGridW / NGridH) - cSize.width;
+		CGFloat deltaWidth = view.frame.size.height * drawn_area_aspaect_ratio() - cSize.width;
 		wFrame.origin.x -= deltaWidth / 2.;
 		wFrame.size.width += deltaWidth;
 		[view.window setFrame:wFrame display:YES];
-	}
-	[self adjustViewFrame:note];
-	recordView.hidden = !RECORD_IMAGES;
+	} else [self adjustViewFrame:note];
+	recordView.hidden = !rec_enabled();
 }
 - (void)adjustMaxStepsOrGoals:(NSInteger)tag {
 	switch (tag) {
@@ -132,14 +133,61 @@ static BOOL is_symbol_color_visible(void) {
 		return (c[nc - 1] > 0.);
 	} else return YES;
 }
+static void organize_work_mems(void) {
+	Obstacles = realloc(Obstacles, sizeof(int) * nGrids);
+	FieldP = realloc(FieldP, sizeof(simd_int2) * nActiveGrids);
+	memset(Obstacles, 0, sizeof(int) * nGrids);
+	for (int i = 0; i < nObstacles; i ++)
+		Obstacles[ij_to_idx(ObsP[i])] = 1;
+	simd_int2 ixy; int k = 0;
+	for (ixy.y = 0; ixy.y < nGridH; ixy.y ++)
+	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++)
+		if (Obstacles[ij_to_idx(ixy)] == 0 && k < nActiveGrids) FieldP[k ++] = ixy;
+}
+-(void)setupObstacles {
+	BOOL gridChanged = nGridW != newGridW || nGridH != newGridH,
+		dimChanged = gridChanged || tileSize.y != newTileH,
+		obsModeChanged = obstaclesMode != newObsMode;
+	if (gridChanged) {
+		nGridW = newGridW; nGridH = newGridH;
+		[display clearObsPCache];
+	}
+	if (dimChanged) {
+		tileSize.y = newTileH;
+		[self adjustForRecordView:nil];
+	}
+	switch ((obstaclesMode = newObsMode)) {
+		case ObsFixed: case ObsRandom:
+		StartP = FixedStartP; GoalP = FixedGoalP;
+		nObstacles = NObstaclesDF;
+		ObsP = realloc(ObsP, sizeof(FixedObsP));
+		memcpy(ObsP, FixedObsP, sizeof(FixedObsP));
+		if (obstaclesMode == ObsRandom) {
+			ObsP[0] = (simd_int2){(drand48() < .5)? 1 : 2, (drand48() < .5)? 1 : 2};
+			ObsP[3] = (simd_int2){(drand48() < .5)? 4 : 5, (drand48() < .5)? 1 : 2};
+			ObsP[1].x = ObsP[2].x = ObsP[0].x;
+			ObsP[2].y = (ObsP[1].y = ObsP[0].y + 1) + 1;
+		}
+		organize_work_mems();
+		break;
+		case ObsExternal:
+		StartP = simd_min((simd_int2){newStartX, newStartY}, (simd_int2){nGridW, nGridH} - 1);
+		GoalP = simd_min((simd_int2){newGoalX, newGoalY}, (simd_int2){nGridW, nGridH} - 1);
+		nObstacles = 0;
+		ObsP = realloc(ObsP, sizeof(simd_int2) * nGrids);
+		organize_work_mems();
+		manObsTOB = realloc(manObsTOB, sizeof(unsigned long) * nGrids);
+	}
+	if (obsModeChanged) [NSNotificationCenter.defaultCenter
+		postNotificationName:@"obsModeChangedByReset" object:NSApp];
+}
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	theMainWindow = self;
-	setup_obstacle_info();
 	interval = 1. / 60.;
 	expectedGoals = MAX_GOALCNT / 2.;
 	expectedSteps = MAX_STEPS / 2.;
-	agentEnvLock = NSLock.new;
+	_agentEnvLock = NSLock.new;
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
 	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
@@ -179,6 +227,10 @@ static BOOL is_symbol_color_visible(void) {
 		}});
 	add_observer(keySoundTestExited, ^(NSNotification * _Nonnull note) {
 		if (SOUNDS_ON && self->running) start_audio_out(); });
+	add_observer(keyObsMode, ^(NSNotification * _Nonnull note) {
+		if (self->steps > 0) return;
+		[self setupObstacles];
+		[self->display reset]; });
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
 		if (self->view.superview.inFullScreenMode)
@@ -208,7 +260,7 @@ static void show_count(MyProgressBar *prg, NSTextField *dgt, NSTextField *unit, 
 - (void)showSteps { show_count(stepsPrg, stepsDgt, stepsUnit, steps); }
 - (void)showGoals { show_count(goalsPrg, goalsDgt, goalsUnit, goalCount); }
 - (void)recordImageIfNeeded {
-	if (RECORD_IMAGES && steps > 0 && view.frame.size.height > 700)
+	if (RECORD_IMAGES && steps > 0)
 		[recordView addImage:display infoText:self.infoText];
 }
 static float mag_to_scl(float mag, SoundPrm *p) {
@@ -218,39 +270,50 @@ static void play_agent_sound(Agent *agent, SoundType sndType, float age) {
 	SoundPrm *p = &sndData[sndType].v;
 	SoundQue sndQue = { sndType, 1., 0., p->vol, 0 };
 	simd_float2 aPos = simd_float(agent.position);
-	sndQue.pan = aPos.x / (NGridW - 1) * 1.8 - .9;
-	sndQue.pitchShift = mag_to_scl((aPos.y / (NGridH - 1) * .2 + 1. - age) / 1.2, p);
+	sndQue.pan = aPos.x / (nGridW - 1) * 1.8 - .9;
+	sndQue.pitchShift = mag_to_scl((aPos.y / (nGridH - 1) * .2 + 1. - age) / 1.2, p);
 	set_audio_events(&sndQue);
 }
 static void play_sound_effect(SoundType sndType, float pitchShift) {
 	set_audio_events(&(SoundQue){ sndType, pitchShift, 0., sndData[sndType].v.vol, 0 });
 }
 static void feed_env_noise_params(void) {
-	SoundEnvParam sep[NGridW];
-	int gCnt[NGridW];
+	SoundEnvParam sep[nGridW];
+	int gCnt[nGridW];
 	memset(sep, 0, sizeof(sep));
 	memset(gCnt, 0, sizeof(gCnt));
-	for (NSInteger i = 0; i < NActiveGrids; i ++) {
+	for (NSInteger i = 0; i < nActiveGrids; i ++) {
 		simd_int2 pos = FieldP[i];
-		int ix = pos[0], iy = pos[1];
-		vector_float4 Q = QTable[iy][ix];
-		for (NSInteger k = 0; k < NActs; k ++) sep[ix].amp += Q[k];
-		sep[ix].pitchShift += hypotf(Q.x - Q.z, Q.y - Q.w);
-		gCnt[ix] ++;
+		simd_float4 Q = QTable[ij_to_idx(pos)];
+		for (NSInteger k = 0; k < NActs; k ++) sep[pos.x].amp += Q[k];
+		sep[pos.x].pitchShift += hypotf(Q.x - Q.z, Q.y - Q.w);
+		gCnt[pos.x] ++;
 	}
 	SoundPrm *p = &sndData[SndAmbience].v;
-	for (NSInteger i = 0; i < NGridW; i ++) {
+	for (NSInteger i = 0; i < nGridW; i ++) {
 		sep[i].amp = ((sep[i].amp / gCnt[i] - 2.f) * .45f + .6f) * p->vol;
 		sep[i].pitchShift = mag_to_scl(sep[i].pitchShift / gCnt[i], p);
 	}
 	set_audio_env_params(sep);
 }
+- (void)stepTracking {
+	[_agentEnvLock lock];
+	unsigned long now = current_time_us(), lifeSpan = ManObsLifeSpan * 1e6;
+	int k = 0;
+	for (int i = 0; i < nObstacles; i ++)
+		if (now - manObsTOB[i] < lifeSpan) {
+			if (k < i) { ObsP[k] = ObsP[i]; manObsTOB[k] = manObsTOB[i]; }
+			k ++;
+		} else Obstacles[ij_to_idx(ObsP[i])] = 0;
+	nObstacles = k;
+	[_agentEnvLock unlock];
+}
 - (void)loopThreadForAgent {
 	while (running) {
 		NSUInteger tm = current_time_us();
-		[agentEnvLock lock];
+		[_agentEnvLock lock];
 		AgentStepResult result = [agent oneStep];
-		[agentEnvLock unlock];
+		[_agentEnvLock unlock];
 		switch (result) {
 			case AgentStepped: break;
 			case AgentBumped:
@@ -262,7 +325,13 @@ static void feed_env_noise_params(void) {
 			play_sound_effect(SndGoal, (MAX_GOALCNT == 0)? 1. :
 				mag_to_scl((float)goalCount / MAX_GOALCNT, p));
 		}
-		if (sendingSPP > 0 && steps % sendingSPP == 0) [self sendPacket];
+		if (communication_is_running()) {
+			[self sendAgentInfo];
+			if (sendingPPS > 0.) {
+				NSInteger spp = StepsPerSec / sendingPPS;
+				if (spp <= 1 || steps % spp == 0) [self sendVectorFieldInfo];
+			}
+		}
 		steps ++;
 		unsigned long elapsed_us = current_time_us() - tm;
 		NSInteger timeRemain = (StepsPerSec > 0.)? 1e6 / StepsPerSec - elapsed_us : 0;
@@ -296,6 +365,8 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 - (void)loopThreadForDisplay {
 	while (running) {
 		NSUInteger tm = current_time_us();
+		if (obstaclesMode == ObsExternal && communication_is_running())
+			[self stepTracking];
 		[display oneStep];
 		feed_env_noise_params();
 		unsigned long elapsed_us = current_time_us() - tm;
@@ -310,23 +381,13 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 	}
 }
 - (IBAction)reset:(id)sender {
-	if (obstaclesMode == ObsRandom) {
-		ObsP[0] = (simd_int2){(drand48() < .5)? 1 : 2, (drand48() < .5)? 1 : 2};
-		ObsP[3] = (simd_int2){(drand48() < .5)? 4 : 5, (drand48() < .5)? 1 : 2};
-	} else {
-		ObsP[0] = (simd_int2){2, 2};
-		ObsP[3] = (simd_int2){5, 1};
-	}
-	ObsP[1][0] = ObsP[2][0] = ObsP[0][0];
-	ObsP[2][1] = (ObsP[1][1] = ObsP[0][1] + 1) + 1;
-	setup_obstacle_info();
+	[self setupObstacles];
 	[agent reset];
 	[agent restart];
 	[display reset];
 	steps = goalCount = 0;
 	[self showSteps];
 	[self showGoals];
-	in_main_thread(^{ [self showSteps]; });
 }
 - (IBAction)startStop:(id)sender {
 	if ((running = !running)) {
@@ -404,7 +465,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	[prOpe runOperation];
 }
 - (IBAction)copy:(id)sender {
-	NSRect frame = {0., 0., NGridW * TileSize, NGridH * TileSize};
+	NSRect frame = {0., 0., PTCLMaxX, PTCLMaxY};
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame
 		display:display infoView:stepsDgt.superview recordView:recordView];
 	NSData *data = [view dataWithPDFInsideRect:frame];
@@ -422,13 +483,72 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	} else return;
 	display.displayMode = (DisplayMode)newMode;
 }
+- (void)interpreteMessage:(char *)buf length:(ssize_t)length {
+	if (memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
+	union { struct { SInt32 idx; Float32 x, y; SInt32 nPts; } d; SInt32 i[4]; } b;
+	memcpy(b.i, buf + 16, 16);
+	for (int i = 0; i < 4; i ++) b.i[i] = EndianS32_BtoN(b.i[i]);
+	if (b.d.idx < 0 || b.d.idx >= NTrackings) return;
+	simd_float2 pos = (simd_float2){b.d.x, b.d.y} * (simd_float2){nGridW, nGridH};
+	simd_int2 ixy = simd_int(floor(pos));
+	if (ixy.x < 0 || ixy.x >= nGridW || ixy.y < 0 || ixy.y >= nGridH
+	 || simd_equal(ixy, GoalP) || simd_equal(ixy, StartP)) return;
+	[_agentEnvLock lock];
+	if (!simd_equal(ixy, agent.position)) {
+		int idx = -1;
+		for (int i = 0; i < nObstacles; i ++)
+			if (simd_equal(ixy, ObsP[i])) { idx = i; break; }
+		if (idx < 0) {
+			ObsP[(idx = nObstacles ++)] = ixy;
+			Obstacles[ij_to_idx(ixy)] = 1;
+		}
+		manObsTOB[idx] = current_time_us();
+	}
+	[_agentEnvLock unlock];
+}
 // Comm Delegate
 - (void)receive:(char *)buf length:(ssize_t)length {
+	if (memcmp(buf, "#bundle\0", 8) == 0) {
+		UInt32 *p = (UInt32 *)(buf + 8);
+//		struct { UInt32 sec, subsec; } tm = {p[0], p[1]};
+		length -= 16;
+		for (p += 2; length > p[0] && p[0] > 0; p += p[0] / 4 + 1) {
+			[self receive:(char *)(p + 1) length:p[0]];
+			length -= p[0] + 4;
+		}
+	} else [self interpreteMessage:buf length:length];
 }
-- (void)sendPacket {
+- (void)sendAgentInfo {
+	static char addr[] = "/agent\0\0,ii";
+	union { char c[64]; SInt32 i[16]; } b;
+	memset(b.c, 0, sizeof(b.c));
+	memcpy(b.c, addr, sizeof(addr));
+	int idx = (sizeof(addr) + 3) / 4;
+	simd_int2 p = agent.position;
+	b.i[idx ++] = EndianS32_NtoB(p.x);
+	b.i[idx ++] = EndianS32_NtoB(p.y);
+	send_packet(b.c, idx * 4);
 }
-- (void)setSendersStepsPerPacket:(NSInteger)spp {
-	sendingSPP = spp;
+- (void)sendVectorFieldInfo {
+	static char addr[] = "/cell\0\0\0,iiffff";
+	union { char c[128]; SInt32 i[32]; } b;
+	union { simd_float4 Q; SInt32 i[4]; } q;
+	memset(b.c, 0, sizeof(b.c));
+	memcpy(b.c, addr, sizeof(addr));
+	simd_int2 ixy;
+	for (ixy.y = 0; ixy.y < nGridH; ixy.y ++)
+	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++) {
+		int idx = (sizeof(addr) + 3) / 4;
+		b.i[idx ++] = EndianS32_NtoB(ixy.x);
+		b.i[idx ++] = EndianS32_NtoB(ixy.y);
+		q.Q = QTable[ij_to_idx(ixy)];
+		for (int i = 0; i < 4; i ++)
+			b.i[idx ++] = EndianS32_NtoB(q.i[i]);
+		send_packet(b.c, idx * 4);
+	}
+}
+- (void)setSendersPacketsPerSec:(float)pps {
+	sendingPPS = pps;
 }
 // Window Delegate
 - (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {

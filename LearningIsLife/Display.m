@@ -8,12 +8,11 @@
 #include <sys/sysctl.h>
 #import "ControlPanel.h"
 #import "Display.h"
-#import "Comm.h"
+#import "MainWindow.h"
 #import "Agent.h"
-#import "AppDelegate.h"
 #import "VecTypes.h"
 #import "LogoDrawer.h"
-#define NV_GRID ((NGridW + NGridH - 2) * 2)
+#define NV_GRID ((nGridW + nGridH - 2) * 2)
 #define NTHREADS nCores
 
 #define THREADS_PRE(tp,n) tp unit = (n) / NTHREADS,\
@@ -32,6 +31,13 @@ PTCLShapeMode ptclShapeMode = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
 static int nCores;
 static BOOL isARM;
+unsigned long current_time_us(void) {
+	static long startTime = -1;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	if (startTime < 0) startTime = tv.tv_sec;
+	return (tv.tv_sec - startTime) * 1000000L + tv.tv_usec;
+}
 void add_observer(NSString *noteName, void (^block)(NSNotification * _Nonnull)) {
 	[NSNotificationCenter.defaultCenter addObserverForName:noteName
 		object:NSApp queue:nil usingBlock:block];
@@ -74,56 +80,63 @@ static NSBitmapImageRep *create_rgb_bitmap(NSUInteger pixW, NSUInteger pixH,
 #define USE_FORCE_GRID
 #ifdef USE_FORCE_GRID
 #define FF_N_GRID 32
-static simd_float2 ForceGrid[NGridH*FF_N_GRID][NGridW*FF_N_GRID];
-static simd_float2 particle_force(Particle *p) {
+static simd_float2 *ForceGrid = NULL;
+static int idx_of_forceGrid(simd_int2 idx) {
+	return idx.y * nGridW * FF_N_GRID + idx.x;
+}
+//#define INTERPORATE
 #ifdef INTERPORATE
-	simd_float2 q = p->p / TileSize * FF_N_GRID, qF = floor(q);
+static simd_float2 particle_force(Particle *p) {
+	simd_float2 q = p->p / simd_float(tileSize) * FF_N_GRID, qF = floor(q);
 	simd_int2 idx = simd_int(qF);
 	float d = simd_distance_squared(qF + .5, q);
-	if (d < 1e-12f) return ff[idx.y][idx.x];
-	simd_float2 f = ForceGrid[idx.y][idx.x] / d;
+	if (d < 1e-12f) return ForceGrid[idx_of_forceGrid(idx)];
+	simd_float2 f = ForceGrid[idx_of_forceGrid(idx)] / d;
 	float wSum = 1. / d;
 	simd_float2 r = q - qF;
+	simd_int2 dx = {1, 0}, dy = {0, 1};
 	if (r.y < .5 && idx.y > 0) {
 		d = simd_distance_squared(qF + (simd_float2){.5, -.5}, q);
-		f += ForceGrid[idx.y - 1][idx.x] / d; wSum += 1. / d;
+		f += ForceGrid[idx_of_forceGrid(idx - dy)] / d; wSum += 1. / d;
 	}
-	if (r.y >= .5 && idx.y < NGridH*FF_N_GRID-1) {
+	if (r.y >= .5 && idx.y < nGridH*FF_N_GRID-1) {
 		d = simd_distance_squared(qF + (simd_float2){.5, 1.5}, q);
-		f += ForceGrid[idx.y + 1][idx.x] / d; wSum += 1. / d;
+		f += ForceGrid[idx_of_forceGrid(idx + dy)] / d; wSum += 1. / d;
 	}
 	if (r.x < .5 && idx.x > 0) {
 		d = simd_distance_squared(qF + (simd_float2){-.5, .5}, q);
-		f += ForceGrid[idx.y][idx.x - 1] / d; wSum += 1. / d;
+		f += ForceGrid[idx_of_forceGrid(idx - dx)] / d; wSum += 1. / d;
 	}
-	if (r.x >= .5 && idx.x < NGridW*FF_N_GRID-1) {
+	if (r.x >= .5 && idx.x < nGridW*FF_N_GRID-1) {
 		d = simd_distance_squared(qF + (simd_float2){1.5, .5}, q);
-		f += ForceGrid[idx.y][idx.x + 1] / d; wSum += 1. / d;
+		f += ForceGrid[idx_of_forceGrid(idx + dx)] / d; wSum += 1. / d;
 	}
 	return f / wSum;
-#else
-	simd_int2 idx = simd_int(floor(p->p / TileSize * FF_N_GRID));
-	return ForceGrid[idx.y][idx.x];
-#endif
 }
 #else
 static simd_float2 particle_force(Particle *p) {
-	simd_float2 q = p->p / TileSize, qF = floor(q);
-	simd_int2 idx = (simd_int2){qF.x, qF.y};
+	simd_int2 idx = simd_int(p->p / simd_float(tileSize) * FF_N_GRID);
+	return ForceGrid[idx_of_forceGrid(idx)];
+}
+#endif
+#else
+static simd_float2 particle_force(Particle *p) {
+	simd_float2 q = p->p / simd_float(tileSize), qF = floor(q);
+	simd_int2 idx = simd_int(qF);
 	float w = simd_distance_squared(qF + .5, q);
 	if (w < 1e-12f) {
-		simd_float4 Q = QTable[idx.y][idx.x];
+		simd_float4 Q = QTable[ij_to_idx(idx)];
 		return (simd_float2){Q.y - Q.w, Q.x - Q.z};
 	}
 	float wsum = 0.;
 	simd_float2 f = 0.;
 	simd_int2 idxF = simd_max(0, idx - 1),
-		idxT = simd_min((simd_int2){NGridW, NGridH}, idx + 2);
-	for (int ix = idxF.x; ix < idxT.x; ix ++)
-	for (int iy = idxF.y; iy < idxT.y; iy ++)
-	if (Obstacles[iy][ix] == 0) {
-		w = simd_distance_squared((simd_float2){ix, iy} + .5, q);
-		simd_float4 Q = QTable[iy][ix];
+		idxT = simd_min((simd_int2){nGridW, nGridH}, idx + 2);
+	for (idx.x = idxF.x; idx.x < idxT.x; idx.x ++)
+	for (idx.y = idxF.y; idx.y < idxT.y; idx.y ++)
+	if (Obstacles[ij_to_idx(idx)] == 0) {
+		w = simd_distance_squared(simd_float(idx) + .5, q);
+		simd_float4 Q = QTable[ij_to_idx(idx)];
 		f += (simd_float2){Q.y - Q.w, Q.x - Q.z} / w;
 		wsum += 1. / w;
 	}
@@ -131,8 +144,9 @@ static simd_float2 particle_force(Particle *p) {
 }
 #endif
 static void particle_reset(Particle *p, BOOL isRandom) {
-	p->p = (simd_float(FieldP[lrand48() % nActiveGrids])
-		+ (simd_float2){drand48(), drand48()}) * TileSize;
+	int nActG = (obstaclesMode != ObsExternal)? nActiveGrids : nGrids;
+	p->p = (simd_float(FieldP[lrand48() % nActG])
+		+ (simd_float2){drand48(), drand48()}) * simd_float(tileSize);
 	simd_float2 f = particle_force(p);
 	float v = simd_length(f);
 	if (v < 1e-8) {
@@ -144,8 +158,8 @@ static void particle_reset(Particle *p, BOOL isRandom) {
 static void particle_step(Particle *p, simd_float2 f) {
 	p->v = (p->v + f / Mass) * Friction;
 	float v = simd_length(p->v);
-	if (v > TileSize * .1)
-		p->v /= v * TileSize * MaxSpeed;
+	if (v > tileSize.x * MaxSpeed)
+		p->v /= v * tileSize.x * MaxSpeed;
 	p->p += p->v;
 }
 @implementation Display {
@@ -163,6 +177,8 @@ static void particle_step(Particle *p, simd_float2 f) {
 	DisplaySetups setups;
 	float maxSpeed;
 	unsigned long time_us, dispCnt;
+	simd_int2 *obsP, *obsMem;
+	int nObs;
 }
 - (int)nPtcls { return setups.nPtcls; }
 - (DisplayMode)displayMode { return setups.displayMode; }
@@ -207,11 +223,11 @@ static void particle_step(Particle *p, simd_float2 f) {
 #ifdef DEBUG
 NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 #endif
-	} size:(NSSize){sz.height, sz.width} scaleFactor:TileSize * 2.8 / sz.width];
+	} size:(NSSize){sz.height, sz.width} scaleFactor:tileSize.x * 2.8 / sz.width];
 }
 - (void)setupSymbolTex {
 	if (symbolAttr == nil) symbolAttr = [NSMutableDictionary dictionaryWithObject:
-		[NSFont userFontOfSize:TileSize / 2 * view.sampleCount]
+		[NSFont userFontOfSize:tileSize.x / 2 * view.sampleCount]
 		forKey:NSFontAttributeName];
 	StrSTex = [self texFromStr:@"S" attribute:symbolAttr];
 	StrGTex = [self texFromStr:@"G" attribute:symbolAttr];
@@ -288,13 +304,13 @@ NSLog(@"colBuf=%ld", newColBuf[0].length / sizeof(simd_float4));
 NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 #endif
 	}
-	if (req.displayMode != DispParticle && _arrowVec == NULL) {
-		_arrowVec = malloc(sizeof(simd_float2) * N_MAX_VECTORS * NVERTICES_ARROW);
+	if (req.displayMode != DispParticle) {
+		_arrowVec = realloc(_arrowVec, sizeof(simd_float2) * N_MAX_VECTORS * NVERTICES_ARROW);
 		if (_arrowVec == NULL) {
 			error_msg(@"Could not allocate memory for arrow vectors.", nil);
 			@throw @(FailArrowMem);
 		}
-		_arrowCol = malloc(sizeof(simd_float4) * N_MAX_VECTORS);
+		_arrowCol = realloc(_arrowCol, sizeof(simd_float4) * N_MAX_VECTORS);
 		if (_arrowCol == NULL) {
 			free(_arrowVec);
 			_arrowVec = NULL;
@@ -434,8 +450,8 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 			DisplaySetups req = self->setups;
 			req.shapeMode = ptclShapeMode;
 			NSArray<id<MTLBuffer>> *newVxBuf = [self adjustVxBufferSize:req];
-			self->colBufD[0] = (newVxBuf.count > 0)? newVxBuf[0] : nil;
-			self->colBufD[1] = (newVxBuf.count > 1)? newVxBuf[1] : nil;
+			self->vxBufD[0] = (newVxBuf.count > 0)? newVxBuf[0] : nil;
+			self->vxBufD[1] = (newVxBuf.count > 1)? newVxBuf[1] : nil;
 			self->setups.shapeMode = req.shapeMode;
 			[self setupVertices];
 		} @catch (id x) {
@@ -533,7 +549,7 @@ simd_float4 ptcl_rgb_color(Particle * _Nonnull p, simd_float4 hsba, float maxSpe
 }
 simd_float2 particle_size(Particle * _Nonnull p) {
 	simd_float2 sz = (simd_float2){
-		TileSize * StrokeLength / 2., TileSize * StrokeWidth / 2.};
+		tileSize.x * StrokeLength / 2., tileSize.x * StrokeWidth / 2.};
 	if (LifeSpan - p->life < 10) sz *= (LifeSpan - p->life) / 9.;
 	return sz;
 }
@@ -602,19 +618,19 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 	in_main_thread(^{ self->vxBuf = buf; }); 
 	if (isARM) vxBufIndex = 1 - vxBufIndex;
 	else [vxBuf didModifyRange:(NSRange){0, vxBuf.length}];
-	maxSpeed = fmaxf(mxSpd[0], TileSize * .005);
+	maxSpeed = fmaxf(mxSpd[0], tileSize.x * .005);
 	for (int i = 1; i < NTHREADS; i ++) if (maxSpeed < mxSpd[i]) maxSpeed = mxSpd[i];
 }
 #ifdef USE_FORCE_GRID
 - (void)calcForceGrids {
-	THREADS_PRE(int, NActiveGrids)
+	THREADS_PRE(int, nActiveGrids)
 	for (int i = 0; i < nThreads; i ++) {
 		THREADS_ST(int)
 		void (^block)(void) = ^{
 			for (int j = 0; j < nn; j ++) {
 				simd_int2 idx = FieldP[idxStart + j],
-					rngT = simd_min((simd_int2){NGridW, NGridH}, idx + 2),
-					rngF = simd_max(0, idx - 1), jdx, kdx, fdx;
+					rngT = simd_min((simd_int2){nGridW, nGridH}, idx + 2),
+					rngF = simd_max(0, idx - 1), jdx, kdx;
 				for (kdx.y = 0; kdx.y < FF_N_GRID; kdx.y ++)
 				for (kdx.x = 0; kdx.x < FF_N_GRID; kdx.x ++) {
 					simd_float2 v = 0.,
@@ -622,14 +638,13 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 					float dSum = 0.;
 					for (jdx.y = rngF.y; jdx.y < rngT.y; jdx.y ++)
 					for (jdx.x = rngF.x; jdx.x < rngT.x; jdx.x ++)
-					if (Obstacles[jdx.y][jdx.x] == 0) {
-						simd_float4 Q = QTable[jdx.y][jdx.x];
+					if (Obstacles[ij_to_idx(jdx)] == 0) {
+						simd_float4 Q = QTable[ij_to_idx(jdx)];
 						float d = simd_distance_squared(p, simd_float(jdx) + .5);
 						v += (simd_float2){Q.y - Q.w, Q.x - Q.z} / d;
 						dSum += 1. / d;
 					}
-					fdx = idx * FF_N_GRID + kdx;
-					ForceGrid[fdx.y][fdx.x] = v / dSum;
+					ForceGrid[idx_of_forceGrid(idx * FF_N_GRID + kdx)] = v / dSum;
 		}}};
 		THREADS_DO
 	}
@@ -663,11 +678,12 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 	simd_float4 vec[N_VECTORS];
 	Particle ptcl;
 	for (int i = 0, vIdx = 0; i < nActiveGrids; i ++) {
-		int ix = FieldP[i][0], iy = FieldP[i][1];
-		for (int j = 0; j < N_VECTOR_GRID; j ++)
-		for (int k = 0; k < N_VECTOR_GRID; k ++, vIdx ++) {
-			vec[vIdx].x = ptcl.p.x = (ix + (k + .5) / N_VECTOR_GRID) * TileSize;
-			vec[vIdx].y = ptcl.p.y = (iy + (j + .5) / N_VECTOR_GRID) * TileSize;
+		simd_float2 ixy = simd_float(FieldP[i]);
+		simd_int2 jk;
+		for (jk.y = 0; jk.y < N_VECTOR_GRID; jk.y ++)
+		for (jk.x = 0; jk.x < N_VECTOR_GRID; jk.x ++, vIdx ++) {
+			vec[vIdx].xy = ptcl.p =
+				(ixy + (simd_float(jk) + .5) / N_VECTOR_GRID) * simd_float(tileSize);
 			simd_float2 f = particle_force(&ptcl);
 			vec[vIdx].z = simd_length(f);
 			vec[vIdx].w = atan2f(f.y, f.x);
@@ -681,7 +697,7 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 			(simd_float4){0., 0., 0., 1.} : (simd_float4){1., 1., 1., 1.};
 	for (int i = 0; i < N_VECTORS; i ++) {
 		simd_float2 cs = {cosf(vec[i].w), sinf(vec[i].w)};
-		cs *= (float)TileSize / N_VECTOR_GRID / 2.;
+		cs *= simd_float(tileSize) / N_VECTOR_GRID / 2.;
 		simd_float3x3 trs = {
 			(simd_float3){cs.x, cs.y, 0.},
 			(simd_float3){-cs.y * .5, cs.x * .5, 0.},
@@ -695,7 +711,7 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 - (void)setupArrowsForQValues {
 	float minQ = 1e10, maxQ = -1e10;
 	for (int i = 0; i < nActiveGrids; i ++) {
-		simd_float4 Q = QTable[FieldP[i][1]][FieldP[i][0]];
+		simd_float4 Q = QTable[ij_to_idx(FieldP[i])];
 		float minq = simd_reduce_min(Q), maxq = simd_reduce_max(Q);
 		if (minQ > minq) minQ = minq;
 		if (maxQ < maxq) maxQ = maxq;
@@ -708,12 +724,11 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 		maxCol = (simd_reduce_add(bgCol.rgb) > 1.5)?
 			(simd_float4){0., 0., 0., 1.} : (simd_float4){1., 1., 1., 1.};
 	for (int i = 0, vIdx = 0; i < nActiveGrids; i ++) {
-		int ix = FieldP[i][0], iy = FieldP[i][1];
-		simd_float4 Q = QTable[iy][ix];
-		simd_float2 center = {(ix + .5) * TileSize, (iy + .5) * TileSize};
+		simd_float4 Q = QTable[ij_to_idx(FieldP[i])];
+		simd_float2 center = (simd_float(FieldP[i]) + .5) * simd_float(tileSize);
 		for (int j = 0; j < NActs; j ++, vIdx ++) {
 			float th = (1 - j) * M_PI / 2.;
-			simd_float2 cs = {cosf(th), sinf(th)}; cs *= TileSize / 6.;
+			simd_float2 cs = {cosf(th), sinf(th)}; cs *= simd_float(tileSize) / 6.;
 			simd_float3x3 trs = {
 				(simd_float3){cs.x, cs.y, 0.},
 				(simd_float3){-cs.y, cs.x, 0.},
@@ -745,7 +760,9 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 }
 - (void)reset {
 #ifdef USE_FORCE_GRID
-	memset(ForceGrid, 0, sizeof(ForceGrid));
+	NSInteger gSz = sizeof(simd_float2) * nGrids * FF_N_GRID * FF_N_GRID;
+	ForceGrid = realloc(ForceGrid, gSz);
+	memset(ForceGrid, 0, gSz);
 #endif
 	if (_particleMem != nil) {
 		[loopLock lock];
@@ -809,15 +826,15 @@ void fill_circle_at(RCE rce, simd_float2 center, float radius, int nEdges) {
 }
 static void draw_texture(RCE rce, id<MTLTexture> tex, simd_int2 tilePosition) {
 	[rce setFragmentTexture:tex atIndex:IndexTexture];
-	CGFloat h = TileSize * .667, w = h * tex.width / tex.height;
-	simd_float2 org = simd_float(tilePosition * TileSize) +
-		TileSize / 2.f - (simd_float2){w, h} / 2.f;
+	CGFloat h = tileSize.x * .667, w = h * tex.width / tex.height;
+	simd_float2 org = simd_float(tilePosition * tileSize) +
+		simd_float(tileSize) / 2.f - (simd_float2){w, h} / 2.f;
 	fill_rect(rce, (NSRect){org.x, org.y, w, h});
 }
 static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles) {
 	[rce setFragmentTexture:tex atIndex:IndexTexture];
-	simd_float2 org = (simd_float(tileP) + .1) * TileSize;
-	NSRect rect = {org.x, org.y, TileSize * .8, TileSize * (nTiles - .2)};
+	simd_float2 org = (simd_float(tileP) + .1) * simd_float(tileSize);
+	NSRect rect = {org.x, org.y, tileSize.x * .8, tileSize.y * (nTiles - .2)};
 	CGFloat newW = rect.size.height * tex.width / tex.height;
 	rect.origin.x += (rect.size.width - newW) / 2.;
 	rect.size.width = newW;
@@ -830,7 +847,24 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	[rce setVertexBuffer:colBuf offset:0 atIndex:IndexColors];
 	[rce drawPrimitives:MTLPrimitiveTypeTriangle vertexStart:0 vertexCount:n * nv];
 }
+- (void)clearObsPCache {
+	if (obsMem == NULL) return;
+	free(obsMem);
+	obsMem = NULL;
+}
 - (void)drawScene:(nonnull MTKView *)view commandBuffer:(id<MTLCommandBuffer>)cmdBuf {
+	switch (obstaclesMode) {
+		case ObsFixed: case ObsRandom:
+		nObs = nObstacles; obsP = ObsP;
+		break;
+		case ObsExternal:
+		if (obsMem == NULL) obsMem = malloc(sizeof(simd_int2) * nGrids);
+		obsP = obsMem;
+		[theMainWindow.agentEnvLock lock];
+		nObs = nObstacles;
+		memcpy(obsP, ObsP, sizeof(simd_int2) * nGrids);
+		[theMainWindow.agentEnvLock unlock];
+	}
 	MTLRenderPassDescriptor *rndrPasDesc = view.currentRenderPassDescriptor;
 	if(rndrPasDesc == nil) return;
 	RCE rce = [cmdBuf renderCommandEncoderWithDescriptor:rndrPasDesc];
@@ -845,7 +879,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	fill_rect(rce, (NSRect){0., 0., PTCLMaxX, PTCLMaxY});
 	// Agent
 	set_color(rce, col_to_vec(colAgent));
-	fill_circle_at(rce, (simd_float(_agent.position) + .5f) * TileSize, TileSize * 0.45, 32);
+	fill_circle_at(rce, (simd_float(_agent.position) + .5f) * simd_float(tileSize),
+		simd_reduce_min(tileSize) * 0.45, 32);
 	// String "S" and "G"
 	simd_float4 symCol = col_to_vec(colSymbols);
 	if (symCol.a > 0.) {
@@ -881,13 +916,13 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		nv = 0; [rce setVertexBytes:&nv length:sizeof(nv) atIndex:IndexNVforP];
 		set_color(rce, gridCol);
 		simd_float2 vertices[NV_GRID], *vp = vertices;
-		for (int i = 1; i < NGridH; i ++, vp += 2) {
-			vp[0] = (simd_float2){0., TileSize * i};
-			vp[1] = (simd_float2){PTCLMaxX, TileSize * i};
+		for (int i = 1; i < nGridH; i ++, vp += 2) {
+			vp[0] = (simd_float2){0., tileSize.y * i};
+			vp[1] = (simd_float2){PTCLMaxX, tileSize.y * i};
 		}
-		for (int i = 1; i < NGridW; i ++, vp += 2) {
-			vp[0] = (simd_float2){TileSize * i, 0.};
-			vp[1] = (simd_float2){TileSize * i, PTCLMaxY};
+		for (int i = 1; i < nGridW; i ++, vp += 2) {
+			vp[0] = (simd_float2){tileSize.x * i, 0.};
+			vp[1] = (simd_float2){tileSize.x * i, PTCLMaxY};
 		}
 		[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
 		[rce drawPrimitives:MTLPrimitiveTypeLine vertexStart:0 vertexCount:NV_GRID];
@@ -896,21 +931,22 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	simd_float4 obsCol = col_to_vec(colObstacles);
 	if (obsCol.a > 0.) {
 		set_color(rce, obsCol);
-		for (int i = 0; i < NObstacles; i ++) fill_rect(rce, (NSRect)
-			{ObsP[i][0] * TileSize, ObsP[i][1] * TileSize, TileSize, TileSize});
+		for (int i = 0; i < nObs; i ++) fill_rect(rce, (NSRect)
+			{obsP[i].x * tileSize.x, obsP[i].y * tileSize.y, tileSize.x, tileSize.y});
 	}
 	// project logo
-	if (symCol.a > 0.) {
+	if (symCol.a > 0. && obstaclesMode != ObsExternal) {
 		set_color(rce, symCol);
 		if (logoDrawer == nil) logoDrawer = LogoDrawerMTL.new;
-		simd_int2 logoGrid = ObsP[3] * TileSize;
-		[logoDrawer drawByMTL:rce inRect:(NSRect){logoGrid.x, logoGrid.y, TileSize, TileSize}];
+		float logoDim = simd_reduce_min(tileSize);
+		simd_float2 logoP = (simd_float(obsP[3]) + .5) * simd_float(tileSize) - logoDim / 2.;
+		[logoDrawer drawByMTL:rce inRect:(NSRect){logoP.x, logoP.y, logoDim, logoDim}];
 	// equations
 		if (equLTex == nil) [self setupEquationTex];
 		[rce setRenderPipelineState:texPSO];
 		set_fragment_color(rce, col_to_vec(colSymbols));
-		draw_equtex(rce, equLTex, ObsP[0], 3);
-		draw_equtex(rce, equPTex, ObsP[4], 3);
+		draw_equtex(rce, equLTex, obsP[0], 3);
+		draw_equtex(rce, equPTex, obsP[4], 3);
 	}
 	[rce endEncoding];
 }
@@ -955,8 +991,9 @@ NSUInteger tm1, tm0 = current_time_us();
 				Particle *p = pStart + j;
 				if (p->p.x > 0. && p->p.x < PTCLMaxX
 				 && p->p.y > 0. && p->p.y < PTCLMaxY
-				 && Obstacles[(int)(p->p.y / TileSize)][(int)(p->p.x / TileSize)] == 0
-				 && (-- p->life) > 0) idxs[k0 ++] = j;
+				 && (-- p->life) > 0 &&
+				 (obstaclesMode == ObsExternal || Obstacles[p_to_idx(p->p)] == 0)
+				 ) idxs[k0 ++] = j;
 				else idxs[-- k1] = j;
 			}
 			for (int j = 0; j < k0; j ++)

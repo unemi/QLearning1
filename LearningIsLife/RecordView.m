@@ -37,10 +37,15 @@
 }
 - (NSSize)imageSize {
 	CGFloat w = self.bounds.size.width;
-	return (NSSize){w, w * (CGFloat)NGridH / NGridW};
+	return (NSSize){w, w * (CGFloat)PTCLMaxY / PTCLMaxX};
 }
+#define MIN_WIDTH (1920. - 1080. * 1.5)
 - (void)addImage:(Display *)display infoText:(NSString *)infoText {
 	NSSize size = self.imageSize;
+	if (size.width < MIN_WIDTH) {
+		size.height *= MIN_WIDTH / size.width;
+		size.width = MIN_WIDTH;
+	}
 	if (oldHeight != size.height) attributes[NSFontAttributeName] =
 		[NSFont userFontOfSize:(oldHeight = size.height) * .1];
 	NSString *str = [NSString stringWithFormat:@"%@\n%@",

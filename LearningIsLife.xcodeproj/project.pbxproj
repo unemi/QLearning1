@@ -22,6 +22,7 @@
 		232521842956C38D00159F30 /* Display.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521832956C38D00159F30 /* Display.m */; };
 		23297D89296AD1CC00178016 /* equationP.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D87296AD1CC00178016 /* equationP.pdf */; };
 		23297D8A296AD1CC00178016 /* equationL.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D88296AD1CC00178016 /* equationL.pdf */; };
+		232F39AD298A81AF00B1A28D /* CommPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 232F39AF298A81AF00B1A28D /* CommPanel.xib */; };
 		2334B39E29875E40003AC3FC /* CommPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2334B39D29875E40003AC3FC /* CommPanel.m */; };
 		233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 233DF0A0295B109C00F9F20C /* MyShaders.metal */; };
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
@@ -32,7 +33,6 @@
 		23505D5B29860ED4002A7429 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5929860ED4002A7429 /* MainMenu.xib */; };
 		23505D5D29860ED4002A7429 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23505D5C29860ED4002A7429 /* main.m */; };
 		23505D6229860F05002A7429 /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
-		23505D6429867C00002A7429 /* CommPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23505D6329867C00002A7429 /* CommPanel.xib */; };
 		23868EE7298519F100C02DCE /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		23BEB9E9298A7789006EF0A1 /* ControlPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 23BEB9E8298A7789006EF0A1 /* ControlPanel.m */; };
 		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
@@ -61,6 +61,7 @@
 		232521832956C38D00159F30 /* Display.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Display.m; sourceTree = "<group>"; };
 		23297D87296AD1CC00178016 /* equationP.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationP.pdf; path = LearningIsLife/equationP.pdf; sourceTree = "<group>"; };
 		23297D88296AD1CC00178016 /* equationL.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationL.pdf; path = LearningIsLife/equationL.pdf; sourceTree = "<group>"; };
+		232F39AE298A81AF00B1A28D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/CommPanel.xib; sourceTree = "<group>"; };
 		2330B0E6296972A100F87CEC /* Samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Samples; sourceTree = "<group>"; };
 		2334B39C29875E40003AC3FC /* CommPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommPanel.h; sourceTree = "<group>"; };
 		2334B39D29875E40003AC3FC /* CommPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CommPanel.m; sourceTree = "<group>"; };
@@ -78,7 +79,6 @@
 		23505D5A29860ED4002A7429 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		23505D5C29860ED4002A7429 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		23505D5E29860ED4002A7429 /* LiLCommSim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiLCommSim.entitlements; sourceTree = "<group>"; };
-		23505D6329867C00002A7429 /* CommPanel.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = CommPanel.xib; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 		23868EE5298519F100C02DCE /* Comm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Comm.h; sourceTree = "<group>"; };
 		23868EE6298519F100C02DCE /* Comm.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Comm.m; sourceTree = "<group>"; };
@@ -163,7 +163,7 @@
 				23DAB3AC2970FDF400700DA9 /* MainWindow.xib */,
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				23214954295C6980001A40D3 /* ControlPanel.xib */,
-				23505D6329867C00002A7429 /* CommPanel.xib */,
+				232F39AF298A81AF00B1A28D /* CommPanel.xib */,
 				232521772956BB7A00159F30 /* main.m */,
 				232521792956BB7A00159F30 /* LearningIsLife.entitlements */,
 				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
@@ -214,6 +214,7 @@
 			buildPhases = (
 				232521682956BB7900159F30 /* Sources */,
 				232521692956BB7900159F30 /* Frameworks */,
+				23B91DB429913E27000A6E48 /* ShellScript */,
 				2325216A2956BB7900159F30 /* Resources */,
 			);
 			buildRules = (
@@ -283,15 +284,15 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				23505D6429867C00002A7429 /* CommPanel.xib in Resources */,
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
 				23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */,
+				232F39AD298A81AF00B1A28D /* CommPanel.xib in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
+				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
 				2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
-				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -305,6 +306,27 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		23B91DB429913E27000A6E48 /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "# Type a script or drag a script file from your workspace to insert its path.\nif [ ${CONFIGURATION} = Release ]; then cd \"${PROJECT_DIR}\" ; agvtool bump ; fi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		232521682956BB7900159F30 /* Sources */ = {
@@ -362,6 +384,14 @@
 				232521752956BB7A00159F30 /* Base */,
 			);
 			name = MainMenu.xib;
+			sourceTree = "<group>";
+		};
+		232F39AF298A81AF00B1A28D /* CommPanel.xib */ = {
+			isa = PBXVariantGroup;
+			children = (
+				232F39AE298A81AF00B1A28D /* Base */,
+			);
+			name = CommPanel.xib;
 			sourceTree = "<group>";
 		};
 		23505D5929860ED4002A7429 /* MainMenu.xib */ = {
@@ -500,7 +530,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -529,7 +559,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 14;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
@@ -559,7 +589,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -586,7 +616,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 5;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;

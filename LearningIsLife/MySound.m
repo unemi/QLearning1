@@ -19,7 +19,7 @@ static AudioUnit output = NULL;
 static BOOL isRunning = NO;
 static NSLock *soundBufLock = nil;
 static NSRange sndQIdx = {0, 0};
-static SoundQue sndQue[QUE_LENGTH], envSndQ[NGridW], testSndQ;
+static SoundQue sndQue[QUE_LENGTH], *envSndQ = NULL, testSndQ;
 static CGFloat sndAmp = 1.;
 static RenderMode renderMode = RenderModeNormal, reqRndrMode = RenderModeNormal;
 static NSString *testSoundPath = nil;
@@ -149,9 +149,9 @@ static OSStatus my_render_callback(void *inRefCon,
 			memset(data0, 0, inNumberFrames * sizeof(float));
 			memset(data1, 0, inNumberFrames * sizeof(float));
 		} else {
-			for (NSInteger j = 0; j < NGridW; j ++)
+			for (NSInteger j = 0; j < nGridW; j ++)
 				smp += stereo_sample(&envSndQ[j], snd, YES);
-			smp /= NGridW / 1.5;
+			smp /= nGridW / 1.5;
 		}
 		for (NSInteger j = 0; j < sndQIdx.length; j ++) {
 			SoundQue *sq = &sndQue[(sndQIdx.location + j) % QUE_LENGTH];
@@ -225,9 +225,10 @@ BOOL init_audio_out(void) {
 		err_msg(msg, err, NO);
 		return NO;
 	}
-	for (int i = 0; i < NGridW; i ++)
+	envSndQ = malloc(sizeof(SoundQue) * nGridW);
+	for (int i = 0; i < nGridW; i ++)
 		envSndQ[i] = (SoundQue){SndAmbience, 1.,
-			(float)i / (NGridW - 1) * 1.8 - .9, 1., 0};
+			(float)i / (nGridW - 1) * 1.8 - .9, 1., 0};
 	return YES;
 }
 static void check_sound_changed(SoundType sndType) {
@@ -295,7 +296,7 @@ void set_audio_events(SoundQue *info) {
 }
 void set_audio_env_params(SoundEnvParam *prm) {
 	if (!SOUNDS_ON || renderMode != RenderModeNormal) return;
-	for (NSInteger i = 0; i < NGridW; i ++) {
+	for (NSInteger i = 0; i < nGridW; i ++) {
 		envSndQ[i].pitchShift = prm[i].pitchShift;
 		envSndQ[i].amp = prm[i].amp;
 	}

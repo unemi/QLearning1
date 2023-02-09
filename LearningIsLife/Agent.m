@@ -10,8 +10,15 @@
 int MemSize = 256, MemTrials = 32;
 float T0 = 0.5, T1 = 0.02, CoolingRate = 0.05,
 	InitQValue = 0.5, Gamma = 0.96, Alpha = 0.05, StepsPerSec = 60.;
-vector_float4 QTable[NGridH][NGridW];
+simd_float4 *QTable = NULL;
 
+int ij_to_idx(simd_int2 ij) {
+	return ij.y * nGridW + ij.x;
+}
+int p_to_idx(simd_float2 p) {
+	simd_int2 ij = simd_int(p / simd_float(tileSize));
+	return ij_to_idx(ij);
+}
 typedef struct {
 	int action;
 	simd_int2 s1, s2;
@@ -44,18 +51,19 @@ typedef struct {
 - (simd_int2)position { return p; }
 - (void)restart { p = StartP; }
 - (void)reset {
+	QTable = realloc(QTable, sizeof(simd_float4) * nGrids);
 	[mem removeAllObjects];
-	for (int i = 0; i < NGridH; i ++)
-	for (int j = 0; j < NGridW; j ++)
+	for (int i = 0; i < nGridH; i ++)
+	for (int j = 0; j < nGridW; j ++)
 	for (int k = 0; k < NActs; k ++)
-		QTable[i][j][k] = InitQValue;
+		QTable[i * nGridW + j][k] = InitQValue;
 	T = T0;
 	steps = 0;
 }
 - (int)policy {
 	float roulette[NActs], pSum = 0.;
 	for (int i = 0; i < NActs; i ++)
-		roulette[i] = (pSum += expf(QTable[p.y][p.x][i] / T));
+		roulette[i] = (pSum += expf(QTable[ij_to_idx(p)][i] / T));
 	float r = drand48() * pSum;
 	int action;
 	for (action = 0; action < NActs; action ++)
@@ -66,13 +74,11 @@ typedef struct {
 	return (simd_equal(pos, GoalP))? 1.0 : 0.0;
 }
 - (void)learn:(Memory *)memory {
-	float maxQ = -1e10f;
 	MemoryStruct mem = memory.memoryValue;
-	for (int k = 0; k < NActs; k ++)
-		if (maxQ < QTable[mem.s2.y][mem.s2.x][k])
-			maxQ = QTable[mem.s2.y][mem.s2.x][k];
-	QTable[mem.s1.y][mem.s1.x][mem.action] +=
-		(mem.reward + Gamma * maxQ - QTable[mem.s1.y][mem.s1.x][mem.action]) * Alpha;
+	float maxQ = simd_reduce_max(QTable[ij_to_idx(mem.s2)]);
+	int idx = ij_to_idx(mem.s1);
+	QTable[idx][mem.action] +=
+		(mem.reward + Gamma * maxQ - QTable[idx][mem.action]) * Alpha;
 }
 - (AgentStepResult)oneStep {
 	if (simd_equal(p, GoalP)) {
@@ -85,8 +91,8 @@ typedef struct {
 	AgentStepResult result = AgentStepped;
 	int action = [self policy];
 	simd_int2 newp = p + Move[action];
-	if (newp.x < 0 || newp.x >= NGridW || newp.y < 0 || newp.y >= NGridH
-	 || Obstacles[newp.y][newp.x] != 0) { newp = p; result = AgentBumped; }
+	if (newp.x < 0 || newp.x >= nGridW || newp.y < 0 || newp.y >= nGridH
+	 || Obstacles[ij_to_idx(newp)] != 0) { newp = p; result = AgentBumped; }
 	float reward = [self rewardAt:newp];
 	[mem addObject:[Memory.alloc initWithMemory:(MemoryStruct){action, p, newp, reward}]];
 	if (mem.count > MemSize) [mem removeObjectsInRange:(NSRange){0, mem.count - MemSize}];

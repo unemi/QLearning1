@@ -5,20 +5,12 @@
 //  Created by Tatsuo Unemi on 2023/01/28.
 //
 
-@import SystemConfiguration;
 #import "Comm.h"
 #import <sys/socket.h>
 #import <sys/ioctl.h>
 #import <arpa/inet.h>
 #import <net/if.h>
 
-unsigned long current_time_us(void) {
-	static long startTime = -1;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	if (startTime < 0) startTime = tv.tv_sec;
-	return (tv.tv_sec - startTime) * 1000000L + tv.tv_usec;
-}
 void in_main_thread(void (^block)(void)) {
 	if (NSThread.isMainThread) block();
 	else dispatch_async(dispatch_get_main_queue(), block);
@@ -59,10 +51,8 @@ static void unix_error_msg(NSString *msg) {
 	in_addr_t myAddr, myBcAddr, senderAddr;
 	struct sockaddr_in dstName;
 	NSThread *rcvThread;
-	unsigned long prevSndTime, prevRcvTime;
-	CGFloat sndPPS, sndBPS, rcvPPS, rcvBPS;
-	void (^sndHandler)(CGFloat,CGFloat);
-	void (^rcvHandler)(CGFloat,CGFloat);
+	void (^sndHandler)(ssize_t);
+	void (^rcvHandler)(ssize_t);
 }
 static NSString *address_string(in_addr_t addr) {
 	union { UInt8 c[4]; UInt32 i; } u = { .i = addr }; 
@@ -79,8 +69,7 @@ static NSString *address_string(in_addr_t addr) {
 }
 - (in_port_t)destinationPort { return EndianU16_BtoN(dstName.sin_port); }
 - (void)setDestinationPort:(in_port_t)port { dstName.sin_port = EndianU16_NtoB(port); }
-- (void)setStatHandlersSnd:(void (^)(CGFloat,CGFloat))sndHdl
-	rcv:(void (^)(CGFloat,CGFloat))rcvHdl {
+- (void)setStatHandlersSnd:(void (^)(ssize_t))sndHdl rcv:(void (^)(ssize_t))rcvHdl {
 	sndHandler = sndHdl;
 	rcvHandler = rcvHdl;
 }
@@ -95,13 +84,7 @@ static NSString *address_string(in_addr_t addr) {
 		}
 		ssize_t n = sendto(sndSoc, buf, len, 0, (struct sockaddr *)&dstName, sizeof(dstName));
 		if (n < 0) @throw @"Failed to send data";
-		unsigned long tm = current_time_us(), interval = tm - prevSndTime;
-		if (interval < 10000000L) {
-			sndPPS += (1e6 / interval - sndPPS) * .05; 
-			sndBPS += (n * 1e6 / interval - sndBPS) * .05;
-			if (sndHandler != nil) sndHandler(sndPPS, sndBPS);
-		}
-		prevSndTime = tm;
+		if (sndHandler != nil) sndHandler(n);
 		return n;
 	} @catch (NSString *msg) { unix_error_msg(msg); }
 	return 0;
@@ -116,13 +99,7 @@ static NSString *address_string(in_addr_t addr) {
 		if (n == 0) continue;
 		senderAddr = ((struct sockaddr_in *)&name)->sin_addr.s_addr;
 		[delegate receive:buf length:n];
-		unsigned long tm = current_time_us(), interval = tm - prevRcvTime;
-		if (interval < 10000000L) {
-			rcvPPS += (1e6 / interval - rcvPPS) * .05; 
-			rcvBPS += (n * 1e6 / interval - rcvBPS) * .05; 
-			if (rcvHandler != nil) rcvHandler(sndPPS, sndBPS);
-		}
-		prevRcvTime = tm;
+		if (rcvHandler != nil) rcvHandler(n);
 	}
 }
 #define N_PORTS_TO_TRY 100
@@ -152,9 +129,20 @@ static NSString *address_string(in_addr_t addr) {
 		rcvSoc = newSoc;
 		[NSThread detachNewThreadSelector:
 			@selector(receiverThread:) toTarget:self withObject:dlgt];
+		_rcvRunning = YES;
 		return YES;
 	}
 	return NO;
+}
+- (void)stopReceiver {
+	if (rcvSoc >= 0 && close(rcvSoc) != noErr)
+		unix_error_msg(@"Couldn't close receiver's socket");
+	else rcvSoc = -1;
+	if (rcvThread != nil && rcvThread.executing) {
+		[rcvThread cancel];
+		rcvThread = nil;
+	}
+	_rcvRunning = NO;
 }
 - (instancetype)init {
 	if (!(self = [super init])) return nil;
@@ -189,18 +177,9 @@ static NSString *address_string(in_addr_t addr) {
 }
 - (void)invalidate {
 	if (!_valid) return;
-	if (rcvThread != nil && rcvThread.executing) [rcvThread cancel];
-	if (rcvSoc >= 0 && close(rcvSoc) != noErr)
-		unix_error_msg(@"Couldn't close receiver's socket");
+	[self stopReceiver];
 	if (sndSoc >= 0 && close(sndSoc) != noErr)
 		unix_error_msg(@"Couldn't close sender's socket");
 	_valid = NO;
 }
 @end
-//
-//@interface MvObstacle : NSObject
-//@property simd_int2 p;
-//@property CGFloat age;
-//@end
-//@implementation MvObstacle
-//@end

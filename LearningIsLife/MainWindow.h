@@ -11,19 +11,21 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-extern NSString *scrForFullScr;
 @interface MainWindow : NSWindowController
 	<NSWindowDelegate, NSMenuItemValidation, CommDelegate>
+@property (readonly) NSLock *agentEnvLock;
 - (void)adjustForRecordView:(NSNotification * _Nullable)note;
 - (IBAction)reset:(id _Nullable)sender;
 - (IBAction)startStop:(id _Nullable)sender;
 - (IBAction)fullScreen:(id _Nullable)sender;
 - (IBAction)printScene:(id _Nullable)sender;
-- (void)setSendersStepsPerPacket:(NSInteger)spp;
+- (void)setSendersPacketsPerSec:(float)pps;
 @end 
 
+extern NSString *scrForFullScr;
 extern MainWindow *theMainWindow;
-extern ObstaclesMode obstaclesMode;
+extern ObstaclesMode obstaclesMode, newObsMode;
+extern float ManObsLifeSpan;
 
 @interface MyProgressBar : NSView
 @property CGFloat maxValue, doubleValue;

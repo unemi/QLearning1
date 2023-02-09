@@ -15,10 +15,10 @@ struct RasterizerData {
 	float4 color;
 };
 vertex RasterizerData vertexShader(uint vertexID [[vertex_id]],
-	constant vector_float2 *vertices [[buffer(IndexVertices)]],
-	constant vector_float4 *colors [[buffer(IndexColors)]],
+	constant simd_float2 *vertices [[buffer(IndexVertices)]],
+	constant simd_float4 *colors [[buffer(IndexColors)]],
 	constant uint *nv [[buffer(IndexNVforP)]],
-	constant vector_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
+	constant simd_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerData out = {{0.,0.,0.,1.}};
     out.position.xy = vertices[vertexID] / *geomFactor * 2. - 1.;
     out.color = (*nv == 0)? *colors : colors[vertexID / *nv];
@@ -33,8 +33,8 @@ struct RasterizerDataTex {
 	float2 textureCoordinate;
 };
 vertex RasterizerDataTex vertexShaderTex(uint vertexID [[vertex_id]],
-	constant vector_float2 *vertices [[buffer(IndexVertices)]],
-	constant vector_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
+	constant simd_float2 *vertices [[buffer(IndexVertices)]],
+	constant simd_float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerDataTex out = {{0.,0.,0.,1.}, {0.,0.}};
     out.position.xy = vertices[vertexID] / *geomFactor * 2. - 1.;
     out.textureCoordinate = float2(vertexID % 2, 1 - vertexID / 2);
@@ -42,7 +42,7 @@ vertex RasterizerDataTex vertexShaderTex(uint vertexID [[vertex_id]],
 }
 fragment float4 fragmentShaderTex(RasterizerDataTex in [[stage_in]],
 	texture2d<half> colorTexture [[texture(IndexTexture)]],
-	constant vector_float4 *color [[buffer(IndexFrgColor)]]) {
+	constant simd_float4 *color [[buffer(IndexFrgColor)]]) {
 	constexpr sampler textureSampler(mag_filter::linear, min_filter::linear);
 	const half4 s = colorTexture.sample(textureSampler, in.textureCoordinate);
     return *color * (float4){1.,1.,1.,s.a};

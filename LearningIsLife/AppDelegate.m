@@ -16,62 +16,74 @@
 #import "MySound.h"
 
 simd_int2 Move[4] = {{0,1},{1,0},{0,-1},{-1,0}}; // up, right, down, left
-simd_int2 ObsP[NObstacles] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
-simd_int2 StartP = {0,3}, GoalP = {8,5};
-simd_int2 FieldP[NGrids];
-int nActiveGrids = NActiveGrids;
-int Obstacles[NGridH][NGridW];
+simd_int2 FixedObsP[NObstaclesDF] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
+simd_int2 FixedStartP = {0,3}, FixedGoalP = {8,5};
+simd_int2 *ObsP = NULL, *FieldP = NULL, StartP, GoalP, tileSize = {TileSizeWDF, TileSizeHDF};
+int *Obstacles = NULL;
+int nGridW = NGridWDF, nGridH = NGridHDF, nObstacles = NObstaclesDF;
+int newGridW = NGridWDF, newGridH = NGridHDF, newTileH = TileSizeHDF,
+	newStartX = 0, newStartY = 3, newGoalX = 8, newGoalY = 5;
+
 NSString *keyCntlPnl = @"controlPanel";
 NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw",
 	*keyShouldReviseVertices = @"shouldReviseVertices", *keySoundTestExited = @"soundTextExited";
 NSString *keyColorMode = @"ptclColorMode", *keyShapeMode = @"ptclShapeMode",
 	*keyObsMode = @"obstaclesMode";
-NSString *scrForFullScrFD, *keyScrForFullScr = @"screenForFullScreenMode";
-PTCLColorMode ptclColorModeFD;
-PTCLShapeMode ptclShapeModeFD;
-ObstaclesMode obsModeFD;
+NSString *scrForFullScrFD, *scrForFullScrUD, *keyScrForFullScr = @"screenForFullScreenMode";
+PTCLColorMode ptclColorModeFD, ptclColorModeUD;
+PTCLShapeMode ptclShapeModeFD, ptclShapeModeUD;
+ObstaclesMode obsModeFD, obsModeUD;
 
 IntVarInfo IntVars[] = {
-	{ @"memSize", &MemSize, 0, 0 },
-	{ @"memTrials", &MemTrials, 0, 0 },
-	{ @"nParticles", &NParticles, 0, ShouldPostNotification },
-	{ @"ptclLifeSpan", &LifeSpan, 0, ShouldPostNotification },
+	{ @"gridW", 0, &newGridW },
+	{ @"gridH", 0, &newGridH },
+	{ @"tileH", 0, &newTileH },
+	{ @"startX", 0, &newStartX },
+	{ @"startY", 0, &newStartY },
+	{ @"goalX", 0, &newGoalX },
+	{ @"goalY", 0, &newGoalY },
+	{ @"memSize", 0, &MemSize },
+	{ @"memTrials", 0, &MemTrials },
+	{ @"nParticles", ShouldPostNotification, &NParticles },
+	{ @"ptclLifeSpan", ShouldPostNotification, &LifeSpan },
 	{ nil }
 };
 FloatVarInfo FloatVars[] = {
-	{ @"T0", &T0, 0, 0 },
-	{ @"T1", &T1, 0, 0 },
-	{ @"cooling", &CoolingRate, 0, 0 },
-	{ @"initQValue", &InitQValue, 0, 0 },
-	{ @"gamma", &Gamma, 0, 0 },
-	{ @"alpha", &Alpha, 0, 0 },
-	{ @"stepsPerSec", &StepsPerSec, 0, 0 },
-	{ @"ptclMass", &Mass, 0, 0 },
-	{ @"ptclFriction", &Friction, 0, 0 },
-	{ @"ptclLength", &StrokeLength, 0, ShouldReviseVertices },
-	{ @"ptclWeight", &StrokeWidth, 0, ShouldReviseVertices },
-	{ @"ptclMaxSpeed", &MaxSpeed, 0, 0 },
+	{ @"T0", 0, &T0 },
+	{ @"T1", 0, &T1 },
+	{ @"cooling", 0, &CoolingRate },
+	{ @"initQValue", 0, &InitQValue },
+	{ @"gamma", 0, &Gamma },
+	{ @"alpha", 0, &Alpha },
+	{ @"stepsPerSec", 0, &StepsPerSec },
+	{ @"ptclMass", 0, &Mass },
+	{ @"ptclFriction", 0, &Friction },
+	{ @"ptclLength", ShouldReviseVertices, &StrokeLength },
+	{ @"ptclWeight", ShouldReviseVertices, &StrokeWidth },
+	{ @"ptclMaxSpeed", 0, &MaxSpeed },
+	{ @"manipulatedObstacleLifeSpan", 0, &ManObsLifeSpan },
 	{ nil }
 };
 ColVarInfo ColVars[] = {
-	{ @"colorBackground", &colBackground, nil, ShouldPostNotification },
-	{ @"colorObstacles", &colObstacles, nil, 0 },
-	{ @"colorAgent", &colAgent, nil, 0 },
-	{ @"colorGridLines", &colGridLines, nil, 0 },
-	{ @"colorSymbols", &colSymbols, nil, ShouldPostNotification },
-	{ @"colorParticles", &colParticles, nil, ShouldPostNotification },
+	{ @"colorBackground", ShouldPostNotification, &colBackground },
+	{ @"colorObstacles", 0, &colObstacles },
+	{ @"colorAgent",0,  &colAgent },
+	{ @"colorGridLines", 0, &colGridLines },
+	{ @"colorSymbols", ShouldPostNotification, &colSymbols },
+	{ @"colorParticles", ShouldPostNotification, &colParticles },
 	{ nil }
 };
 UIntegerVarInfo UIntegerVars[] = {
-	{ @"maxSteps", 8000 },
-	{ @"maxGoalCount", 60 },
+	{ @"maxSteps", 0, 8000 },
+	{ @"maxGoalCount", 0, 60 },
 	{ nil }
 };
 BoolVarInfo BoolVars[] = {
-	{ @"sounds", YES, YES, ShouldPostNotification },
-	{ @"startWithFullScreenMode", NO },
-	{ @"recordFinalImage", NO, NO, ShouldPostNotification },
-	{ @"showFPS", YES, YES, ShouldPostNotification },
+	{ @"sounds", ShouldPostNotification, YES  },
+	{ @"startWithFullScreenMode", 0, NO },
+	{ @"recordFinalImage", ShouldPostNotification, NO },
+	{ @"showFPS", ShouldPostNotification, YES },
+	{ @"saveAsUserDefaultsWhenTerminate", 0, YES },
 	{ nil }
 };
 
@@ -113,7 +125,7 @@ NSColor *ulong_to_col(NSUInteger rgba) {
 	return [NSColor colorWithColorSpace:
 		NSColorSpace.genericRGBColorSpace components:c count:4];
 }
-NSUInteger hex_string_to_uint(NSString *str) {
+NSUInteger hex_string_to_ulong(NSString *str) {
 	NSScanner *scan = [NSScanner scannerWithString:str];
 	unsigned int uInt;
 	[scan scanHexInt:&uInt];
@@ -138,7 +150,8 @@ NSUInteger hex_string_to_uint(NSString *str) {
 #define SET_DFLT_VAL(forAll,type,star,val)	forAll(^(type *p) {\
 		p->fd = star p->v;\
 		NSNumber *nm = [ud objectForKey:p->key];\
-		if (nm != nil) star p->v = nm.val; });
+		if (nm != nil) star p->v = nm.val;\
+		p->ud = star p->v; });
 - (void)applicationWillFinishLaunching:(NSNotification *)aNotification {
 	init_default_colors();
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
@@ -149,9 +162,8 @@ NSUInteger hex_string_to_uint(NSString *str) {
 	for_all_color_vars(^(ColVarInfo *p) {
 		p->fd = *p->v;
 		NSString *str = [ud stringForKey:p->key];
-		if (str == nil) return;
-		NSUInteger rgba = hex_string_to_uint(str);
-		*p->v = ulong_to_col(rgba);
+		if (str != nil) *p->v = ulong_to_col(hex_string_to_ulong(str));
+		p->ud = *p->v;
 	});
 	ptclColorModeFD = ptclColorMode;
 	ptclShapeModeFD = ptclShapeMode;
@@ -162,9 +174,13 @@ NSUInteger hex_string_to_uint(NSString *str) {
 	nm = [ud objectForKey:keyShapeMode];
 	if (nm != nil) ptclShapeMode = nm.intValue;
 	nm = [ud objectForKey:keyObsMode];
-	if (nm != nil) obstaclesMode = nm.intValue;
+	if (nm != nil) newObsMode = obstaclesMode = nm.intValue;
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
+	ptclColorModeUD = ptclColorMode;
+	ptclShapeModeUD = ptclShapeMode;
+	obsModeUD = obstaclesMode;
+	scrForFullScrUD = scrForFullScr;
 	NSFileManager *fm = NSFileManager.defaultManager;
 	NSMutableDictionary<NSString *, NSString *> *missingSnd = NSMutableDictionary.new;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -172,18 +188,14 @@ NSUInteger hex_string_to_uint(NSString *str) {
 		s->fd = s->v;
 		NSObject *obj = [ud objectForKey:s->key];
 		if ([obj isKindOfClass:NSString.class]) s->v.path = (NSString *)obj;
-		else if ([obj isKindOfClass:NSDictionary.class]) {
-			NSDictionary *dict = (NSDictionary *)obj;
-			if ((str = dict[@"path"]) != nil) s->v.path = str;
-			if ((nm = dict[@"mmin"]) != nil) s->v.mmin = nm.floatValue;
-			if ((nm = dict[@"mmax"]) != nil) s->v.mmax = nm.floatValue;
-			if ((nm = dict[@"vol"]) != nil) s->v.vol = nm.floatValue;
-		}
+		else if ([obj isKindOfClass:NSDictionary.class])
+			set_param_from_dict(&s->v, (NSDictionary *)obj);
 		s->loaded = @"";
 		if (s->v.path.length > 0 && ![fm fileExistsAtPath:s->v.path]) {
 			missingSnd[s->key] = s->v.path;
 			s->v.path = @"";
 		}
+		s->ud = s->v;
 	}
 	if (missingSnd.count > 0) {
 		NSMutableString *msg = NSMutableString.new;
@@ -198,6 +210,7 @@ NSUInteger hex_string_to_uint(NSString *str) {
 - (void)applicationDidFinishLaunching:(NSNotification *)notification {
 	mainWindow = [MainWindow.alloc initWithWindow:nil];
 	[mainWindow showWindow:nil];
+	[mainWindow adjustForRecordView:nil];
 	if (START_WIDTH_FULL_SCR) {
 		[NSTimer scheduledTimerWithTimeInterval:.1 repeats:NO
 			block:^(NSTimer * _Nonnull timer) {
@@ -206,29 +219,41 @@ NSUInteger hex_string_to_uint(NSString *str) {
 				block:^(NSTimer * _Nonnull timer) {
 				[self->mainWindow startStop:nil]; }];
 		}];
-	} else [mainWindow adjustForRecordView:nil];
+	} 
 	init_audio_out();
 	check_initial_communication();
 }
 #define SAVE_DFLT(forAll,type,star,setter)	forAll(^(type *p) {\
-		[ud setter: star p->v forKey:p->key]; });
-- (void)applicationWillTerminate:(NSNotification *)notification {
+	if (star p->v == p->fd) [ud removeObjectForKey:p->key];\
+	else [ud setter: star p->v forKey:p->key]; });
+void save_as_user_defaults(void) {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	SAVE_DFLT(for_all_int_vars, IntVarInfo, *, setInteger)
 	SAVE_DFLT(for_all_float_vars, FloatVarInfo, *, setFloat)
 	SAVE_DFLT(for_all_uint_vars, UIntegerVarInfo, , setInteger)
 	SAVE_DFLT(for_all_bool_vars, BoolVarInfo, , setBool)
 	for_all_color_vars(^(ColVarInfo *p) {
-		[ud setObject:[NSString stringWithFormat:@"%08lX", col_to_ulong(*p->v)] forKey:p->key];
+		NSUInteger cu = col_to_ulong(*p->v);
+		if (cu == col_to_ulong(p->fd)) [ud removeObjectForKey:p->key];
+		else [ud setObject:[NSString stringWithFormat:@"%08lX", cu] forKey:p->key];
 	});
-	[ud setInteger:ptclColorMode forKey:keyColorMode];
-	[ud setInteger:ptclShapeMode forKey:keyShapeMode];
-	[ud setInteger:obstaclesMode forKey:keyObsMode];
-	[ud setObject:scrForFullScr forKey:keyScrForFullScr];
+	if (ptclColorMode == ptclColorModeFD) [ud removeObjectForKey:keyColorMode];
+		else [ud setInteger:ptclColorMode forKey:keyColorMode];
+	if (ptclShapeMode == ptclShapeModeFD) [ud removeObjectForKey:keyShapeMode];
+		else [ud setInteger:ptclShapeMode forKey:keyShapeMode];
+	if (newObsMode == obsModeFD) [ud removeObjectForKey:keyObsMode];
+		else [ud setInteger:newObsMode forKey:keyObsMode];
+	if ([scrForFullScr isEqualToString:scrForFullScrFD])
+		[ud removeObjectForKey:keyScrForFullScr];
+	else [ud setObject:scrForFullScr forKey:keyScrForFullScr];
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
-		[ud setObject:@{@"path":s->v.path, @"mmin":@(s->v.mmin),
-			@"mmax":@(s->v.mmax), @"vol":@(s->v.vol)} forKey:s->key];
+		if (prm_equal(&s->v, &s->fd)) [ud removeObjectForKey:s->key];
+		else [ud setObject:@{@"path":s->v.path, @"mmin":@(s->v.mmin),
+				@"mmax":@(s->v.mmax), @"vol":@(s->v.vol)} forKey:s->key];
 	}
+}
+- (void)applicationWillTerminate:(NSNotification *)notification {
+	if (SAVE_WHEN_TERMINATE) save_as_user_defaults();
 }
 @end
