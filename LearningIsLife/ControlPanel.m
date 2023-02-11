@@ -154,7 +154,8 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		(displayReconfigCB, (__bridge void *)screenPopUp);
 	if (error != kCGErrorSuccess)
 		NSLog(@"CGDisplayRegisterReconfigurationCallback error = %d", error);
-	colWels = @[cwlBackground, cwObstacles, cwAgent, cwGridLines, cwSymbols, cwParticles];
+	colWels = @[cwlBackground, cwObstacles, cwAgent, cwGridLines, cwSymbols, cwParticles,
+		cwTracking];
 	ivDgts = @[dgtGridW, dgtGridH, dgtTileH, dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
 		dgtMemSize, dgtMemTrials, dgtNParticles, dgtLifeSpan];
 	ivStps = @[stpGridW, stpGridH, stpTileH, stpStartX, stpStartY, stpGoalX, stpGoalY];
@@ -169,7 +170,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
 	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
 	wrldControls = @[dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
-		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtLifeSpan];
+		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtLifeSpan, cwTracking];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
@@ -347,7 +348,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	}];
 	undoManager.actionName = NSLocalizedString(keyObsMode, nil);
 	newObsMode = newValue;
-	for (NSControl *cntrl in wrldControls) cntrl.enabled = (newValue == ObsExternal);
+	for (NSControl *cntrl in wrldControls) cntrl.enabled = (newValue >= ObsPointer);
 	[NSNotificationCenter.defaultCenter postNotificationName:keyObsMode object:NSApp];
 }
 - (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {

@@ -210,7 +210,7 @@ static NSColor *col_from_vec(simd_float4 vc) {
 	}
 	[colGridLines setStroke];
 	[path stroke];
-	// Obstacles
+	// ObsHeight
 	[path removeAllPoints];
 	NSRect obstRect = {0., 0., tileSize.x, tileSize.y};
 	for (int i = 0; i < nObstacles; i ++) {
@@ -220,7 +220,7 @@ static NSColor *col_from_vec(simd_float4 vc) {
 	}
 	[colObstacles setFill];
 	[path fill];
-	if (obstaclesMode != ObsExternal) {
+	if (obstaclesMode < ObsPointer) {
 		// Equations
 		[self drawEqu:@"equationL" at:(NSPoint){ObsP[0].x, ObsP[0].y + 3}];
 		[self drawEqu:@"equationP" at:(NSPoint){ObsP[4].x, ObsP[4].y + 3}];

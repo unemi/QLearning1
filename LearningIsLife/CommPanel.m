@@ -6,8 +6,10 @@
 //
 
 #import "CommPanel.h"
+#import "AppDelegate.h"
 #import "MainWindow.h"
 
+Tracker *theTracker = nil;
 static Comm *theComm = nil;
 static NSString *keyCommEnabled = @"commEnabled", *keyDstAddress = @"dstAddress",
 	*keyDstPort = @"dstPort", *keyRcvPort = @"rcvPort",
@@ -20,16 +22,17 @@ static void comm_setup_defaults(void) {
 	if ((num = [ud objectForKey:keyDstPort]) != nil)
 		theComm.destinationPort = num.intValue;
 }
-BOOL start_communication(in_port_t rcvPort, float pktPerSec) {
+static BOOL start_communication(in_port_t rcvPort, float pktPerSec) {
 	if (theComm == nil) {
 		theComm = Comm.new;
 		comm_setup_defaults();
 	}
-	if (![theComm startReceiverWithPort:rcvPort delegate:theMainWindow]) return NO;
+	if (theTracker == nil) theTracker = Tracker.new;
+	if (![theComm startReceiverWithPort:rcvPort delegate:theTracker]) return NO;
 	[theMainWindow setSendersPacketsPerSec:pktPerSec];
 	return YES;
 }
-void stop_communication(void) {
+static void stop_communication(void) {
 	[theMainWindow setSendersPacketsPerSec:0];
 	[theComm invalidate]; theComm = nil;
 }
@@ -190,5 +193,128 @@ static NSString *bytes_number(CGFloat b) {
 - (void)windowWillClose:(NSNotification *)notification {
 	[theComm setStatHandlersSnd:nil rcv:nil];
 	handlersReady = NO;
+}
+@end
+
+@implementation TrackedPoint
+- (instancetype)initWithPoint:(simd_float2)p {
+	if (!(self = [super init])) return nil;
+	_point = p; _height = 1.;
+	return self;
+}
+- (float)step {
+	return _height -= 1. / ManObsLifeSpan * DISP_INTERVAL;
+}
+@end
+
+@implementation Tracker {
+	NSMutableArray<TrackedPoint *> *trace;
+	NSLock *traceLock;
+}
+- (instancetype)init {
+	if (!(self = [super init])) return nil;
+	trace = NSMutableArray.new;
+	traceLock = NSLock.new;
+	traceLock.name = @"Tracked Points";
+	return self;
+}
+- (id<MTLBuffer>)trackedPoints:(id<MTLDevice>)device {
+	if (trace.count == 0) return nil;
+	[traceLock lock];
+	id<MTLBuffer> buf = [device newBufferWithLength:
+		sizeof(simd_float3) * trace.count options:MTLResourceStorageModeShared];
+	simd_float3 *dp = buf.contents;
+	for (NSInteger i = 0; i < trace.count; i ++) {
+		float h = trace[i].height;
+		dp[i].xy = trace[i].point;
+		dp[i].z = ((h < .25)? sinf(h / .25 * M_PI/2.) :
+			(h < .75)? 1. : sinf((1. - h) / .25 * M_PI/2.)) * tileSize.x / 2.;
+	}
+	[traceLock unlock];
+	return buf;
+}
+- (void)stepTracking {
+	[theMainWindow.agentEnvLock lock];
+	int k = 0;
+	for (int i = 0; i < nObstacles; i ++) {
+		int idx = ij_to_idx(ObsP[i]);
+		ObsHeight[idx] -= 1. / ManObsLifeSpan * DISP_INTERVAL;
+		if (ObsHeight[idx] > 0.) {
+			if (k < i) ObsP[k] = ObsP[i];
+			k ++;
+		} else ObsHeight[idx] = 0.;
+	}
+	nObstacles = k;
+	[theMainWindow.agentEnvLock unlock];
+	[traceLock lock];
+	NSInteger idx = -1;
+	for (NSInteger i = 0; i < trace.count; i ++) if (trace[i].step <= 0.) idx = i;
+	if (idx >= 0) [trace removeObjectsInRange:(NSRange){0, idx + 1}];
+	[traceLock unlock];
+}
+- (void)addTrackedPoint:(simd_float2)p {
+	simd_float2 pos = p * (simd_float2){nGridW, nGridH};
+	simd_int2 ixy = simd_int(floor(pos));
+	if (ixy.x < 0 || ixy.x >= nGridW || ixy.y < 0 || ixy.y >= nGridH
+	 || simd_equal(ixy, GoalP) || simd_equal(ixy, StartP)) return;
+	[theMainWindow.agentEnvLock lock];
+	if (!simd_equal(ixy, theMainWindow.agentPosition)) {
+		int idx = ij_to_idx(ixy);
+		if (ObsHeight[idx] == 0. && nObstacles < nGrids)
+			ObsP[nObstacles ++] = ixy;
+		ObsHeight[idx] = 1.;
+		[theMainWindow.agentEnvLock unlock];
+		[traceLock lock];
+		[trace addObject:
+			[TrackedPoint.alloc initWithPoint:p * (simd_float2){PTCLMaxX, PTCLMaxY}]];
+		[traceLock unlock];
+	} else [theMainWindow.agentEnvLock unlock];
+}
+// Comm Delegate
+- (void)receive:(char *)buf length:(ssize_t)length {
+	if (obstaclesMode != ObsExternal || memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
+	union { struct { SInt32 idx; Float32 x, y; SInt32 nPts; } d; SInt32 i[4]; } b;
+	memcpy(b.i, buf + 16, 16);
+	for (int i = 0; i < 4; i ++) b.i[i] = EndianS32_BtoN(b.i[i]);
+	if (b.d.idx >= 0 && b.d.idx < NTrackings)
+		[self addTrackedPoint:(simd_float2){b.d.x, b.d.y}];
+}
+
+enum { CellNormal, CellObstacle, CellStart, CellGoal };
+- (void)sendAgentInfo:(AgentStepResult)result {
+	static char addr[] = "/agent\0\0,iii\0\0\0";
+	union { char c[64]; SInt32 i[16]; } b;
+	memset(b.c, 0, sizeof(b.c));
+	memcpy(b.c, addr, sizeof(addr));
+	int idx = (sizeof(addr) + 3) / 4;
+	simd_int2 p = theMainWindow.agentPosition;
+	b.i[idx ++] = EndianS32_NtoB(p.x);
+	b.i[idx ++] = EndianS32_NtoB(p.y);
+	b.i[idx ++] = EndianS32_NtoB(result);
+	send_packet(b.c, idx * 4);
+}
+- (void)sendVectorFieldInfo {
+	static char addr[] = "/cell\0\0\0,iiifffff\0\0";
+	union { char c[128]; SInt32 i[32]; } b;
+	union { simd_float4 Q; SInt32 i[4]; } q;
+	union { float f; SInt32 i; } r;
+	memset(b.c, 0, sizeof(b.c));
+	memcpy(b.c, addr, sizeof(addr));
+	simd_int2 ixy;
+	for (ixy.y = 0; ixy.y < nGridH; ixy.y ++)
+	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++) {
+		int idx = (sizeof(addr) + 3) / 4;
+		b.i[idx ++] = EndianS32_NtoB(ixy.x);
+		b.i[idx ++] = EndianS32_NtoB(ixy.y);
+		r.f = ObsHeight[ij_to_idx(ixy)];
+		b.i[idx ++] = EndianS32_NtoB((r.f > 0.)? CellObstacle :
+			simd_equal(ixy, StartP)? CellStart :
+			simd_equal(ixy, GoalP)? CellGoal : CellNormal);
+		b.i[idx ++] = EndianS32_NtoB(r.i);
+		q.Q = QTable[ij_to_idx(ixy)];
+		for (int i = 0; i < 4; i ++)
+			b.i[idx ++] = EndianS32_NtoB(q.i[i]);
+		send_packet(b.c, idx * 4);
+	}
 }
 @end

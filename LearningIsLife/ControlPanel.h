@@ -19,7 +19,7 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 	IBOutlet NSStepper *stpGridW, *stpGridH, *stpTileH,
 		*stpStartX, *stpStartY, *stpGoalX, *stpGoalY;
 	IBOutlet NSColorWell *cwlBackground, *cwObstacles, *cwAgent,
-		*cwGridLines, *cwSymbols, *cwParticles;
+		*cwGridLines, *cwSymbols, *cwParticles, *cwTracking;
 	IBOutlet NSTextField *dgtMemSize, *dgtMemTrials, *dgtNParticles, *dgtLifeSpan;
 	IBOutlet NSTextField *dgtT0, *dgtT1, *dgtCoolingRate, *dgtInitQValue, *dgtGamma, *dgtAlpha,
 		*dgtStpPS, *dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;

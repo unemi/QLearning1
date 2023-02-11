@@ -52,12 +52,9 @@ MainWindow *theMainWindow = nil;
 }
 @end
 
-typedef enum { TrackRight, TrackFront, TrackLeft, NTrackings } TrackingIndex;
-
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
-	CGFloat interval;
 	BOOL running;
 	NSUInteger steps, goalCount;
 	float sendingPPS;
@@ -71,7 +68,7 @@ typedef enum { TrackRight, TrackFront, TrackLeft, NTrackings } TrackingIndex;
 		*fpsDgt, *fpsUnit;
 	NSArray<NSTextField *> *infoTexts;
 	CGFloat FPS, expectedGoals, expectedSteps;
-	unsigned long *manObsTOB;	// time in micro second of birth
+	NSTimer *pointerTrackTimer;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
 static inline BOOL rec_enabled(void) {
@@ -134,15 +131,15 @@ static BOOL is_symbol_color_visible(void) {
 	} else return YES;
 }
 static void organize_work_mems(void) {
-	Obstacles = realloc(Obstacles, sizeof(int) * nGrids);
+	ObsHeight = realloc(ObsHeight, sizeof(float) * nGrids);
 	FieldP = realloc(FieldP, sizeof(simd_int2) * nActiveGrids);
-	memset(Obstacles, 0, sizeof(int) * nGrids);
+	memset(ObsHeight, 0, sizeof(float) * nGrids);
 	for (int i = 0; i < nObstacles; i ++)
-		Obstacles[ij_to_idx(ObsP[i])] = 1;
+		ObsHeight[ij_to_idx(ObsP[i])] = 1;
 	simd_int2 ixy; int k = 0;
 	for (ixy.y = 0; ixy.y < nGridH; ixy.y ++)
 	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++)
-		if (Obstacles[ij_to_idx(ixy)] == 0 && k < nActiveGrids) FieldP[k ++] = ixy;
+		if (ObsHeight[ij_to_idx(ixy)] == 0 && k < nActiveGrids) FieldP[k ++] = ixy;
 }
 -(void)setupObstacles {
 	BOOL gridChanged = nGridW != newGridW || nGridH != newGridH,
@@ -170,24 +167,39 @@ static void organize_work_mems(void) {
 		}
 		organize_work_mems();
 		break;
+		case ObsPointer:
+		if (theTracker == nil) theTracker = Tracker.new;
 		case ObsExternal:
 		StartP = simd_min((simd_int2){newStartX, newStartY}, (simd_int2){nGridW, nGridH} - 1);
 		GoalP = simd_min((simd_int2){newGoalX, newGoalY}, (simd_int2){nGridW, nGridH} - 1);
 		nObstacles = 0;
 		ObsP = realloc(ObsP, sizeof(simd_int2) * nGrids);
 		organize_work_mems();
-		manObsTOB = realloc(manObsTOB, sizeof(unsigned long) * nGrids);
 	}
-	if (obsModeChanged) [NSNotificationCenter.defaultCenter
-		postNotificationName:@"obsModeChangedByReset" object:NSApp];
+	if (obsModeChanged) {
+		if (obstaclesMode == ObsPointer) pointerTrackTimer =
+			[NSTimer scheduledTimerWithTimeInterval:1./30. repeats:YES block:
+			^(NSTimer * _Nonnull timer) {
+				NSPoint pt = [self->view convertPoint:
+					[self->view.window convertPointFromScreen:NSEvent.mouseLocation]
+					fromView:nil];
+				NSRect bounds = self->view.bounds;
+				if (NSPointInRect(pt, bounds)) [theTracker addTrackedPoint:
+					(simd_float2){pt.x / bounds.size.width, pt.y / bounds.size.height}];
+			}];
+		else if (pointerTrackTimer != nil)
+			{ [pointerTrackTimer invalidate]; pointerTrackTimer = nil; }
+		[NSNotificationCenter.defaultCenter
+			postNotificationName:@"obsModeChangedByReset" object:NSApp];
+	}
 }
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	theMainWindow = self;
-	interval = 1. / 60.;
 	expectedGoals = MAX_GOALCNT / 2.;
 	expectedSteps = MAX_STEPS / 2.;
 	_agentEnvLock = NSLock.new;
+	_agentEnvLock.name = @"Agent Environment";
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
 	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
@@ -240,6 +252,7 @@ static void organize_work_mems(void) {
 	[view.window makeFirstResponder:self];
 	[self reset:nil];
 }
+- (simd_int2)agentPosition { return agent.position; }
 - (NSString *)infoText {
 	return [NSString stringWithFormat:@"%@ steps, %ld goal%@",
 		[NSNumberFormatter localizedStringFromNumber:@(steps)
@@ -296,18 +309,6 @@ static void feed_env_noise_params(void) {
 	}
 	set_audio_env_params(sep);
 }
-- (void)stepTracking {
-	[_agentEnvLock lock];
-	unsigned long now = current_time_us(), lifeSpan = ManObsLifeSpan * 1e6;
-	int k = 0;
-	for (int i = 0; i < nObstacles; i ++)
-		if (now - manObsTOB[i] < lifeSpan) {
-			if (k < i) { ObsP[k] = ObsP[i]; manObsTOB[k] = manObsTOB[i]; }
-			k ++;
-		} else Obstacles[ij_to_idx(ObsP[i])] = 0;
-	nObstacles = k;
-	[_agentEnvLock unlock];
-}
 - (void)loopThreadForAgent {
 	while (running) {
 		NSUInteger tm = current_time_us();
@@ -326,10 +327,10 @@ static void feed_env_noise_params(void) {
 				mag_to_scl((float)goalCount / MAX_GOALCNT, p));
 		}
 		if (communication_is_running()) {
-			[self sendAgentInfo];
+			[theTracker sendAgentInfo:result];
 			if (sendingPPS > 0.) {
 				NSInteger spp = StepsPerSec / sendingPPS;
-				if (spp <= 1 || steps % spp == 0) [self sendVectorFieldInfo];
+				if (spp <= 1 || steps % spp == 0) [theTracker sendVectorFieldInfo];
 			}
 		}
 		steps ++;
@@ -365,14 +366,17 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 - (void)loopThreadForDisplay {
 	while (running) {
 		NSUInteger tm = current_time_us();
-		if (obstaclesMode == ObsExternal && communication_is_running())
-			[self stepTracking];
+		switch (obstaclesMode) {
+			case ObsExternal: if (!communication_is_running()) break;
+			case ObsPointer: [theTracker stepTracking];
+			default: break;
+		}
 		[display oneStep];
 		feed_env_noise_params();
 		unsigned long elapsed_us = current_time_us() - tm;
-		NSInteger timeRemain = (interval - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
+		NSInteger timeRemain = (DISP_INTERVAL - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
 		if (timeRemain > 0) {
-			elapsed_us = interval * 1e6;
+			elapsed_us = DISP_INTERVAL * 1e6;
 			usleep((useconds_t)timeRemain);
 		}
 		in_main_thread(^{ if (SHOW_FPS) self->fpsDgt.stringValue =
@@ -482,70 +486,6 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 		[dispModePopUp selectItemAtIndex:newMode];
 	} else return;
 	display.displayMode = (DisplayMode)newMode;
-}
-- (void)interpreteMessage:(char *)buf length:(ssize_t)length {
-	if (memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
-	union { struct { SInt32 idx; Float32 x, y; SInt32 nPts; } d; SInt32 i[4]; } b;
-	memcpy(b.i, buf + 16, 16);
-	for (int i = 0; i < 4; i ++) b.i[i] = EndianS32_BtoN(b.i[i]);
-	if (b.d.idx < 0 || b.d.idx >= NTrackings) return;
-	simd_float2 pos = (simd_float2){b.d.x, b.d.y} * (simd_float2){nGridW, nGridH};
-	simd_int2 ixy = simd_int(floor(pos));
-	if (ixy.x < 0 || ixy.x >= nGridW || ixy.y < 0 || ixy.y >= nGridH
-	 || simd_equal(ixy, GoalP) || simd_equal(ixy, StartP)) return;
-	[_agentEnvLock lock];
-	if (!simd_equal(ixy, agent.position)) {
-		int idx = -1;
-		for (int i = 0; i < nObstacles; i ++)
-			if (simd_equal(ixy, ObsP[i])) { idx = i; break; }
-		if (idx < 0) {
-			ObsP[(idx = nObstacles ++)] = ixy;
-			Obstacles[ij_to_idx(ixy)] = 1;
-		}
-		manObsTOB[idx] = current_time_us();
-	}
-	[_agentEnvLock unlock];
-}
-// Comm Delegate
-- (void)receive:(char *)buf length:(ssize_t)length {
-	if (memcmp(buf, "#bundle\0", 8) == 0) {
-		UInt32 *p = (UInt32 *)(buf + 8);
-//		struct { UInt32 sec, subsec; } tm = {p[0], p[1]};
-		length -= 16;
-		for (p += 2; length > p[0] && p[0] > 0; p += p[0] / 4 + 1) {
-			[self receive:(char *)(p + 1) length:p[0]];
-			length -= p[0] + 4;
-		}
-	} else [self interpreteMessage:buf length:length];
-}
-- (void)sendAgentInfo {
-	static char addr[] = "/agent\0\0,ii";
-	union { char c[64]; SInt32 i[16]; } b;
-	memset(b.c, 0, sizeof(b.c));
-	memcpy(b.c, addr, sizeof(addr));
-	int idx = (sizeof(addr) + 3) / 4;
-	simd_int2 p = agent.position;
-	b.i[idx ++] = EndianS32_NtoB(p.x);
-	b.i[idx ++] = EndianS32_NtoB(p.y);
-	send_packet(b.c, idx * 4);
-}
-- (void)sendVectorFieldInfo {
-	static char addr[] = "/cell\0\0\0,iiffff";
-	union { char c[128]; SInt32 i[32]; } b;
-	union { simd_float4 Q; SInt32 i[4]; } q;
-	memset(b.c, 0, sizeof(b.c));
-	memcpy(b.c, addr, sizeof(addr));
-	simd_int2 ixy;
-	for (ixy.y = 0; ixy.y < nGridH; ixy.y ++)
-	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++) {
-		int idx = (sizeof(addr) + 3) / 4;
-		b.i[idx ++] = EndianS32_NtoB(ixy.x);
-		b.i[idx ++] = EndianS32_NtoB(ixy.y);
-		q.Q = QTable[ij_to_idx(ixy)];
-		for (int i = 0; i < 4; i ++)
-			b.i[idx ++] = EndianS32_NtoB(q.i[i]);
-		send_packet(b.c, idx * 4);
-	}
 }
 - (void)setSendersPacketsPerSec:(float)pps {
 	sendingPPS = pps;

@@ -34,7 +34,7 @@ extern int NParticles, LifeSpan;
 extern float Mass, Friction, StrokeLength, StrokeWidth, MaxSpeed;
 extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 	* _Nonnull colAgent, * _Nonnull colGridLines,
-	* _Nonnull colSymbols, * _Nonnull colParticles;
+	* _Nonnull colSymbols, * _Nonnull colParticles, * _Nonnull colTracking;
 extern PTCLColorMode ptclColorMode;
 extern PTCLShapeMode ptclShapeMode;
 extern void add_observer(NSString * _Nonnull noteName,

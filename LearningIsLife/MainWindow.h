@@ -11,10 +11,10 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface MainWindow : NSWindowController
-	<NSWindowDelegate, NSMenuItemValidation, CommDelegate>
+@interface MainWindow : NSWindowController <NSWindowDelegate, NSMenuItemValidation>
 @property (readonly) NSLock *agentEnvLock;
 - (void)adjustForRecordView:(NSNotification * _Nullable)note;
+- (simd_int2)agentPosition;
 - (IBAction)reset:(id _Nullable)sender;
 - (IBAction)startStop:(id _Nullable)sender;
 - (IBAction)fullScreen:(id _Nullable)sender;

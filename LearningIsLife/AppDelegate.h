@@ -38,7 +38,7 @@ extern int nGridW, nGridH, nObstacles, maxNObstacles;
 extern int newGridW, newGridH, newTileH, newMaxNObstacles, maxNObstacles;
 extern int newStartX, newStartY, newGoalX, newGoalY;
 extern simd_int2 *ObsP, *FieldP, StartP, GoalP, tileSize;
-extern int *Obstacles;
+extern float *ObsHeight;
 extern NSString *keyCntlPnl;
 extern NSString *keyOldValue, *keyShouldRedraw, *keyShouldReviseVertices, *keySoundTestExited;
 extern NSString *keyColorMode, *keyShapeMode, *keyObsMode;

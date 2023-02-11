@@ -7,6 +7,7 @@
 
 #include <sys/sysctl.h>
 #import "ControlPanel.h"
+#import "CommPanel.h"	// for Tracked points
 #import "Display.h"
 #import "MainWindow.h"
 #import "Agent.h"
@@ -25,7 +26,7 @@
 int NParticles = 120000, LifeSpan = 80;
 float Mass = 2., Friction = 0.9, StrokeLength = 0.2, StrokeWidth = .01, MaxSpeed = 0.05;
 NSColor *colBackground, *colObstacles, *colAgent,
-	*colGridLines, *colSymbols, *colParticles;
+	*colGridLines, *colSymbols, *colParticles, *colTracking;
 PTCLColorMode ptclColorMode = PTCLconstColor;
 PTCLShapeMode ptclShapeMode = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
@@ -53,6 +54,7 @@ void init_default_colors(void) {
 	colGridLines = color_with_comp((CGFloat []){.5, .5, .5, 1.});
 	colSymbols = color_with_comp((CGFloat []){.7, .7, .7, 1.});
 	colParticles = color_with_comp((CGFloat []){1., 1., 1., .1});
+	colTracking = color_with_comp((CGFloat []){1., 1., 1., .667});
 }
 static simd_float4 col_to_vec(NSColor * _Nonnull col) {
 	CGFloat c[4] = {0, 0, 0, 1};
@@ -134,7 +136,7 @@ static simd_float2 particle_force(Particle *p) {
 		idxT = simd_min((simd_int2){nGridW, nGridH}, idx + 2);
 	for (idx.x = idxF.x; idx.x < idxT.x; idx.x ++)
 	for (idx.y = idxF.y; idx.y < idxT.y; idx.y ++)
-	if (Obstacles[ij_to_idx(idx)] == 0) {
+	if (ObsHeight[ij_to_idx(idx)] == 0) {
 		w = simd_distance_squared(simd_float(idx) + .5, q);
 		simd_float4 Q = QTable[ij_to_idx(idx)];
 		f += (simd_float2){Q.y - Q.w, Q.x - Q.z} / w;
@@ -144,7 +146,7 @@ static simd_float2 particle_force(Particle *p) {
 }
 #endif
 static void particle_reset(Particle *p, BOOL isRandom) {
-	int nActG = (obstaclesMode != ObsExternal)? nActiveGrids : nGrids;
+	int nActG = (obstaclesMode < ObsPointer)? nActiveGrids : nGrids;
 	p->p = (simd_float(FieldP[lrand48() % nActG])
 		+ (simd_float2){drand48(), drand48()}) * simd_float(tileSize);
 	simd_float2 f = particle_force(p);
@@ -165,7 +167,7 @@ static void particle_step(Particle *p, simd_float2 f) {
 @implementation Display {
 	MTKView *view;
 	NSOperationQueue *opeQue;
-	id<MTLRenderPipelineState> shapePSO, texPSO;
+	id<MTLRenderPipelineState> shapePSO, texPSO, tpPSO;
 	id<MTLCommandQueue> commandQueue;
 	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex;
 	id<MTLBuffer> vxBuf, colBuf, vxBufD[2], colBufD[2];
@@ -348,21 +350,25 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	if (lock) [loopLock unlock];
 	return result;
 }
+#define MAKE_PSO(vs,fs,var)\
+ 	pplnStDesc.vertexFunction = [dfltLib newFunctionWithName:vs];\
+	pplnStDesc.fragmentFunction = [dfltLib newFunctionWithName:fs];\
+	var = [device newRenderPipelineStateWithDescriptor:pplnStDesc error:&error];\
+	if (var == nil) err_msg(error.localizedDescription, (OSStatus)error.code, YES);
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
 	if (!(self = [super init])) return nil;
 	int mib[2] = { CTL_HW, HW_MACHINE };
 	size_t dataSize = 128;
 	char archName[128];
 	memset(archName, 0, 128);
-	if (sysctl(mib, 2, archName, &dataSize, NULL, 0) < 0) {
-		fprintf(stderr, "sysctl err = %d\n", errno);
-		[NSApp terminate:nil];
-	}
+	if (sysctl(mib, 2, archName, &dataSize, NULL, 0) < 0)
+		err_msg(@"Couldn't get architecture type.", errno, YES);
 	isARM = strcmp(archName, "x86_64") != 0;
 	nCores = (int)NSProcessInfo.processInfo.activeProcessorCount;
 	if (nCores > 8) nCores -= 2;
 	else if (nCores > 5) nCores --;
 	loopLock = NSLock.new;
+	loopLock.name = @"Display Loop";
 	opeQue = NSOperationQueue.new;
 	_agent = a;
 	view = mtkView;
@@ -379,13 +385,10 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	NSLog(@"%d Cores, Sample count = %ld, %@.", nCores, smplCnt,
 		isARM? @"ARM_64" : @"x86_64" );
 #endif
-
 	NSError *error;
 	MTLRenderPipelineDescriptor *pplnStDesc = MTLRenderPipelineDescriptor.new;
 	pplnStDesc.label = @"Simple Pipeline";
 	id<MTLLibrary> dfltLib = device.newDefaultLibrary;
-	pplnStDesc.vertexFunction = [dfltLib newFunctionWithName:@"vertexShader"];
-	pplnStDesc.fragmentFunction = [dfltLib newFunctionWithName:@"fragmentShader"];
 	pplnStDesc.rasterSampleCount = view.sampleCount;
 	MTLRenderPipelineColorAttachmentDescriptor *colAttDesc = pplnStDesc.colorAttachments[0];
 	colAttDesc.pixelFormat = view.colorPixelFormat;
@@ -393,14 +396,10 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	colAttDesc.rgbBlendOperation = MTLBlendOperationAdd;
 	colAttDesc.sourceRGBBlendFactor = MTLBlendFactorSourceAlpha;
 	colAttDesc.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
-	shapePSO = [device newRenderPipelineStateWithDescriptor:pplnStDesc error:&error];
-	NSAssert(shapePSO, @"Failed to create pipeline state for shape: %@", error);
-	pplnStDesc.vertexFunction = [dfltLib newFunctionWithName:@"vertexShaderTex"];
-	pplnStDesc.fragmentFunction = [dfltLib newFunctionWithName:@"fragmentShaderTex"];
-	texPSO = [device newRenderPipelineStateWithDescriptor:pplnStDesc error:&error];
-	NSAssert(texPSO, @"Failed to create pipeline state for texture: %@", error);
+	MAKE_PSO(@"vertexShader", @"fragmentShader", shapePSO)
+	MAKE_PSO(@"vertexShaderTex", @"fragmentShaderTex", texPSO)
+	MAKE_PSO(@"vertexShaderTP", @"fragmentShaderTP", tpPSO)
 	commandQueue = device.newCommandQueue;
-
 	add_observer(keyShouldRedraw,
 		^(NSNotification * _Nonnull note) { self->view.needsDisplay = YES; });
 	add_observer(@"colorParticles", ^(NSNotification * _Nonnull note) {
@@ -638,7 +637,7 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 					float dSum = 0.;
 					for (jdx.y = rngF.y; jdx.y < rngT.y; jdx.y ++)
 					for (jdx.x = rngF.x; jdx.x < rngT.x; jdx.x ++)
-					if (Obstacles[ij_to_idx(jdx)] == 0) {
+					if (ObsHeight[ij_to_idx(jdx)] == 0) {
 						simd_float4 Q = QTable[ij_to_idx(jdx)];
 						float d = simd_distance_squared(p, simd_float(jdx) + .5);
 						v += (simd_float2){Q.y - Q.w, Q.x - Q.z} / d;
@@ -857,7 +856,7 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		case ObsFixed: case ObsRandom:
 		nObs = nObstacles; obsP = ObsP;
 		break;
-		case ObsExternal:
+		case ObsPointer: case ObsExternal:
 		if (obsMem == NULL) obsMem = malloc(sizeof(simd_int2) * nGrids);
 		obsP = obsMem;
 		[theMainWindow.agentEnvLock lock];
@@ -934,8 +933,22 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		for (int i = 0; i < nObs; i ++) fill_rect(rce, (NSRect)
 			{obsP[i].x * tileSize.x, obsP[i].y * tileSize.y, tileSize.x, tileSize.y});
 	}
+	if (obstaclesMode >= ObsPointer) {
+		id<MTLBuffer> info = [theTracker trackedPoints:view.device];
+		if (info != nil) {
+			[rce setRenderPipelineState:tpPSO];
+			uint nPoints = (uint)(info.length / sizeof(simd_float3));
+			simd_float4 tpColor = col_to_vec(colTracking);
+			simd_float2 vertices[4] =
+				{{0., 0.}, {PTCLMaxX, 0.}, {0., PTCLMaxY}, {PTCLMaxX, PTCLMaxY}};
+			[rce setVertexBytes:vertices length:sizeof(vertices) atIndex:IndexVertices];
+			[rce setFragmentBuffer:info offset:0 atIndex:IndexTPInfo];
+			[rce setFragmentBytes:&tpColor length:sizeof(tpColor) atIndex:IndexTPColor];
+			[rce setFragmentBytes:&nPoints length:sizeof(nPoints) atIndex:IndexTPN];
+			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+		}
+	} else if (symCol.a > 0.) {
 	// project logo
-	if (symCol.a > 0. && obstaclesMode != ObsExternal) {
 		set_color(rce, symCol);
 		if (logoDrawer == nil) logoDrawer = LogoDrawerMTL.new;
 		float logoDim = simd_reduce_min(tileSize);
@@ -992,7 +1005,7 @@ NSUInteger tm1, tm0 = current_time_us();
 				if (p->p.x > 0. && p->p.x < PTCLMaxX
 				 && p->p.y > 0. && p->p.y < PTCLMaxY
 				 && (-- p->life) > 0 &&
-				 (obstaclesMode == ObsExternal || Obstacles[p_to_idx(p->p)] == 0)
+				 (obstaclesMode >= ObsPointer || ObsHeight[p_to_idx(p->p)] == 0)
 				 ) idxs[k0 ++] = j;
 				else idxs[-- k1] = j;
 			}

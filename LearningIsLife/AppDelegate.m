@@ -19,7 +19,7 @@ simd_int2 Move[4] = {{0,1},{1,0},{0,-1},{-1,0}}; // up, right, down, left
 simd_int2 FixedObsP[NObstaclesDF] = {{2,2},{2,3},{2,4},{5,1},{7,3},{7,4},{7,5}};
 simd_int2 FixedStartP = {0,3}, FixedGoalP = {8,5};
 simd_int2 *ObsP = NULL, *FieldP = NULL, StartP, GoalP, tileSize = {TileSizeWDF, TileSizeHDF};
-int *Obstacles = NULL;
+float *ObsHeight = NULL;
 int nGridW = NGridWDF, nGridH = NGridHDF, nObstacles = NObstaclesDF;
 int newGridW = NGridWDF, newGridH = NGridHDF, newTileH = TileSizeHDF,
 	newStartX = 0, newStartY = 3, newGoalX = 8, newGoalY = 5;
@@ -71,6 +71,7 @@ ColVarInfo ColVars[] = {
 	{ @"colorGridLines", 0, &colGridLines },
 	{ @"colorSymbols", ShouldPostNotification, &colSymbols },
 	{ @"colorParticles", ShouldPostNotification, &colParticles },
+	{ @"colorTracking", 0, &colTracking },
 	{ nil }
 };
 UIntegerVarInfo UIntegerVars[] = {
@@ -169,12 +170,10 @@ NSUInteger hex_string_to_ulong(NSString *str) {
 	ptclShapeModeFD = ptclShapeMode;
 	obsModeFD = obstaclesMode;
 	scrForFullScrFD = scrForFullScr;
-	NSNumber *nm = [ud objectForKey:keyColorMode];
-	if (nm != nil) ptclColorMode = nm.intValue;
-	nm = [ud objectForKey:keyShapeMode];
-	if (nm != nil) ptclShapeMode = nm.intValue;
-	nm = [ud objectForKey:keyObsMode];
-	if (nm != nil) newObsMode = obstaclesMode = nm.intValue;
+	NSNumber *nm;
+	if ((nm = [ud objectForKey:keyColorMode]) != nil) ptclColorMode = nm.intValue;
+	if ((nm = [ud objectForKey:keyShapeMode]) != nil) ptclShapeMode = nm.intValue;
+	if ((nm = [ud objectForKey:keyObsMode]) != nil) newObsMode = nm.intValue;
 	NSString *str = [ud objectForKey:keyScrForFullScr];
 	if (str != nil) scrForFullScr = str;
 	ptclColorModeUD = ptclColorMode;

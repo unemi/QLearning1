@@ -92,7 +92,7 @@ typedef struct {
 	int action = [self policy];
 	simd_int2 newp = p + Move[action];
 	if (newp.x < 0 || newp.x >= nGridW || newp.y < 0 || newp.y >= nGridH
-	 || Obstacles[ij_to_idx(newp)] != 0) { newp = p; result = AgentBumped; }
+	 || ObsHeight[ij_to_idx(newp)] > 0) { newp = p; result = AgentBumped; }
 	float reward = [self rewardAt:newp];
 	[mem addObject:[Memory.alloc initWithMemory:(MemoryStruct){action, p, newp, reward}]];
 	if (mem.count > MemSize) [mem removeObjectsInRange:(NSRange){0, mem.count - MemSize}];

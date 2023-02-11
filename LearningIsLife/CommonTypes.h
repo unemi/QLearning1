@@ -18,6 +18,7 @@
 #define TileSizeHDF 100
 #define PTCLMaxX (nGridW*tileSize.x)
 #define PTCLMaxY (nGridH*tileSize.y)
+#define DISP_INTERVAL (1./60.)
 
 enum {
 	ShouldPostNotification = 1,
@@ -28,7 +29,7 @@ enum {
 typedef enum { DispParticle, DispVector, DispQValues, DispNone } DisplayMode;
 typedef enum { PTCLconstColor, PTCLangleColor, PTCLspeedColor } PTCLColorMode;
 typedef enum { PTCLbyRectangles, PTCLbyTriangles, PTCLbyLines } PTCLShapeMode;
-typedef enum { ObsFixed, ObsRandom, ObsExternal } ObstaclesMode;
+typedef enum { ObsFixed, ObsRandom, ObsPointer, ObsExternal } ObstaclesMode;
 
 @class MySound;
 typedef enum {

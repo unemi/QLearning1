@@ -40,3 +40,4 @@
 "startY" = "Row index of start position";
 "goalX" = "Column index of goal position";
 "goalY" = "Row index of goal position";
+"manipulatedObstacleLifeSpan" = "Lifespan of manipulated obstacle";
