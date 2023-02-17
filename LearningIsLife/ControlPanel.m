@@ -121,7 +121,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	[obsPopUp selectItemAtIndex:newObsMode];
 	[screenPopUp selectItemWithTitle:scrForFullScr];
 	[self adjustSoundsCtrls];
-	for (NSControl *ctrl in wrldControls) ctrl.enabled = (newObsMode == ObsExternal);
+	for (NSControl *ctrl in wrldControls) ctrl.enabled = (newObsMode >= ObsPointer);
 	cboxRecordImages.enabled = (obstaclesMode != ObsExternal);
 	adjust_position_max_values(dgtStartX, stpStartX, newGridW);
 	adjust_position_max_values(dgtStartY, stpStartY, newGridH);

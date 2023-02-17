@@ -81,7 +81,7 @@ static NSBitmapImageRep *create_rgb_bitmap(NSUInteger pixW, NSUInteger pixH,
 }
 #define USE_FORCE_GRID
 #ifdef USE_FORCE_GRID
-#define FF_N_GRID 32
+#define FF_N_GRID 20
 static simd_float2 *ForceGrid = NULL;
 static int idx_of_forceGrid(simd_int2 idx) {
 	return idx.y * nGridW * FF_N_GRID + idx.x;
@@ -146,8 +146,7 @@ static simd_float2 particle_force(Particle *p) {
 }
 #endif
 static void particle_reset(Particle *p, BOOL isRandom) {
-	int nActG = (obstaclesMode < ObsPointer)? nActiveGrids : nGrids;
-	p->p = (simd_float(FieldP[lrand48() % nActG])
+	p->p = (simd_float(FieldP[lrand48() % nGridsInUse])
 		+ (simd_float2){drand48(), drand48()}) * simd_float(tileSize);
 	simd_float2 f = particle_force(p);
 	float v = simd_length(f);
@@ -265,7 +264,7 @@ NSLog(@"Ptcl=%ld", newMem.length / sizeof(Particle));
 	NSInteger nColBuf = (colBufD[0] == nil)? 0 : colBufD[0].length / sizeof(simd_float4);
 	NSInteger newNC = (req.displayMode == DispParticle)?
 			(req.colorMode == PTCLconstColor)? 0 : req.nPtcls :
-		(req.displayMode == DispVector)? N_VECTORS : nActiveGrids * NActs;
+		(req.displayMode == DispVector)? N_VECTORS : nGridsInUse * NActs;
 	if (nColBuf != newNC) {
 		if (newNC > 0) {
 			newColBuf[0] = [view.device newBufferWithLength:
@@ -291,7 +290,7 @@ NSLog(@"colBuf=%ld", newColBuf[0].length / sizeof(simd_float4));
 	int newNV = (req.displayMode == DispParticle)?
 		req.nPtcls * ((req.shapeMode == PTCLbyRectangles)? 6 :
 			(req.shapeMode == PTCLbyTriangles)? 3 : 2) :
-		((req.displayMode == DispVector)? N_VECTORS : nActiveGrids * NActs) * NVERTICES_ARROW;
+		((req.displayMode == DispVector)? N_VECTORS : nGridsInUse * NActs) * NVERTICES_ARROW;
 	if (newNV != nVertices) {
 		newVxBuf[0] = [view.device newBufferWithLength:
 			sizeof(simd_float2) * newNV options:isARM? 
@@ -622,7 +621,7 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 }
 #ifdef USE_FORCE_GRID
 - (void)calcForceGrids {
-	THREADS_PRE(int, nActiveGrids)
+	THREADS_PRE(int, nGridsInUse)
 	for (int i = 0; i < nThreads; i ++) {
 		THREADS_ST(int)
 		void (^block)(void) = ^{
@@ -637,7 +636,7 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 					float dSum = 0.;
 					for (jdx.y = rngF.y; jdx.y < rngT.y; jdx.y ++)
 					for (jdx.x = rngF.x; jdx.x < rngT.x; jdx.x ++)
-					if (ObsHeight[ij_to_idx(jdx)] == 0) {
+					if (obstaclesMode >= ObsPointer || ObsHeight[ij_to_idx(jdx)] == 0) {
 						simd_float4 Q = QTable[ij_to_idx(jdx)];
 						float d = simd_distance_squared(p, simd_float(jdx) + .5);
 						v += (simd_float2){Q.y - Q.w, Q.x - Q.z} / d;

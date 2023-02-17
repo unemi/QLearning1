@@ -55,7 +55,6 @@ MainWindow *theMainWindow = nil;
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
-	BOOL running;
 	NSUInteger steps, goalCount;
 	float sendingPPS;
 	NSRect infoViewFrame;
@@ -176,22 +175,8 @@ static void organize_work_mems(void) {
 		ObsP = realloc(ObsP, sizeof(simd_int2) * nGrids);
 		organize_work_mems();
 	}
-	if (obsModeChanged) {
-		if (obstaclesMode == ObsPointer) pointerTrackTimer =
-			[NSTimer scheduledTimerWithTimeInterval:1./30. repeats:YES block:
-			^(NSTimer * _Nonnull timer) {
-				NSPoint pt = [self->view convertPoint:
-					[self->view.window convertPointFromScreen:NSEvent.mouseLocation]
-					fromView:nil];
-				NSRect bounds = self->view.bounds;
-				if (NSPointInRect(pt, bounds)) [theTracker addTrackedPoint:
-					(simd_float2){pt.x / bounds.size.width, pt.y / bounds.size.height}];
-			}];
-		else if (pointerTrackTimer != nil)
-			{ [pointerTrackTimer invalidate]; pointerTrackTimer = nil; }
-		[NSNotificationCenter.defaultCenter
-			postNotificationName:@"obsModeChangedByReset" object:NSApp];
-	}
+	if (obsModeChanged) [NSNotificationCenter.defaultCenter
+		postNotificationName:@"obsModeChangedByReset" object:NSApp];
 }
 - (void)windowDidLoad {
 	[super windowDidLoad];
@@ -233,12 +218,12 @@ static void organize_work_mems(void) {
 	add_observer(@"showFPS", ^(NSNotification * _Nonnull note) {
 		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS; });
 	add_observer(@"sounds", ^(NSNotification * _Nonnull note) {
-		if (self->running) {
+		if (self.running) {
 			if (SOUNDS_ON) start_audio_out();
 			else stop_audio_out();
 		}});
 	add_observer(keySoundTestExited, ^(NSNotification * _Nonnull note) {
-		if (SOUNDS_ON && self->running) start_audio_out(); });
+		if (SOUNDS_ON && self.running) start_audio_out(); });
 	add_observer(keyObsMode, ^(NSNotification * _Nonnull note) {
 		if (self->steps > 0) return;
 		[self setupObstacles];
@@ -295,7 +280,8 @@ static void feed_env_noise_params(void) {
 	int gCnt[nGridW];
 	memset(sep, 0, sizeof(sep));
 	memset(gCnt, 0, sizeof(gCnt));
-	for (NSInteger i = 0; i < nActiveGrids; i ++) {
+	NSInteger n = nGridsInUse;
+	for (NSInteger i = 0; i < n; i ++) {
 		simd_int2 pos = FieldP[i];
 		simd_float4 Q = QTable[ij_to_idx(pos)];
 		for (NSInteger k = 0; k < NActs; k ++) sep[pos.x].amp += Q[k];
@@ -310,7 +296,7 @@ static void feed_env_noise_params(void) {
 	set_audio_env_params(sep);
 }
 - (void)loopThreadForAgent {
-	while (running) {
+	while (_running) {
 		NSUInteger tm = current_time_us();
 		[_agentEnvLock lock];
 		AgentStepResult result = [agent oneStep];
@@ -344,7 +330,7 @@ static void feed_env_noise_params(void) {
 		in_main_thread(^{ [self showSteps]; });
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
 		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT)) {
-			running = NO;
+			_running = NO;
 			in_main_thread(^{
 				[self recordImageIfNeeded];
 				[self reset:nil];
@@ -364,7 +350,7 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 	}}
 }
 - (void)loopThreadForDisplay {
-	while (running) {
+	while (_running) {
 		NSUInteger tm = current_time_us();
 		switch (obstaclesMode) {
 			case ObsExternal: if (!communication_is_running()) break;
@@ -394,7 +380,7 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 	[self showGoals];
 }
 - (IBAction)startStop:(id)sender {
-	if ((running = !running)) {
+	if ((_running = !_running)) {
 		[NSThread detachNewThreadSelector:@selector(loopThreadForDisplay)
 			toTarget:self withObject:nil];
 		[NSThread detachNewThreadSelector:@selector(loopThreadForAgent)
@@ -402,10 +388,22 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPauseTemplate];
 		startStopItem.label = @"Stop";
 		if (SOUNDS_ON) start_audio_out();
+		if (obstaclesMode == ObsPointer) pointerTrackTimer =
+			[NSTimer scheduledTimerWithTimeInterval:1./30. repeats:YES block:
+			^(NSTimer * _Nonnull timer) {
+				NSPoint pt = [self->view convertPoint:
+					[self->view.window convertPointFromScreen:NSEvent.mouseLocation]
+					fromView:nil];
+				NSRect bounds = self->view.bounds;
+				if (NSPointInRect(pt, bounds)) [theTracker addTrackedPoint:
+					(simd_float2){pt.x / bounds.size.width, pt.y / bounds.size.height}];
+			}];
 	} else {
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPlayTemplate];
 		startStopItem.label = @"Start";
 		if (SOUNDS_ON) stop_audio_out();
+		if (obstaclesMode == ObsPointer)
+			{ [pointerTrackTimer invalidate]; pointerTrackTimer = nil; }
 	}
 }
 static void adjust_subviews_frame(NSView *view, CGFloat scale) {
@@ -505,7 +503,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
 	SEL action = menuItem.action;
 	if (action == @selector(startStop:))
-		menuItem.title = running? @"Stop" : @"Start";
+		menuItem.title = _running? @"Stop" : @"Start";
 	else if (action == @selector(fullScreen:))
 		menuItem.title = view.superview.inFullScreenMode?
 			labelFullScreenOff : labelFullScreenOn;

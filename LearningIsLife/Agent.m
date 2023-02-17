@@ -20,7 +20,7 @@ int p_to_idx(simd_float2 p) {
 	return ij_to_idx(ij);
 }
 typedef struct {
-	int action;
+	AgentAction action;
 	simd_int2 s1, s2;
 	float reward;
 } MemoryStruct;
@@ -60,12 +60,12 @@ typedef struct {
 	T = T0;
 	steps = 0;
 }
-- (int)policy {
+- (AgentAction)policy {
 	float roulette[NActs], pSum = 0.;
 	for (int i = 0; i < NActs; i ++)
 		roulette[i] = (pSum += expf(QTable[ij_to_idx(p)][i] / T));
 	float r = drand48() * pSum;
-	int action;
+	AgentAction action;
 	for (action = 0; action < NActs; action ++)
 		if (r < roulette[action]) break;
 	return action;
@@ -85,11 +85,12 @@ typedef struct {
 		[self restart];
 		return AgentReached;
 	}
-	if (MAX_STEPS > 0)
-		T = T0 * powf(T1 / T0, (float)(++ steps) / MAX_STEPS);
-	else T += (T1 - T) * CoolingRate / 100;
+	if (MAX_STEPS > 0) {
+		int restSteps = (int)MAX_STEPS - (++ steps);
+		T *= powf(T1 / T, (restSteps > 0)? 1.f / restSteps : 1.f);
+	} else T += (T1 - T) * CoolingRate / 100;
 	AgentStepResult result = AgentStepped;
-	int action = [self policy];
+	AgentAction action = self.policy;
 	simd_int2 newp = p + Move[action];
 	if (newp.x < 0 || newp.x >= nGridW || newp.y < 0 || newp.y >= nGridH
 	 || ObsHeight[ij_to_idx(newp)] > 0) { newp = p; result = AgentBumped; }

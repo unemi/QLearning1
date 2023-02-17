@@ -14,6 +14,7 @@
 #define nGrids (nGridW*nGridH)
 #define NObstaclesDF 7
 #define nActiveGrids (nGrids-nObstacles)
+#define nGridsInUse ((obstaclesMode < ObsPointer)? nActiveGrids : nGrids)
 #define TileSizeWDF 100
 #define TileSizeHDF 100
 #define PTCLMaxX (nGridW*tileSize.x)

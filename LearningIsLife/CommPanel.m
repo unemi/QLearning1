@@ -272,7 +272,8 @@ static NSString *bytes_number(CGFloat b) {
 }
 // Comm Delegate
 - (void)receive:(char *)buf length:(ssize_t)length {
-	if (obstaclesMode != ObsExternal || memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
+	if (obstaclesMode != ObsExternal || !theMainWindow.running ||
+		memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
 	union { struct { SInt32 idx; Float32 x, y; SInt32 nPts; } d; SInt32 i[4]; } b;
 	memcpy(b.i, buf + 16, 16);
 	for (int i = 0; i < 4; i ++) b.i[i] = EndianS32_BtoN(b.i[i]);

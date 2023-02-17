@@ -23,7 +23,7 @@ typedef struct {
 typedef id<MTLRenderCommandEncoder> RCE;
 
 #define N_VECTOR_GRID 5
-#define N_VECTORS (nActiveGrids*N_VECTOR_GRID*N_VECTOR_GRID)
+#define N_VECTORS (nGridsInUse*N_VECTOR_GRID*N_VECTOR_GRID)
 #define N_MAX_VECTORS (nGrids*N_VECTOR_GRID*N_VECTOR_GRID)
 #define NVERTICES_ARROW 9
 // Dimensions of arrow shape

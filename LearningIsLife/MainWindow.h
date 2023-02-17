@@ -12,6 +12,7 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface MainWindow : NSWindowController <NSWindowDelegate, NSMenuItemValidation>
+@property (readonly) BOOL running;
 @property (readonly) NSLock *agentEnvLock;
 - (void)adjustForRecordView:(NSNotification * _Nullable)note;
 - (simd_int2)agentPosition;

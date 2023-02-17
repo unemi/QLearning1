@@ -14,8 +14,8 @@
             filePath = "LearningIsLife/Display.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "942"
-            endingLineNumber = "942"
+            startingLineNumber = "875"
+            endingLineNumber = "875"
             landmarkName = "-drawScene:commandBuffer:"
             landmarkType = "7">
          </BreakpointContent>
