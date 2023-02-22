@@ -34,4 +34,8 @@ extern float ManObsLifeSpan;
 - (void)setupAsDefault;
 @end
 
+@interface PrintPanelAccessory : NSViewController <NSPrintPanelAccessorizing>
+@property BOOL figInPaper;
+@end
+
 NS_ASSUME_NONNULL_END

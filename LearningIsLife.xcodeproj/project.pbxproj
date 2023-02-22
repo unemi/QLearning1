@@ -34,6 +34,7 @@
 		23505D5D29860ED4002A7429 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23505D5C29860ED4002A7429 /* main.m */; };
 		23505D6229860F05002A7429 /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		23868EE7298519F100C02DCE /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
+		2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */ = {isa = PBXBuildFile; fileRef = 2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */; };
 		23BEB9E9298A7789006EF0A1 /* ControlPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 23BEB9E8298A7789006EF0A1 /* ControlPanel.m */; };
 		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
 /* End PBXBuildFile section */
@@ -82,6 +83,7 @@
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 		23868EE5298519F100C02DCE /* Comm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Comm.h; sourceTree = "<group>"; };
 		23868EE6298519F100C02DCE /* Comm.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Comm.m; sourceTree = "<group>"; };
+		2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PrintPanelAccessory.xib; sourceTree = "<group>"; };
 		23BD0D1F2976C7A600B5F91E /* CommonTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommonTypes.h; sourceTree = "<group>"; };
 		23BEB9E7298A7789006EF0A1 /* ControlPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ControlPanel.h; sourceTree = "<group>"; };
 		23BEB9E8298A7789006EF0A1 /* ControlPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ControlPanel.m; sourceTree = "<group>"; };
@@ -164,6 +166,7 @@
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				23214954295C6980001A40D3 /* ControlPanel.xib */,
 				232F39AF298A81AF00B1A28D /* CommPanel.xib */,
+				2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */,
 				232521772956BB7A00159F30 /* main.m */,
 				232521792956BB7A00159F30 /* LearningIsLife.entitlements */,
 				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
@@ -290,6 +293,7 @@
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
 				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
+				2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */,
 				2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 			);

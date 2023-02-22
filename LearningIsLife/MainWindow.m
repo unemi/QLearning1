@@ -52,6 +52,20 @@ MainWindow *theMainWindow = nil;
 }
 @end
 
+@implementation PrintPanelAccessory
+- (NSString *)nibName { return @"PrintPanelAccessory"; }
+- (NSArray<NSDictionary<NSPrintPanelAccessorySummaryKey,NSString *> *> *)localizedSummaryItems {
+	return @[@{NSPrintPanelAccessorySummaryItemNameKey:@"figInPaper",
+		NSPrintPanelAccessorySummaryItemDescriptionKey:_figInPaper? @"Yes" : @"No"}];
+}
+- (NSSet<NSString *> *)keyPathsForValuesAffectingPreview {
+	return [NSSet setWithObject:@"figInPaper"];
+}
+- (IBAction)switchBlackAndWhite:(NSButton *)cbox {
+	self.figInPaper = (cbox.state == NSControlStateValueOn);
+}
+@end
+
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
@@ -464,6 +478,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb
 		display:display infoView:stepsDgt.superview recordView:recordView];
 	NSPrintOperation *prOpe = [NSPrintOperation printOperationWithView:view printInfo:prInfo];
+	[prOpe.printPanel addAccessoryController:PrintPanelAccessory.new];
 	[prOpe runOperation];
 }
 - (IBAction)copy:(id)sender {

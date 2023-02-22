@@ -18,6 +18,7 @@
 	RecordView __weak *recordView;
 	NSBitmapImageRep *imgCache;
 	LogoDrawerCG *logoDrawer;
+	BOOL forPaper;
 }
 - (instancetype)initWithFrame:(NSRect)frameRect display:(Display *)disp
 	infoView:(NSView *)iview recordView:(RecordView *)recView {
@@ -73,25 +74,39 @@ static NSColor *col_from_vec(simd_float4 vc) {
 	NSBezierPath *path = NSBezierPath.new;
 	Particle *particles = display.particleMem.mutableBytes;
 	int np = display.nPtcls;
-	float maxSpeed = tileSize.x * .005;
-	switch (ptclColorMode) {
-		case PTCLconstColor:
+	if (forPaper) {
+		NSInteger ncomp = colParticles.numberOfComponents;
+		CGFloat comp[(ncomp == 1)? 2 : ncomp];
+		[colParticles getComponents:comp];
+		if (ncomp == 3 || ncomp == 1) comp[1] = 1.;
+		else if (ncomp == 4) comp[1] = comp[3];
+		comp[0] = 0.;
+		NSColor *colPtcl = [NSColor colorWithColorSpace:
+			NSColorSpace.genericGrayColorSpace components:comp count:2];
 		for (int i = 0; i < np; i ++) {
 			set_particle_path(particles + i, path);
-			draw_particle(colParticles, path);
-		} break;
-		case PTCLspeedColor:
-		for (int i = 0; i < np; i ++) {
-			float spd = simd_length(particles[i].v);
-			if (maxSpeed < spd) maxSpeed = spd;
+			draw_particle(colPtcl, path);
 		}
-		case PTCLangleColor: {
-			simd_float4 ptclHSB = ptcl_hsb_color();
+	} else {
+		float maxSpeed = tileSize.x * .005;
+		switch (ptclColorMode) {
+			case PTCLconstColor:
 			for (int i = 0; i < np; i ++) {
-				Particle *p = particles + i;
-				set_particle_path(p, path);
-				draw_particle(col_from_vec(ptcl_rgb_color(p, ptclHSB, maxSpeed)), path);
-		}}}
+				set_particle_path(particles + i, path);
+				draw_particle(colParticles, path);
+			} break;
+			case PTCLspeedColor:
+			for (int i = 0; i < np; i ++) {
+				float spd = simd_length(particles[i].v);
+				if (maxSpeed < spd) maxSpeed = spd;
+			}
+			case PTCLangleColor: {
+				simd_float4 ptclHSB = ptcl_hsb_color();
+				for (int i = 0; i < np; i ++) {
+					Particle *p = particles + i;
+					set_particle_path(p, path);
+					draw_particle(col_from_vec(ptcl_rgb_color(p, ptclHSB, maxSpeed)), path);
+			}}}}
 }
 - (void)drawVectors:(NSInteger)n {
 	static int vIndices[] = {1, 5, 8, 6, 7, 2};
@@ -105,7 +120,12 @@ static NSColor *col_from_vec(simd_float4 vc) {
 			[path lineToPoint:(NSPoint){v.x, v.y}];
 		}
 		[path closePath];
-		[col_from_vec(display.arrowCol[i]) setFill];
+		simd_float4 colVec = display.arrowCol[i];
+		if (forPaper) {
+			float g = 1.f - simd_reduce_add(colVec.rgb) / 3.f;
+			for (int i = 0; i < 3; i ++) colVec[i] = g;
+		}
+		[col_from_vec(colVec) setFill];
 		[path fill];
 	}
 }
@@ -157,38 +177,49 @@ static NSColor *col_from_vec(simd_float4 vc) {
 		CGFloat d = pSize.width; pSize.width = pSize.height; pSize.height = d;
 	}
 	NSPoint offset = {0., 0.};
-	CGFloat scale = 1., dWhRate = recordView.hidden? (CGFloat)PTCLMaxX / PTCLMaxY : 16. / 9.;
+	NSSize fSize = forPaper? (NSSize){PTCLMaxX + 2, PTCLMaxY + 2} : (NSSize){PTCLMaxX, PTCLMaxY};
+	CGFloat scale = 1., dWhRate = recordView.hidden? fSize.width / fSize.height : 16. / 9.;
 	if (whRate > dWhRate) {
-		scale = pSize.height / PTCLMaxY;
+		scale = pSize.height / fSize.height;
 		offset.x = (pSize.width - pSize.height * dWhRate) / 2.;
 	} else {
-		scale = pSize.width / (PTCLMaxY * dWhRate);
+		scale = pSize.width / (fSize.height * dWhRate);
 		offset.y = (pSize.height - pSize.width / dWhRate) / 2.;
 	}
+
+	NSGraphicsContext *ctx = NSGraphicsContext.currentContext;
+	ctx.compositingOperation = NSCompositingOperationCopy;
 	[[NSColor colorWithWhite:0. alpha:0.] setFill];
 	[NSBezierPath fillRect:self.bounds];
+	ctx.compositingOperation = NSCompositingOperationSourceOver;
 	NSAffineTransform *trans = NSAffineTransform.transform;
 	if (rotate) {
 		[trans rotateByDegrees:90.];
 		[trans translateXBy:0. yBy:-pSize.height];
 	}
 	[trans translateXBy:offset.x yBy:offset.y];
+	if (forPaper) [trans translateXBy:1 yBy:1];
 	[trans scaleBy:scale];
 	[trans concat];
-	[NSBezierPath clipRect:(NSRect){0., 0., PTCLMaxY * dWhRate, PTCLMaxY}];
+	NSRect clipRct = {0., 0., PTCLMaxY * dWhRate, PTCLMaxY};
+	if (forPaper) clipRct = NSInsetRect(clipRct, -1, -1);
+	[NSBezierPath clipRect:clipRct];
 	// background
-	[colBackground setFill];
-	[NSBezierPath fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
+	if (!forPaper) {
+		[colBackground setFill];
+		[NSBezierPath fillRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}];
 	// Agent
-	[colAgent setFill];
-	float agentDiameter = simd_reduce_min(tileSize) * .9f;
-	simd_float2 aPos = (simd_float(display.agent.position) + .5f) * simd_float(tileSize)
-		- agentDiameter / 2.f;
-	[[NSBezierPath bezierPathWithOvalInRect:(NSRect)
-		{aPos.x, aPos.y, agentDiameter, agentDiameter}] fill];
+		[colAgent setFill];
+		float agentDiameter = simd_reduce_min(tileSize) * .9f;
+		simd_float2 aPos = (simd_float(display.agent.position) + .5f) * simd_float(tileSize)
+			- agentDiameter / 2.f;
+		[[NSBezierPath bezierPathWithOvalInRect:(NSRect)
+			{aPos.x, aPos.y, agentDiameter, agentDiameter}] fill];
+	}
 	// Symbols
+	NSColor *colSym = forPaper? NSColor.blackColor : colSymbols;
 	NSDictionary *attr = @{NSFontAttributeName:[NSFont userFontOfSize:tileSize.x / 2],
-		NSForegroundColorAttributeName:colSymbols};
+		NSForegroundColorAttributeName:colSym};
 	draw_symbol(@"S", attr, StartP);
 	draw_symbol(@"G", attr, GoalP);
 	// Particles, Vectors, or Q Values
@@ -199,7 +230,9 @@ static NSColor *col_from_vec(simd_float4 vc) {
 		default: break;
 	}
 	// Grid lines
-	NSBezierPath *path = NSBezierPath.new;
+	NSBezierPath *path = forPaper?
+		[NSBezierPath bezierPathWithRect:(NSRect){0., 0., PTCLMaxX, PTCLMaxY}] :
+		NSBezierPath.new;
 	for (int i = 1; i < nGridH; i ++) {
 		[path moveToPoint:(NSPoint){0., i * tileSize.y}];
 		[path relativeLineToPoint:(NSPoint){PTCLMaxX, 0}];
@@ -208,9 +241,10 @@ static NSColor *col_from_vec(simd_float4 vc) {
 		[path moveToPoint:(NSPoint){i * tileSize.x, 0.}];
 		[path relativeLineToPoint:(NSPoint){0., PTCLMaxY}];
 	}
-	[colGridLines setStroke];
+	[forPaper? NSColor.blackColor : colGridLines setStroke];
+	if (forPaper) path.lineWidth = 2.;
 	[path stroke];
-	// ObsHeight
+	// Obstacles
 	[path removeAllPoints];
 	NSRect obstRect = {0., 0., tileSize.x, tileSize.y};
 	for (int i = 0; i < nObstacles; i ++) {
@@ -218,9 +252,9 @@ static NSColor *col_from_vec(simd_float4 vc) {
 		obstRect.origin = (NSPoint){oo.x, oo.y};
 		[path appendBezierPathWithRect:obstRect];
 	}
-	[colObstacles setFill];
+	[forPaper? NSColor.blackColor : colObstacles setFill];
 	[path fill];
-	if (obstaclesMode < ObsPointer) {
+	if (obstaclesMode < ObsPointer && !forPaper) {
 		// Equations
 		[self drawEqu:@"equationL" at:(NSPoint){ObsP[0].x, ObsP[0].y + 3}];
 		[self drawEqu:@"equationP" at:(NSPoint){ObsP[4].x, ObsP[4].y + 3}];
@@ -232,43 +266,53 @@ static NSColor *col_from_vec(simd_float4 vc) {
 		[logoDrawer drawByCGinRect:(NSRect){logoP.x, logoP.y, logoDim, logoDim}];
 	}
 	// Info view -- steps, goals and FPS
-	[NSGraphicsContext saveGraphicsState];
-	trans = NSAffineTransform.transform;
-	[trans scaleBy:PTCLMaxY / infoView.superview.frame.size.height];
-	NSPoint origin = infoView.frame.origin;
-	[trans translateXBy:origin.x yBy:origin.y];
-	[trans concat];
-	for (NSView *v in infoView.subviews) {
+	if (!forPaper) {
 		[NSGraphicsContext saveGraphicsState];
 		trans = NSAffineTransform.transform;
-		origin = v.frame.origin; 
+		[trans scaleBy:PTCLMaxY / infoView.superview.frame.size.height];
+		NSPoint origin = infoView.frame.origin;
 		[trans translateXBy:origin.x yBy:origin.y];
 		[trans concat];
-		[v drawRect:v.bounds];
+		for (NSView *v in infoView.subviews) {
+			[NSGraphicsContext saveGraphicsState];
+			trans = NSAffineTransform.transform;
+			origin = v.frame.origin;
+			[trans translateXBy:origin.x yBy:origin.y];
+			[trans concat];
+			[v drawRect:v.bounds];
+			[NSGraphicsContext restoreGraphicsState];
+		}
 		[NSGraphicsContext restoreGraphicsState];
-	}
-	[NSGraphicsContext restoreGraphicsState];
-	// Recorded images
-	if (dWhRate == 16. / 9.) {
-		trans = NSAffineTransform.transform;
-		[trans translateXBy:PTCLMaxX yBy:0.];
-		[trans scaleBy:PTCLMaxY / recordView.frame.size.height];
-		[trans concat];
-		[recordView drawRect:recordView.bounds];
+		// Recorded images
+		if (dWhRate == 16. / 9.) {
+			trans = NSAffineTransform.transform;
+			[trans translateXBy:PTCLMaxX yBy:0.];
+			[trans scaleBy:PTCLMaxY / recordView.frame.size.height];
+			[trans concat];
+			[recordView drawRect:recordView.bounds];
+		}
 	}
 	[NSGraphicsContext restoreGraphicsState];
 }
 - (void)drawRect:(NSRect)rect {
+	BOOL orgValue = forPaper;
+	for (PrintPanelAccessory *cntrl in
+		NSPrintOperation.currentOperation.printPanel.accessoryControllers)
+		if ([cntrl isKindOfClass:PrintPanelAccessory.class])
+			{ forPaper = cntrl.figInPaper; break; }
+NSLog(@"for paper = %@ -> %@", orgValue? @"Yes" : @"No", forPaper? @"Yes" : @"No");
 	if ([NSGraphicsContext.currentContext.attributes
 		[NSGraphicsContextRepresentationFormatAttributeName]
 		isEqualToString:NSGraphicsContextPDFFormat]) [self drawByCoreGraphics];
 	else {
-		if (imgCache == nil) {
+		BOOL shouldRedraw = (imgCache == nil || forPaper != orgValue);
+		if (imgCache == nil)
 			imgCache = [self bitmapImageRepForCachingDisplayInRect:self.bounds];
+		if (shouldRedraw)
 			draw_in_bitmap(imgCache, ^(NSBitmapImageRep * _Nonnull bm) {
 				[self drawByCoreGraphics];
+				NSLog(@"drawByCoreGraphics in imgCache");
 			});
-		}
 		[imgCache draw];
 	}
 }

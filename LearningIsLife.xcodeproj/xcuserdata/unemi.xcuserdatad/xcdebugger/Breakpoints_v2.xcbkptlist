@@ -3,22 +3,4 @@
    uuid = "71567DD1-04CA-4D5D-9B21-5E45BEE208D8"
    type = "1"
    version = "2.0">
-   <Breakpoints>
-      <BreakpointProxy
-         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
-         <BreakpointContent
-            uuid = "CCFBC3F5-ABAB-4974-934E-B763A75627A8"
-            shouldBeEnabled = "No"
-            ignoreCount = "0"
-            continueAfterRunningActions = "No"
-            filePath = "LearningIsLife/Display.m"
-            startingColumnNumber = "9223372036854775807"
-            endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "875"
-            endingLineNumber = "875"
-            landmarkName = "-drawScene:commandBuffer:"
-            landmarkType = "7">
-         </BreakpointContent>
-      </BreakpointProxy>
-   </Breakpoints>
 </Bucket>
