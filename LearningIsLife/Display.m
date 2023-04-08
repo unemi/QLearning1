@@ -32,6 +32,7 @@ PTCLShapeMode ptclShapeMode = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
 static int nCores;
 static BOOL isARM;
+static NSString *keyAdjustmentCorners = @"AdjustmentCorners";
 unsigned long current_time_us(void) {
 	static long startTime = -1;
 	struct timeval tv;
@@ -166,9 +167,10 @@ static void particle_step(Particle *p, simd_float2 f) {
 @implementation Display {
 	MTKView *view;
 	NSOperationQueue *opeQue;
-	id<MTLRenderPipelineState> shapePSO, texPSO, tpPSO;
+	id<MTLRenderPipelineState> shapePSO, texPSO, texColPSO, tpPSO;
 	id<MTLCommandQueue> commandQueue;
-	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex;
+	id<MTLTexture> StrSTex, StrGTex, equLTex, equPTex, handTex,
+		adjustKeysTex, adjustSavedTex, adjustTex;
 	id<MTLBuffer> vxBuf, colBuf, vxBufD[2], colBufD[2];
 	NSInteger vxBufIndex, colBufIndex;
 	NSMutableDictionary *symbolAttr;
@@ -180,6 +182,10 @@ static void particle_step(Particle *p, simd_float2 f) {
 	unsigned long time_us, dispCnt;
 	simd_int2 *obsP, *obsMem;
 	int nObs;
+	simd_float4x2 corners, savedCorners;
+	simd_float3x3 adjustMx;
+	NSTimer *savedMsgTimer;
+	BOOL cornersWereModified;
 }
 - (int)nPtcls { return setups.nPtcls; }
 - (DisplayMode)displayMode { return setups.displayMode; }
@@ -209,22 +215,33 @@ static void particle_step(Particle *p, simd_float2 f) {
 		[str drawAtPoint:(NSPoint){0., 0.} withAttributes:attr];
 	} size:size scaleFactor:1.];
 }
-- (id<MTLTexture>)texFromImageName:(NSString *)name {
+- (id<MTLTexture>)texFromImageName:(NSString *)name
+	rotate:(BOOL)rotate width:(CGFloat)width {
 	NSImage *image = [NSImage imageNamed:name];
 	NSSize sz = image.size;
 	return [self textureDrawnBy:^(NSBitmapImageRep *bm) {
 		NSSize bmSz = bm.size;
 		[[NSColor colorWithWhite:0. alpha:0.] setFill];
 		[NSBezierPath fillRect:(NSRect){0, 0, bmSz}];
-		NSAffineTransform *trs = NSAffineTransform.transform;
-		[trs translateXBy:0. yBy:bmSz.height];
-		[trs rotateByRadians:M_PI / -2.];
-		[trs concat];
-		[image drawInRect:(NSRect){0., 0., bmSz.height, bmSz.width}];
+		if (rotate) {
+			NSAffineTransform *trs = NSAffineTransform.transform;
+			[trs translateXBy:0. yBy:bmSz.height];
+			[trs rotateByRadians:M_PI / -2.];
+			[trs concat];
+			CGFloat w = bmSz.width; bmSz.width = bmSz.height; bmSz.height = w;
+		}
+		[image drawInRect:(NSRect){0., 0., bmSz}];
 #ifdef DEBUG
 NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 #endif
-	} size:(NSSize){sz.height, sz.width} scaleFactor:tileSize.x * 2.8 / sz.width];
+	} size:(NSSize){sz.height, sz.width} scaleFactor:
+		(width == 0)? 1. : width / sz.width];
+}
+- (id<MTLTexture>)equTexWithName:(NSString *)name {
+	return [self texFromImageName:name rotate:YES width:tileSize.x * 2.8];
+}
+- (id<MTLTexture>)texWithName:(NSString *)name {
+	return [self texFromImageName:name rotate:NO width:0];
 }
 - (void)setupSymbolTex {
 	if (symbolAttr == nil) symbolAttr = [NSMutableDictionary dictionaryWithObject:
@@ -234,8 +251,8 @@ NSLog(@"texture %@ %ldx%ld pixels", name, bm.pixelsWide, bm.pixelsHigh);
 	StrGTex = [self texFromStr:@"G" attribute:symbolAttr];
 }
 - (void)setupEquationTex {
-	equLTex = [self texFromImageName:@"equationL"];
-	equPTex = [self texFromImageName:@"equationP"];
+	equLTex = [self equTexWithName:@"equationL"];
+	equPTex = [self equTexWithName:@"equationP"];
 }
 - (NSMutableData *)adjustPtclMemory:(DisplaySetups)req {
 	NSMutableData *newMem = _particleMem;
@@ -349,9 +366,92 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	if (lock) [loopLock unlock];
 	return result;
 }
+- (void)matrixFromCorners {
+	simd_float4x4 p;
+	simd_float4 y = {}, *z = p.columns;
+	simd_float2 *c = corners.columns;
+	for (NSInteger i = 0; i < 4; i ++) y[i] = c[i].y;
+	for (NSInteger i = 0; i < 4; i ++) {
+		float x = c[i].x;
+		z[i] = (simd_float4){x, x, x, x} * y;
+	}
+	float ae_bd = z[0][1]-z[1][0]+z[1][2]-z[2][1]+z[2][3]-z[3][2]+z[3][0]-z[0][3];
+	float g = (z[0][1]-z[1][0]+z[2][0]-z[0][2]+z[1][3]-z[3][1]+z[3][2]-z[2][3]) / ae_bd;
+	float h = (z[0][2]-z[2][0]+z[2][1]-z[1][2]+z[3][0]-z[0][3]+z[1][3]-z[3][1]) / ae_bd;
+	for (NSInteger i = 0; i < 2; i ++)
+		adjustMx.columns[i] = (simd_float3){
+			g*(c[0][i]+c[3][i])+(h-1.0)*(c[0][i]-c[3][i]),
+			(g-1.0)*(c[0][i]-c[1][i])+h*(c[0][i]+c[1][i]),
+			c[0][i]+c[2][i]-(g+h)*(c[0][i]-c[2][i])} * .5;
+	adjustMx.columns[2] = (simd_float3){g, h, 1.0};
+	cornersWereModified = !simd_equal(corners, savedCorners);
+}
+static simd_float4x2 DefaultCorners = {(simd_float2){-1, -1},
+		(simd_float2){-1, 1}, (simd_float2){1, 1}, (simd_float2){1, -1}};
+- (void)resetAdjustMatrix {
+	corners = DefaultCorners;
+	adjustMx = matrix_identity_float3x3;
+	cornersWereModified = !simd_equal(corners, savedCorners);
+}
+- (void)scaleAdjustMatrix:(float)exp {
+	float mag = powf(1.01, exp);
+	simd_float2 minv = {-1, -1}, maxv = {1, 1};
+	for (NSInteger i = 0; i < 4; i ++)
+		corners.columns[i] = simd_clamp(corners.columns[i] * mag, minv, maxv);
+	[self matrixFromCorners];
+	view.needsDisplay = YES;
+}
+- (int)cornerIndexAtPosition:(simd_float2)p size:(simd_float2)size {
+	int idx;
+	for (idx = 0; idx < 4; idx ++)
+		if (simd_distance(p, (corners.columns[idx] + 1.) / 2. * size) < CORNER_MK_R) break;
+	return (idx >= 4)? -1 : idx;
+}
+- (void)moveCorner:(int)idx to:(simd_float2)p size:(simd_float2)size {
+	corners.columns[idx] = p / size * 2. - 1.;
+	[self matrixFromCorners];
+	view.needsDisplay = YES;
+}
+- (void)loadAdjustmentCorners {
+	NSArray<NSNumber *> *arr =
+		[NSUserDefaults.standardUserDefaults objectForKey:keyAdjustmentCorners];
+	@try {
+		if (arr == nil || ![arr isKindOfClass:NSArray.class] || arr.count < 8) @throw @0;
+		for (NSInteger i = 0; i < 4; i ++) {
+			if (![arr[i*2] isKindOfClass:NSNumber.class]) @throw @0;
+			if (![arr[i*2+1] isKindOfClass:NSNumber.class]) @throw @0;
+			corners.columns[i] = simd_clamp(
+				(simd_float2){arr[i*2].floatValue, arr[i*2+1].floatValue},
+				(simd_float2){-1, -1}, (simd_float2){1, 1});
+		}
+		[self matrixFromCorners];
+	} @catch (id _) { [self resetAdjustMatrix]; }
+}
+- (BOOL)saveAdjustmentCorners {
+	if (!cornersWereModified) return NO;
+	if (!simd_equal(corners, DefaultCorners)) {
+		NSNumber *nums[8];
+		for (NSInteger i = 0; i < 8; i ++) nums[i] = @(corners.columns[i / 2][i % 2]);
+		[NSUserDefaults.standardUserDefaults setObject:
+			[NSArray arrayWithObjects:nums count:8] forKey:keyAdjustmentCorners];
+	} else [NSUserDefaults.standardUserDefaults removeObjectForKey:keyAdjustmentCorners];
+	if (adjustSavedTex == nil) adjustSavedTex =
+		[self texFromImageName:@"AdjustSaved" rotate:NO width:view.bounds.size.width / 2.];
+	savedCorners = corners;
+	cornersWereModified = NO;
+	adjustTex = adjustSavedTex;
+	if (savedMsgTimer != nil && savedMsgTimer.valid) [savedMsgTimer invalidate];
+	savedMsgTimer = [NSTimer scheduledTimerWithTimeInterval:2. repeats:NO block:
+	^(NSTimer * _Nonnull timer) {
+		self->adjustTex = self->adjustKeysTex;
+		self->view.needsDisplay = YES;
+	}];
+	view.needsDisplay = YES;
+	return YES;
+}
 #define MAKE_PSO(vs,fs,var)\
- 	pplnStDesc.vertexFunction = [dfltLib newFunctionWithName:vs];\
-	pplnStDesc.fragmentFunction = [dfltLib newFunctionWithName:fs];\
+ 	pplnStDesc.vertexFunction = fnDict[vs];\
+	pplnStDesc.fragmentFunction = fnDict[fs];\
 	var = [device newRenderPipelineStateWithDescriptor:pplnStDesc error:&error];\
 	if (var == nil) err_msg(error.localizedDescription, (OSStatus)error.code, YES);
 - (instancetype)initWithView:(MTKView *)mtkView agent:(Agent *)a {
@@ -373,6 +473,9 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	view = mtkView;
 	view.enableSetNeedsDisplay = YES;
 	view.paused = YES;
+	[self loadAdjustmentCorners];
+	savedCorners = corners;
+	cornersWereModified = NO;
 	id<MTLDevice> device = view.device = MTLCreateSystemDefaultDevice();
 	NSAssert(device, @"Metal is not supported on this device");
 	NSUInteger smplCnt = 1;
@@ -385,9 +488,15 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 		isARM? @"ARM_64" : @"x86_64" );
 #endif
 	NSError *error;
+	id<MTLLibrary> dfltLib = device.newDefaultLibrary;
+	NSMutableDictionary<NSString *, id<MTLFunction>> *fnDict = NSMutableDictionary.new;
+	NSArray<NSString *> *fnNames = @[@"vertexShader", @"fragmentShader",
+		@"vertexShaderTex", @"fragmentShaderTex", @"fragmentShaderColorTex",
+		@"vertexShaderTP", @"fragmentShaderTP"];
+	for (NSString *name in fnNames)
+		fnDict[name] = [dfltLib newFunctionWithName:name];
 	MTLRenderPipelineDescriptor *pplnStDesc = MTLRenderPipelineDescriptor.new;
 	pplnStDesc.label = @"Simple Pipeline";
-	id<MTLLibrary> dfltLib = device.newDefaultLibrary;
 	pplnStDesc.rasterSampleCount = view.sampleCount;
 	MTLRenderPipelineColorAttachmentDescriptor *colAttDesc = pplnStDesc.colorAttachments[0];
 	colAttDesc.pixelFormat = view.colorPixelFormat;
@@ -397,6 +506,7 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	colAttDesc.destinationRGBBlendFactor = MTLBlendFactorOneMinusSourceAlpha;
 	MAKE_PSO(@"vertexShader", @"fragmentShader", shapePSO)
 	MAKE_PSO(@"vertexShaderTex", @"fragmentShaderTex", texPSO)
+	MAKE_PSO(@"vertexShaderTex", @"fragmentShaderColorTex", texColPSO)
 	MAKE_PSO(@"vertexShaderTP", @"fragmentShaderTP", tpPSO)
 	commandQueue = device.newCommandQueue;
 	add_observer(keyShouldRedraw,
@@ -869,7 +979,10 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	rce.label = @"MyRenderEncoder";
 	[rce setViewport:(MTLViewport){0., 0., viewportSize.x, viewportSize.y, 0., 1. }];
 	simd_float2 geomFactor = {PTCLMaxX, PTCLMaxY};
+	BOOL isFullScr = view.superview.inFullScreenMode;
 	[rce setVertexBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexGeomFactor];
+	[rce setVertexBytes:isFullScr? &adjustMx : &matrix_identity_float3x3
+		length:sizeof(simd_float3x3) atIndex:IndexAdjustMatrix];
 	[rce setRenderPipelineState:shapePSO];
 	uint nv = 0;
 	// background
@@ -883,7 +996,7 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	simd_float4 symCol = col_to_vec(colSymbols);
 	if (symCol.a > 0.) {
 		if (StrSTex == nil) [self setupSymbolTex];
-		[rce setRenderPipelineState:texPSO];
+		[rce setRenderPipelineState:texColPSO];
 		set_fragment_color(rce, symCol);
 		draw_texture(rce, StrSTex, StartP);
 		draw_texture(rce, StrGTex, GoalP);
@@ -945,6 +1058,12 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 			[rce setFragmentBytes:&tpColor length:sizeof(tpColor) atIndex:IndexTPColor];
 			[rce setFragmentBytes:&nPoints length:sizeof(nPoints) atIndex:IndexTPN];
 			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+			if (handTex == nil) handTex = [self texWithName:@"Hand"];
+			[rce setRenderPipelineState:texPSO];
+			[rce setFragmentTexture:handTex atIndex:IndexTexture];
+			simd_float3 *dp = info.contents;
+			fill_rect(rce, (NSRect){dp[nPoints - 1].x - tileSize.x / 2.,
+				dp[nPoints - 1].y - tileSize.y, tileSize.x, tileSize.y});
 		}
 	} else if (symCol.a > 0.) {
 	// project logo
@@ -955,10 +1074,46 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		[logoDrawer drawByMTL:rce inRect:(NSRect){logoP.x, logoP.y, logoDim, logoDim}];
 	// equations
 		if (equLTex == nil) [self setupEquationTex];
-		[rce setRenderPipelineState:texPSO];
+		[rce setRenderPipelineState:texColPSO];
 		set_fragment_color(rce, col_to_vec(colSymbols));
 		draw_equtex(rce, equLTex, obsP[0], 3);
 		draw_equtex(rce, equPTex, obsP[4], 3);
+	}
+	// display adjustment in full screen mode
+	if (_dispAdjust && isFullScr) {
+		if (adjustKeysTex == nil) adjustKeysTex = adjustTex =
+			[self texFromImageName:@"AdjustKeys" rotate:NO width:view.bounds.size.width / 2.];
+		[rce setRenderPipelineState:texPSO];
+		[rce setFragmentTexture:adjustTex atIndex:IndexTexture];
+		CGFloat txh = PTCLMaxY / 4.,
+			txw = txh * adjustKeysTex.height / adjustKeysTex.width;
+		NSRect texRct = {(PTCLMaxX - txw) / 2., (PTCLMaxY - txh) / 2., txw, txh};
+		fill_rect(rce, texRct);
+		[rce setRenderPipelineState:shapePSO];
+		simd_float2 vertices[5];
+		if (adjustTex == adjustKeysTex && !cornersWereModified) {
+		// (14.0,91.4) 88.2 x 24.2 / 400 x 128
+			set_color(rce, (simd_float4){0.,0.,0.,.75});
+			NSRect strikes = {14./400., 1.-91.4/128., 88.2/400., 24.2/128.};
+			vertices[0].x = vertices[2].x = strikes.origin.x * txw + texRct.origin.x;
+			vertices[0].y = vertices[1].y = strikes.origin.y * txh + texRct.origin.y;
+			vertices[1].x = vertices[3].x = NSMaxX(strikes) * txw + texRct.origin.x;
+			vertices[2].y = vertices[3].y = NSMaxY(strikes) * txh + texRct.origin.y;
+			[rce setVertexBytes:vertices length:sizeof(simd_float2) * 4 atIndex:IndexVertices];
+			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
+		}
+		set_color(rce, (simd_float4){1.,1.,1.,1.});
+		float radius = CORNER_MK_R * PTCLMaxX / view.bounds.size.width;
+		for (NSInteger i = 0; i < 4; i ++) {
+			vertices[i] = (simd_float2){PTCLMaxX * (i / 2), PTCLMaxY * ((i % 2) ^ (i / 2))};
+			fill_circle_at(rce, vertices[i], radius, 32);
+		}
+		vertices[4] = vertices[0];
+		[rce setVertexBytes:vertices length:sizeof(simd_float2) * 5 atIndex:IndexVertices];
+		[rce drawPrimitives:MTLPrimitiveTypeLineStrip vertexStart:0 vertexCount:5];
+	} else if (adjustKeysTex != nil) {
+		if (savedMsgTimer != nil && savedMsgTimer.valid) [savedMsgTimer invalidate];
+		adjustKeysTex = adjustSavedTex = adjustTex = nil;
 	}
 	[rce endEncoding];
 }

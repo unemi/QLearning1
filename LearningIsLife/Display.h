@@ -17,8 +17,8 @@ typedef struct {
 	int nPtcls;
 } DisplaySetups;
 typedef struct {
-  simd_float2 p, v;
-  int life;
+	simd_float2 p, v;
+	int life;
 } Particle;
 typedef id<MTLRenderCommandEncoder> RCE;
 
@@ -29,6 +29,7 @@ typedef id<MTLRenderCommandEncoder> RCE;
 // Dimensions of arrow shape
 #define AR_TAIL_Y .4
 #define AR_HEAD_X 0.
+#define CORNER_MK_R 30.
 
 extern int NParticles, LifeSpan;
 extern float Mass, Friction, StrokeLength, StrokeWidth, MaxSpeed;
@@ -56,6 +57,12 @@ NS_ASSUME_NONNULL_BEGIN
 @property (readonly) simd_float2 *arrowVec;
 @property (readonly) simd_float4 *arrowCol;
 @property (readonly) CGFloat FPS;
+@property BOOL dispAdjust;
+- (void)resetAdjustMatrix;
+- (void)scaleAdjustMatrix:(float)exp;
+- (int)cornerIndexAtPosition:(simd_float2)p size:(simd_float2)size;
+- (void)moveCorner:(int)idx to:(simd_float2)p size:(simd_float2)size;
+- (BOOL)saveAdjustmentCorners;
 - (instancetype)initWithView:(MTKView *)view agent:(Agent *)a;
 - (int)nPtcls;
 - (DisplayMode)displayMode;

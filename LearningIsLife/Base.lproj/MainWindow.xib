@@ -114,16 +114,15 @@
                                 </subviews>
                             </customView>
                         </subviews>
+                        <connections>
+                            <outlet property="menu" destination="jH0-aO-Uox" id="Yt2-sB-L3q"/>
+                        </connections>
                     </customView>
                     <customView fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="p63-HC-fUX" customClass="RecordView">
                         <rect key="frame" x="810" y="0.0" width="150" height="540"/>
                         <autoresizingMask key="autoresizingMask" flexibleMinX="YES" flexibleMinY="YES"/>
                     </customView>
                 </subviews>
-                <connections>
-                    <outlet property="mainWindow" destination="-2" id="YEX-44-hLZ"/>
-                    <outlet property="menu" destination="jH0-aO-Uox" id="aSq-Gj-OOJ"/>
-                </connections>
             </view>
             <toolbar key="toolbar" implicitIdentifier="F29AF2C2-37A6-40B8-AC64-71F29E2F7EDF" autosavesConfiguration="NO" allowsUserCustomization="NO" displayMode="iconAndLabel" sizeMode="regular" id="j5e-1S-7be">
                 <allowedToolbarItems>
@@ -231,8 +230,15 @@
                         <action selector="chooseDisplayMode:" target="-2" id="tgd-k9-Dx8"/>
                     </connections>
                 </menuItem>
+                <menuItem isSeparatorItem="YES" id="C6S-Ac-AMH"/>
+                <menuItem title="Adjust Display" id="fZ5-9h-3cu">
+                    <modifierMask key="keyEquivalentModifierMask"/>
+                    <connections>
+                        <action selector="switchDispAdjust:" target="-2" id="0Rs-V1-8Zc"/>
+                    </connections>
+                </menuItem>
             </items>
-            <point key="canvasLocation" x="-409" y="35"/>
+            <point key="canvasLocation" x="-161" y="-10"/>
         </menu>
         <menuItem title="Particles" id="PQV-Bs-fQq">
             <modifierMask key="keyEquivalentModifierMask"/>

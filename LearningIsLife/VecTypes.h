@@ -12,6 +12,7 @@
 enum {
 	IndexVertices,
 	IndexGeomFactor,
+	IndexAdjustMatrix,
 	IndexColors,
 	IndexNVforP
 };

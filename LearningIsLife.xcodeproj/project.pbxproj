@@ -14,6 +14,7 @@
 		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
 		231D98B1297260EE006672BD /* MySound.m in Sources */ = {isa = PBXBuildFile; fileRef = 231D98AF297260EE006672BD /* MySound.m */; };
 		23214956295C6980001A40D3 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23214954295C6980001A40D3 /* ControlPanel.xib */; };
+		232208EF29DAAA9500C93977 /* AdjustKeys.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 232208EE29DAAA9500C93977 /* AdjustKeys.pdf */; };
 		232521712956BB7900159F30 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521702956BB7900159F30 /* AppDelegate.m */; };
 		232521732956BB7A00159F30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 232521722956BB7A00159F30 /* Assets.xcassets */; };
 		232521762956BB7A00159F30 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 232521742956BB7A00159F30 /* MainMenu.xib */; };
@@ -33,8 +34,10 @@
 		23505D5B29860ED4002A7429 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5929860ED4002A7429 /* MainMenu.xib */; };
 		23505D5D29860ED4002A7429 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23505D5C29860ED4002A7429 /* main.m */; };
 		23505D6229860F05002A7429 /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
+		2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 2372103129DFF4A000B23CBD /* AdjustSaved.pdf */; };
 		23868EE7298519F100C02DCE /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */ = {isa = PBXBuildFile; fileRef = 2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */; };
+		239A784B29DE74C10068B33D /* Hand.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 239A784A29DE74C10068B33D /* Hand.pdf */; };
 		23BEB9E9298A7789006EF0A1 /* ControlPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 23BEB9E8298A7789006EF0A1 /* ControlPanel.m */; };
 		23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23DAB3AC2970FDF400700DA9 /* MainWindow.xib */; };
 /* End PBXBuildFile section */
@@ -49,6 +52,7 @@
 		231D98AF297260EE006672BD /* MySound.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MySound.m; sourceTree = "<group>"; };
 		231D98B0297260EE006672BD /* MySound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MySound.h; sourceTree = "<group>"; };
 		23214955295C6980001A40D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
+		232208EE29DAAA9500C93977 /* AdjustKeys.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = AdjustKeys.pdf; path = LearningIsLife/AdjustKeys.pdf; sourceTree = "<group>"; };
 		2325216C2956BB7900159F30 /* Learning is Life.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Learning is Life.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2325216F2956BB7900159F30 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		232521702956BB7900159F30 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -80,10 +84,12 @@
 		23505D5A29860ED4002A7429 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		23505D5C29860ED4002A7429 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		23505D5E29860ED4002A7429 /* LiLCommSim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiLCommSim.entitlements; sourceTree = "<group>"; };
+		2372103129DFF4A000B23CBD /* AdjustSaved.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = AdjustSaved.pdf; path = LearningIsLife/AdjustSaved.pdf; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 		23868EE5298519F100C02DCE /* Comm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Comm.h; sourceTree = "<group>"; };
 		23868EE6298519F100C02DCE /* Comm.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = Comm.m; sourceTree = "<group>"; };
 		2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = PrintPanelAccessory.xib; sourceTree = "<group>"; };
+		239A784A29DE74C10068B33D /* Hand.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = Hand.pdf; path = LearningIsLife/Hand.pdf; sourceTree = "<group>"; };
 		23BD0D1F2976C7A600B5F91E /* CommonTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommonTypes.h; sourceTree = "<group>"; };
 		23BEB9E7298A7789006EF0A1 /* ControlPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ControlPanel.h; sourceTree = "<group>"; };
 		23BEB9E8298A7789006EF0A1 /* ControlPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ControlPanel.m; sourceTree = "<group>"; };
@@ -180,8 +186,11 @@
 		23297D8B296AD1DF00178016 /* Images */ = {
 			isa = PBXGroup;
 			children = (
+				239A784A29DE74C10068B33D /* Hand.pdf */,
 				23297D88296AD1CC00178016 /* equationL.pdf */,
 				23297D87296AD1CC00178016 /* equationP.pdf */,
+				232208EE29DAAA9500C93977 /* AdjustKeys.pdf */,
+				2372103129DFF4A000B23CBD /* AdjustSaved.pdf */,
 			);
 			name = Images;
 			sourceTree = "<group>";
@@ -289,13 +298,16 @@
 				232521732956BB7A00159F30 /* Assets.xcassets in Resources */,
 				23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */,
 				232F39AD298A81AF00B1A28D /* CommPanel.xib in Resources */,
+				239A784B29DE74C10068B33D /* Hand.pdf in Resources */,
 				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
+				2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
 				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
-				2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */,
+				232208EF29DAAA9500C93977 /* AdjustKeys.pdf in Resources */,
 				2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
+				2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -512,7 +524,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -526,7 +538,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.1b;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -541,7 +553,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 11;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
@@ -556,7 +568,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.1b;
+				MARKETING_VERSION = 1.1;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;

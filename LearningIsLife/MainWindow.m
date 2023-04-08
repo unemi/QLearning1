@@ -81,7 +81,8 @@ MainWindow *theMainWindow = nil;
 		*fpsDgt, *fpsUnit;
 	NSArray<NSTextField *> *infoTexts;
 	CGFloat FPS, expectedGoals, expectedSteps;
-	NSTimer *pointerTrackTimer;
+	NSTimer *pointerTrackTimer, *cursorHidingTimer;
+	NSMenuItem *dispAdjustItem;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
 static inline BOOL rec_enabled(void) {
@@ -210,6 +211,12 @@ static void organize_work_mems(void) {
 	[goalsPrg setupAsDefault];
 	fpsDgt.hidden = fpsUnit.hidden = !SHOW_FPS;
 	stepsDgt.superview.hidden = !is_symbol_color_visible();
+	NSMenu *cMenu = view.menu;
+	for (NSInteger i = cMenu.numberOfItems - 1; i >= 0; i --) {
+		NSMenuItem *item = [cMenu itemAtIndex:i];
+		if (item.action == @selector(switchDispAdjust:))
+			{ [cMenu removeItem:item]; dispAdjustItem = item; break; }
+	}
 //	fullScreenItem.possibleLabels = @[labelFullScreenOn, labelFullScreenOn];
 	[NSNotificationCenter.defaultCenter addObserver:self
 		selector:@selector(adjustForRecordView:) name:@"recordFinalImage" object:nil];
@@ -244,7 +251,7 @@ static void organize_work_mems(void) {
 		[self->display reset]; });
 	[NSNotificationCenter.defaultCenter addObserverForName:NSMenuDidEndTrackingNotification
 		object:view.superview.menu queue:nil usingBlock:^(NSNotification * _Nonnull note) {
-		if (self->view.superview.inFullScreenMode)
+		if (self->view.superview.inFullScreenMode) self->cursorHidingTimer =
 			[NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO block:
 				^(NSTimer * _Nonnull timer) { [NSCursor setHiddenUntilMouseMoves:YES];}];
 	}];
@@ -454,6 +461,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 		adjust_subviews_frame(infoView, scale);
 		fullScreenItem.label = labelFullScreenOff;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
+		[view.menu addItem:dispAdjustItem];
 		if (NSPointInRect(NSEvent.mouseLocation, scrFrm))
 			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
@@ -463,6 +471,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 		adjust_subviews_frame(infoView, scale);
 		fullScreenItem.label = labelFullScreenOn;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
+		[view.menu removeItem:dispAdjustItem];
 		[self showSteps];
 		[NSCursor setHiddenUntilMouseMoves:NO];
 	}
@@ -500,8 +509,83 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	} else return;
 	display.displayMode = (DisplayMode)newMode;
 }
+- (IBAction)switchDispAdjust:(id)sender {
+	if ((display.dispAdjust = !display.dispAdjust)) {
+		if (cursorHidingTimer != nil && cursorHidingTimer.valid)
+			[cursorHidingTimer invalidate];
+		[NSCursor setHiddenUntilMouseMoves:NO];
+	} else {
+		[NSCursor.arrowCursor set];
+		if (NSPointInRect(NSEvent.mouseLocation, self.window.screen.frame))
+			[NSCursor setHiddenUntilMouseMoves:YES];
+	}
+#ifdef DEBUG
+NSLog(@"switchDispAdjust %@", display.dispAdjust? @"ON" : @"OFF");
+#endif
+	view.window.acceptsMouseMovedEvents = display.dispAdjust;
+	view.needsDisplay = YES;
+}
 - (void)setSendersPacketsPerSec:(float)pps {
 	sendingPPS = pps;
+}
+- (BOOL)keyOperation:(NSEvent *)event {
+	if (display.dispAdjust) {
+		NSEventModifierFlags flags = event.modifierFlags;
+		BOOL shift = (flags & NSEventModifierFlagShift) != 0;
+#ifdef DEBUG
+NSLog(@"code = %d, shift = %@", event.keyCode, shift? @"YES" : @"NO");
+#endif
+		switch (event.keyCode) {
+			case KeyCodeE: case KeyCodeESC: [self switchDispAdjust:nil]; break;
+			case KeyCodeR: [display resetAdjustMatrix]; view.needsDisplay = YES; break;
+			case KeyCodeS: if ([display saveAdjustmentCorners]) break; else return YES;
+			case KeyCodeUp: [display scaleAdjustMatrix:shift? 5 : 1]; break;
+			case KeyCodeDown: [display scaleAdjustMatrix:shift? -5 : -1]; break;
+			default: return YES;
+		}
+	} else if (event.keyCode == KeyCodeESC) [self fullScreen:nil];
+	else return YES;
+	return NO;
+}
+- (void)mouseOperation:(NSEvent *)event {
+	if (display.dispAdjust) {
+		NSPoint msLoc = event.locationInWindow;
+		NSPoint pnt1 =[view convertPoint:
+			(NSPoint){msLoc.x - event.deltaX, msLoc.y - event.deltaY} fromView:nil],
+			pnt2 = [view convertPoint:msLoc fromView:nil];
+		NSRect rct = view.bounds;
+		simd_float2 pt1 = {pnt1.x, pnt1.y}, pt2 = {pnt2.x, pnt2.y},
+			org = {rct.origin.x, rct.origin.y}, sz = {rct.size.width, rct.size.height};
+		pt1 -= org; pt2 -= org;
+		int orgCorner = [display cornerIndexAtPosition:pt1 size:sz],
+			newCorner = [display cornerIndexAtPosition:pt2 size:sz];
+		switch (event.type) {
+			case NSEventTypeLeftMouseDown: case NSEventTypeRightMouseDown:
+			case NSEventTypeOtherMouseDown:
+			if (newCorner >= 0) [NSCursor.closedHandCursor set];
+			break;
+			case NSEventTypeLeftMouseUp: case NSEventTypeRightMouseUp:
+			case NSEventTypeOtherMouseUp:
+			if (newCorner >= 0) [NSCursor.openHandCursor set];
+			else [NSCursor.arrowCursor set];
+			break;
+			case NSEventTypeMouseMoved:
+			if (newCorner >= 0 && NSCursor.currentCursor == NSCursor.arrowCursor)
+				[NSCursor.openHandCursor set];
+			else if (newCorner < 0 && NSCursor.currentCursor != NSCursor.arrowCursor)
+				[NSCursor.arrowCursor set];
+			break;
+			case NSEventTypeLeftMouseDragged:
+			if (orgCorner >= 0) [display moveCorner:orgCorner to:pt2 size:sz];
+			default: break;
+		}
+	} else switch (event.type) {
+		case NSEventTypeLeftMouseUp: case NSEventTypeRightMouseUp:
+		case NSEventTypeOtherMouseUp:
+		cursorHidingTimer = [NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO block:
+			^(NSTimer * _Nonnull timer) { [NSCursor setHiddenUntilMouseMoves:YES];}];
+		default: break;
+	}
 }
 // Window Delegate
 - (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
@@ -530,21 +614,29 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 }
 @end
 
-@interface MyContentView : NSView {
-	IBOutlet MainWindow * __weak mainWindow;
-}
+@interface MyContentView : NSView
 @end
 @implementation MyContentView
 // pressing ESC key to exit from full screen mode. 
 - (void)keyDown:(NSEvent *)event {
-	if (event.keyCode == 53 && self.inFullScreenMode)
-		[mainWindow fullScreen:nil];
-	else [super keyDown:event];
+	if (!self.inFullScreenMode) [super keyDown:event];
+	else if ([theMainWindow keyOperation:event]) [super keyDown:event];
+}
+- (void)mouseDown:(NSEvent *)event {
+	if (self.inFullScreenMode) [theMainWindow mouseOperation:event];
+	[super mouseDown:event];
 }
 - (void)mouseUp:(NSEvent *)event {
-	if (self.inFullScreenMode)
-		[NSTimer scheduledTimerWithTimeInterval:.5 repeats:NO block:
-			^(NSTimer * _Nonnull timer) { [NSCursor setHiddenUntilMouseMoves:YES];}];
+	if (self.inFullScreenMode) [theMainWindow mouseOperation:event];
+	[super mouseUp:event];
+}
+- (void)mouseMoved:(NSEvent *)event {
+	if (self.inFullScreenMode) [theMainWindow mouseOperation:event];
+	[super mouseMoved:event];
+}
+- (void)mouseDragged:(NSEvent *)event {
+	if (self.inFullScreenMode) [theMainWindow mouseOperation:event];
+	[super mouseDragged:event];
 }
 - (void)drawRect:(NSRect)rect {
 	[NSColor.blackColor setFill];

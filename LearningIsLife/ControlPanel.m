@@ -170,7 +170,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
 	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
 	wrldControls = @[dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
-		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtLifeSpan, cwTracking];
+		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtManObsLS, cwTracking];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
