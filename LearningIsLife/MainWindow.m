@@ -459,10 +459,11 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 			infoViewFrame.size.width * scale, infoViewFrame.size.height * scale
 		}];
 		adjust_subviews_frame(infoView, scale);
+		[display setInfoView:infoView];
 		fullScreenItem.label = labelFullScreenOff;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
 		[view.menu addItem:dispAdjustItem];
-		if (NSPointInRect(NSEvent.mouseLocation, scrFrm))
+		if (NSPointInRect(NSEvent.mouseLocation, scrFrm) && !display.dispAdjust)
 			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
 		CGFloat scale = infoViewFrame.size.width / infoView.frame.size.width;
@@ -610,6 +611,10 @@ NSLog(@"code = %d, shift = %@", event.keyCode, shift? @"YES" : @"NO");
 		return view.window.screen != self.window.screen;
 	else if (action == @selector(chooseDisplayMode:))
 		menuItem.state = (display.displayMode == menuItem.tag);
+	else if (action == @selector(switchDispAdjust:)) {
+		menuItem.state = display.dispAdjust;
+		return view.superview.isInFullScreenMode;
+	}
 	return YES;
 }
 @end

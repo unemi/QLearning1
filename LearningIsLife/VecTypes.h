@@ -25,7 +25,9 @@ enum {
 enum {
 	IndexTPN,
 	IndexTPInfo,
-	IndexTPColor
+	IndexTPColor,
+	IndexTPGeoFactor,
+	IndexInvAdjMx
 };
 
 #endif /* VecTypes_h */

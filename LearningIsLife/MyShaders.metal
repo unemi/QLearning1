@@ -67,19 +67,22 @@ struct RasterizerDataTP {
 };
 vertex RasterizerDataTP vertexShaderTP(uint vertexID [[vertex_id]],
 	constant float2 *vertices [[buffer(IndexVertices)]],
-	constant float2 *geomFactor [[buffer(IndexGeomFactor)]],
-	constant float3x3 *adjustMx [[buffer(IndexAdjustMatrix)]]) {
+	constant float2 *geomFactor [[buffer(IndexGeomFactor)]]) {
     RasterizerDataTP out = {{0.,0.,0.,1.}};
-    out.position.xy = geomAdjust(vertices[vertexID], *geomFactor, *adjustMx);
+    out.position.xy = vertices[vertexID] / *geomFactor * 2. - 1.;
     out.pixCoord = vertices[vertexID];
 	return out;
 }
 fragment float4 fragmentShaderTP(RasterizerDataTP in [[stage_in]],
 	constant uint *n [[buffer(IndexTPN)]],
 	constant float3 *tpInfo [[buffer(IndexTPInfo)]],
-	constant float4 *color [[buffer(IndexTPColor)]]) {
+	constant float4 *color [[buffer(IndexTPColor)]],
+	constant float2 *geomFactor [[buffer(IndexTPGeoFactor)]],
+	constant float3x3 *adjustMx [[buffer(IndexInvAdjMx)]]) {
+	float3 p = float3(in.pixCoord / *geomFactor * 2. - 1., 1.) * *adjustMx;
+	p.xy = (p.xy / p.z + 1.) / 2. * *geomFactor;
 	float a = 0.;
 	for (uint i = 0; i < *n; i ++)
-		a = max(a, sqrt(1. - pow(min(1., distance(in.pixCoord, tpInfo[i].xy) / tpInfo[i].z), 2.)));
+		a = max(a, sqrt(1. - pow(min(1., distance(p.xy, tpInfo[i].xy) / tpInfo[i].z), 2.)));
 	return float4(color->rgb, color->a * a);
 }

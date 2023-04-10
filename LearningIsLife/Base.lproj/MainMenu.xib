@@ -184,6 +184,13 @@
                                     <action selector="chooseDisplayMode:" target="-1" id="m3R-0f-YuK"/>
                                 </connections>
                             </menuItem>
+                            <menuItem isSeparatorItem="YES" id="p1P-Y2-Gic"/>
+                            <menuItem title="Adjust Display" keyEquivalent="a" id="zBf-k4-pse">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="switchDispAdjust:" target="-1" id="iOG-nl-HqR"/>
+                                </connections>
+                            </menuItem>
                         </items>
                     </menu>
                 </menuItem>

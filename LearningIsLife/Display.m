@@ -182,8 +182,12 @@ static void particle_step(Particle *p, simd_float2 f) {
 	unsigned long time_us, dispCnt;
 	simd_int2 *obsP, *obsMem;
 	int nObs;
+// for full screen
+	NSView * __weak infoView;
+	NSBitmapImageRep *infoViewCacheBM;
+	id<MTLTexture> infoViewTex;
 	simd_float4x2 corners, savedCorners;
-	simd_float3x3 adjustMx;
+	simd_float3x3 adjustMx, adjustMxI;
 	NSTimer *savedMsgTimer;
 	BOOL cornersWereModified;
 }
@@ -366,31 +370,38 @@ NSLog(@"vxBuf=%ld", newVxBuf[0].length / sizeof(simd_float2));
 	if (lock) [loopLock unlock];
 	return result;
 }
+// for scale and shape adjustment in full screen mode.
 - (void)matrixFromCorners {
 	simd_float4x4 p;
 	simd_float4 y = {}, *z = p.columns;
-	simd_float2 *c = corners.columns;
-	for (NSInteger i = 0; i < 4; i ++) y[i] = c[i].y;
+	simd_float2 *cn = corners.columns;
+	for (NSInteger i = 0; i < 4; i ++) y[i] = cn[i].y;
 	for (NSInteger i = 0; i < 4; i ++) {
-		float x = c[i].x;
+		float x = cn[i].x;
 		z[i] = (simd_float4){x, x, x, x} * y;
 	}
 	float ae_bd = z[0][1]-z[1][0]+z[1][2]-z[2][1]+z[2][3]-z[3][2]+z[3][0]-z[0][3];
 	float g = (z[0][1]-z[1][0]+z[2][0]-z[0][2]+z[1][3]-z[3][1]+z[3][2]-z[2][3]) / ae_bd;
 	float h = (z[0][2]-z[2][0]+z[2][1]-z[1][2]+z[3][0]-z[0][3]+z[1][3]-z[3][1]) / ae_bd;
-	for (NSInteger i = 0; i < 2; i ++)
-		adjustMx.columns[i] = (simd_float3){
-			g*(c[0][i]+c[3][i])+(h-1.0)*(c[0][i]-c[3][i]),
-			(g-1.0)*(c[0][i]-c[1][i])+h*(c[0][i]+c[1][i]),
-			c[0][i]+c[2][i]-(g+h)*(c[0][i]-c[2][i])} * .5;
+	float a = (g*(cn[0].x+cn[3].x)+(h-1.0)*(cn[0].x-cn[3].x)) / 2.;
+	float b = ((g-1.0)*(cn[0].x-cn[1].x)+h*(cn[0].x+cn[1].x)) / 2.;
+	float c = (cn[0].x+cn[2].x-(g+h)*(cn[0].x-cn[2].x)) / 2.;
+	float d = (g*(cn[0].y+cn[3].y)+(h-1.0)*(cn[0].y-cn[3].y)) / 2.;
+	float e = ((g-1.0)*(cn[0].y-cn[1].y)+h*(cn[0].y+cn[1].y)) / 2.;
+	float f = (cn[0].y+cn[2].y-(g+h)*(cn[0].y-cn[2].y)) / 2.;
+	adjustMx.columns[0] = (simd_float3){a, b, c};
+	adjustMx.columns[1] = (simd_float3){d, e, f};
 	adjustMx.columns[2] = (simd_float3){g, h, 1.0};
+	adjustMxI.columns[0] = (simd_float3){e-f*h, c*h-b, b*f-c*e};
+	adjustMxI.columns[1] = (simd_float3){f*g-d, a-c*g, c*d-a*f};
+	adjustMxI.columns[2] = (simd_float3){d*h-e*g, b*g-a*h, a*e-b*d};
 	cornersWereModified = !simd_equal(corners, savedCorners);
 }
 static simd_float4x2 DefaultCorners = {(simd_float2){-1, -1},
 		(simd_float2){-1, 1}, (simd_float2){1, 1}, (simd_float2){1, -1}};
 - (void)resetAdjustMatrix {
 	corners = DefaultCorners;
-	adjustMx = matrix_identity_float3x3;
+	adjustMxI = adjustMx = matrix_identity_float3x3;
 	cornersWereModified = !simd_equal(corners, savedCorners);
 }
 - (void)scaleAdjustMatrix:(float)exp {
@@ -449,6 +460,7 @@ static simd_float4x2 DefaultCorners = {(simd_float2){-1, -1},
 	view.needsDisplay = YES;
 	return YES;
 }
+- (void)setInfoView:(NSView *)iview { infoView = iview; }
 #define MAKE_PSO(vs,fs,var)\
  	pplnStDesc.vertexFunction = fnDict[vs];\
 	pplnStDesc.fragmentFunction = fnDict[fs];\
@@ -986,7 +998,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	[rce setRenderPipelineState:shapePSO];
 	uint nv = 0;
 	// background
-	set_color(rce, col_to_vec(colBackground));
+	simd_float4 bgCol = col_to_vec(colBackground);
+	set_color(rce, bgCol);
 	fill_rect(rce, (NSRect){0., 0., PTCLMaxX, PTCLMaxY});
 	// Agent
 	set_color(rce, col_to_vec(colAgent));
@@ -1057,6 +1070,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 			[rce setFragmentBuffer:info offset:0 atIndex:IndexTPInfo];
 			[rce setFragmentBytes:&tpColor length:sizeof(tpColor) atIndex:IndexTPColor];
 			[rce setFragmentBytes:&nPoints length:sizeof(nPoints) atIndex:IndexTPN];
+			[rce setFragmentBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexTPGeoFactor];
+			[rce setFragmentBytes:&adjustMxI length:sizeof(adjustMxI) atIndex:IndexInvAdjMx];
 			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 			if (handTex == nil) handTex = [self texWithName:@"Hand"];
 			[rce setRenderPipelineState:texPSO];
@@ -1078,6 +1093,35 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		set_fragment_color(rce, col_to_vec(colSymbols));
 		draw_equtex(rce, equLTex, obsP[0], 3);
 		draw_equtex(rce, equPTex, obsP[4], 3);
+	}
+	// information view
+	if (symCol.a > 0. && isFullScr) {
+		if (infoViewCacheBM == nil) {
+			infoViewCacheBM = [infoView bitmapImageRepForCachingDisplayInRect:infoView.bounds];
+			MTLTextureDescriptor *texDesc = [MTLTextureDescriptor
+				texture2DDescriptorWithPixelFormat:view.colorPixelFormat
+				width:infoViewCacheBM.pixelsWide height:infoViewCacheBM.pixelsHigh mipmapped:NO];
+			infoViewTex = [view.device newTextureWithDescriptor:texDesc];
+			infoView.hidden = YES;
+		}
+		memset(infoViewCacheBM.bitmapData, 0,
+			infoViewCacheBM.bytesPerRow * infoViewCacheBM.pixelsHigh);
+		infoView.hidden = NO;
+		[infoView cacheDisplayInRect:infoView.bounds toBitmapImageRep:infoViewCacheBM];
+		infoView.hidden = YES;
+		[infoViewTex replaceRegion:
+			MTLRegionMake2D(0, 0, infoViewCacheBM.pixelsWide, infoViewCacheBM.pixelsHigh)
+			mipmapLevel:0 withBytes:infoViewCacheBM.bitmapData
+			bytesPerRow:infoViewCacheBM.bytesPerRow];
+		[rce setRenderPipelineState:texPSO];
+		[rce setFragmentTexture:infoViewTex atIndex:IndexTexture];
+		NSRect texRct = infoView.frame;
+		CGFloat scale = PTCLMaxX / view.frame.size.width;
+		for (NSInteger i = 0; i < 4; i ++) ((CGFloat *)(&texRct))[i] *= scale;
+		fill_rect(rce, texRct);
+	} else if (infoViewCacheBM != nil) {
+		infoViewCacheBM = nil; infoViewTex = nil;
+		infoView.hidden = NO;
 	}
 	// display adjustment in full screen mode
 	if (_dispAdjust && isFullScr) {
@@ -1102,7 +1146,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 			[rce setVertexBytes:vertices length:sizeof(simd_float2) * 4 atIndex:IndexVertices];
 			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
 		}
-		set_color(rce, (simd_float4){1.,1.,1.,1.});
+		float v = (simd_reduce_add(bgCol.rgb) / 3. * bgCol.a < .5)? 1. : .333;
+		set_color(rce, (simd_float4){v, v, v, 1.});
 		float radius = CORNER_MK_R * PTCLMaxX / view.bounds.size.width;
 		for (NSInteger i = 0; i < 4; i ++) {
 			vertices[i] = (simd_float2){PTCLMaxX * (i / 2), PTCLMaxY * ((i % 2) ^ (i / 2))};

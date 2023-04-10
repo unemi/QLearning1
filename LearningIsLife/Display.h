@@ -63,6 +63,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (int)cornerIndexAtPosition:(simd_float2)p size:(simd_float2)size;
 - (void)moveCorner:(int)idx to:(simd_float2)p size:(simd_float2)size;
 - (BOOL)saveAdjustmentCorners;
+- (void)setInfoView:(NSView *)iview;
 - (instancetype)initWithView:(MTKView *)view agent:(Agent *)a;
 - (int)nPtcls;
 - (DisplayMode)displayMode;
