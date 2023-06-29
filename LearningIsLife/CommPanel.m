@@ -8,6 +8,7 @@
 #import "CommPanel.h"
 #import "AppDelegate.h"
 #import "MainWindow.h"
+#import "InteractionPanel.h"
 
 Tracker *theTracker = nil;
 static Comm *theComm = nil;
@@ -41,8 +42,10 @@ void check_initial_communication(void) {
 	NSNumber *num;
 	if ((num = [ud objectForKey:keyCommEnabled]) == nil) return;
 	if (!num.boolValue) return;
-	in_port_t rcvPort = (num = [ud objectForKey:keyRcvPort])? num.intValue : OSC_PORT;
-	float pps = (num = [ud objectForKey:keyPktPerSec])? num.floatValue : DST_PKT_PER_SEC;
+	num = [ud objectForKey:keyRcvPort];
+	in_port_t rcvPort = (num != nil)? num.intValue : OSC_PORT;
+	num = [ud objectForKey:keyPktPerSec];
+	float pps = (num != nil)? num.floatValue : DST_PKT_PER_SEC;
 	start_communication(rcvPort, pps);
 }
 BOOL communication_is_running(void) {
@@ -103,12 +106,12 @@ static NSString *bytes_number(CGFloat b) {
 	NSNumber *num;
     if (theComm == nil) {
 		txtDstAddr.stringValue = (str != nil)? str : @"";
-		txtDstPort.intValue = (num = [ud objectForKey:keyDstPort])?
+		txtDstPort.intValue = ((num = [ud objectForKey:keyDstPort]) != nil)?
 			num.intValue : OSC_PORT;
-		txtRcvPort.intValue = (num = [ud objectForKey:keyRcvPort])?
+		txtRcvPort.intValue = ((num = [ud objectForKey:keyRcvPort]) != nil)?
 			num.intValue : OSC_PORT;
 	}
-	dgtPktPerSec.floatValue = (num = [ud objectForKey:keyPktPerSec])?
+	dgtPktPerSec.floatValue = ((num = [ud objectForKey:keyPktPerSec]) != nil)?
 		num.floatValue : DST_PKT_PER_SEC;
 	[self adjustControls];
     btnDelUsrDflt.enabled = (str != nil);
@@ -210,15 +213,19 @@ static NSString *bytes_number(CGFloat b) {
 @implementation Tracker {
 	NSMutableArray<TrackedPoint *> *trace;
 	NSLock *traceLock;
+	simd_float2 prevPoint[NTrackings];
+	unsigned long prevPtTime[NTrackings];
+	int prevPtIdx[NTrackings];
 }
 - (instancetype)init {
 	if (!(self = [super init])) return nil;
 	trace = NSMutableArray.new;
 	traceLock = NSLock.new;
 	traceLock.name = @"Tracked Points";
+	for (NSInteger i = 0; i < NTrackings; i ++) prevPtIdx[i] = -1;
 	return self;
 }
-- (id<MTLBuffer>)trackedPoints:(id<MTLDevice>)device {
+- (nullable id<MTLBuffer>)trackedPoints:(id<MTLDevice>)device {
 	if (trace.count == 0) return nil;
 	[traceLock lock];
 	id<MTLBuffer> buf = [device newBufferWithLength:
@@ -238,7 +245,10 @@ static NSString *bytes_number(CGFloat b) {
 	int k = 0;
 	for (int i = 0; i < nObstacles; i ++) {
 		int idx = ij_to_idx(ObsP[i]);
-		ObsHeight[idx] -= 1. / ManObsLifeSpan * DISP_INTERVAL;
+		BOOL stay = NO;
+		for (NSInteger i = 0; i < NTrackings; i ++)
+			if (idx == prevPtIdx[i]) { stay = YES; break; }
+		if (!stay) ObsHeight[idx] -= 1. / ManObsLifeSpan * DISP_INTERVAL;
 		if (ObsHeight[idx] > 0.) {
 			if (k < i) ObsP[k] = ObsP[i];
 			k ++;
@@ -252,33 +262,44 @@ static NSString *bytes_number(CGFloat b) {
 	if (idx >= 0) [trace removeObjectsInRange:(NSRange){0, idx + 1}];
 	[traceLock unlock];
 }
-- (void)addTrackedPoint:(simd_float2)p {
+- (void)addTrackedPoint:(simd_float2)p index:(SInt32)index {
 	simd_float2 pos = p * (simd_float2){nGridW, nGridH};
 	simd_int2 ixy = simd_int(floor(pos));
 	if (ixy.x < 0 || ixy.x >= nGridW || ixy.y < 0 || ixy.y >= nGridH
-	 || simd_equal(ixy, GoalP) || simd_equal(ixy, StartP)) return;
-	[theMainWindow.agentEnvLock lock];
-	if (!simd_equal(ixy, theMainWindow.agentPosition)) {
-		int idx = ij_to_idx(ixy);
+	 || simd_equal(ixy, GoalP) || simd_equal(ixy, StartP)
+	 || simd_equal(ixy, theMainWindow.agentPosition))
+		{ prevPtTime[index] = 0; prevPtIdx[index] = -1; return; }
+// check movement speed
+	int idx = ij_to_idx(ixy);
+	unsigned long tm = current_time_us(), intvl = tm - prevPtTime[index];
+	simd_float2 dp = pos - prevPoint[index];
+	float len = simd_length(dp), speed = len / intvl * 1e6;
+	if (prevPtTime[index] > 0)
+		affect_hand_motion(QTable + idx, dp, len, speed);
+	prevPoint[index] = pos;
+	prevPtTime[index] = tm;
+	if (prevPtIdx[index] == idx && speed < obsMaxSpeed) {
+// check growing an obstacle
+		[theMainWindow.agentEnvLock lock];
 		if (ObsHeight[idx] == 0. && nObstacles < nGrids)
 			ObsP[nObstacles ++] = ixy;
-		ObsHeight[idx] = 1.;
+		ObsHeight[idx] = fmin(obsMaxH * .01, ObsHeight[idx] + obsGrow * intvl * 1e-8);
 		[theMainWindow.agentEnvLock unlock];
-		[traceLock lock];
-		[trace addObject:
-			[TrackedPoint.alloc initWithPoint:p * (simd_float2){PTCLMaxX, PTCLMaxY}]];
-		[traceLock unlock];
-	} else [theMainWindow.agentEnvLock unlock];
+	} else prevPtIdx[index] = idx;
+	[traceLock lock];
+	[trace addObject:
+		[TrackedPoint.alloc initWithPoint:p * (simd_float2){PTCLMaxX, PTCLMaxY}]];
+	[traceLock unlock];
 }
 // Comm Delegate
 - (void)receive:(char *)buf length:(ssize_t)length {
-	if (obstaclesMode != ObsExternal || !theMainWindow.running ||
+	if (obstaclesMode != ObsExternal || theMainWindow.simState != SimRun ||
 		memcmp(buf, "/point\0\0,iffi\0\0\0", 16) != 0) return;
 	union { struct { SInt32 idx; Float32 x, y; SInt32 nPts; } d; SInt32 i[4]; } b;
 	memcpy(b.i, buf + 16, 16);
 	for (int i = 0; i < 4; i ++) b.i[i] = EndianS32_BtoN(b.i[i]);
 	if (b.d.idx >= 0 && b.d.idx < NTrackings)
-		[self addTrackedPoint:(simd_float2){b.d.x, b.d.y}];
+		[self addTrackedPoint:(simd_float2){b.d.x, b.d.y} index:b.d.idx];
 }
 
 enum { CellNormal, CellObstacle, CellStart, CellGoal };

@@ -27,11 +27,11 @@ extern SoundSrc sndData[NVoices];
 #define MAX_GOALCNT_TAG 1
 #define MAX_STEPS (UIntegerVars[MAX_STEPS_TAG].v)
 #define MAX_GOALCNT (UIntegerVars[MAX_GOALCNT_TAG].v)
-#define SOUNDS_ON (BoolVars[0].v)
-#define START_WIDTH_FULL_SCR (BoolVars[1].v)
-#define RECORD_IMAGES (BoolVars[2].v)
-#define SHOW_FPS (BoolVars[3].v)
-#define SAVE_WHEN_TERMINATE (BoolVars[4].v)
+#define DRAW_HAND (BoolVars[0].v)
+#define SOUNDS_ON (BoolVars[1].v)
+#define START_WIDTH_FULL_SCR (BoolVars[2].v)
+#define RECORD_IMAGES (BoolVars[3].v)
+#define SHOW_FPS (BoolVars[4].v)
 
 extern simd_int2 Move[4], FixedObsP[NObstaclesDF], FixedStartP, FixedGoalP;
 extern int nGridW, nGridH, nObstacles, maxNObstacles;
@@ -43,6 +43,7 @@ extern NSString *keyCntlPnl;
 extern NSString *keyOldValue, *keyShouldRedraw, *keyShouldReviseVertices, *keySoundTestExited;
 extern NSString *keyColorMode, *keyShapeMode, *keyObsMode;
 extern NSString *scrForFullScrFD, *scrForFullScrUD, *keyScrForFullScr;
+extern NSString *infoViewConfFD, *infoViewConfUD, *keyInfoViewConf;
 extern PTCLColorMode ptclColorModeFD, ptclColorModeUD;
 extern PTCLShapeMode ptclShapeModeFD, ptclShapeModeUD;
 extern ObstaclesMode obsModeFD, obsModeUD;

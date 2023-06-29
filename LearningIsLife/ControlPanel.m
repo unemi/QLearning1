@@ -6,6 +6,7 @@
 //
 
 #import "ControlPanel.h"
+#import "InteractionPanel.h"
 #import "AppDelegate.h"
 #import "MainWindow.h"
 #import "Display.h"
@@ -16,11 +17,12 @@ BOOL prm_equal(SoundPrm *a, SoundPrm *b) {
 	return [a->path isEqualToString:b->path] &&
 		a->mmin == b->mmin && a->mmax == b->mmax && a->vol == b->vol;
 }
-static void setup_screen_menu(NSPopUpButton *popup) {
+static void setup_screen_menu(NSPopUpButton *popup,
+	NSString *factoryDefault, NSString *currentName) {
 	NSArray<NSScreen *> *screens = NSScreen.screens;
 	NSInteger nItems = popup.numberOfItems;
 	if (screens.count > 1) {
-		[popup itemAtIndex:0].title = scrForFullScrFD;
+		[popup itemAtIndex:0].title = factoryDefault;
 		for (NSInteger i = 0; i < screens.count; i ++) {
 			NSString *name = screens[i].localizedName;
 			if (i + 1 < nItems) [popup itemAtIndex:i + 1].title = name;
@@ -28,7 +30,7 @@ static void setup_screen_menu(NSPopUpButton *popup) {
 		}
 		for (NSInteger i = nItems - 1; i > screens.count; i --)
 			[popup removeItemAtIndex:i];
-		NSMenuItem *item = [popup itemWithTitle:scrForFullScr];
+		NSMenuItem *item = [popup itemWithTitle:currentName];
 		if (item != nil) [popup selectItem:item];
 		else [popup selectItemAtIndex:0];
 	} else if (screens.count == 1) {
@@ -42,31 +44,37 @@ static void setup_screen_menu(NSPopUpButton *popup) {
 	}
 	popup.enabled = (screens.count > 1);
 }
+
+@implementation ControlPanel {
+	NSArray<NSColorWell *> *colWels;
+	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts, *sndTxts;
+	NSArray<NSButton *> *boolVBtns, *editBtns, *playBtns;
+	NSArray<NSStepper *> *ivStps;
+	NSArray<NSControl *> *sndContrls, *wrldControls;
+	InteractionPanel *intrctPnl;
+	NSSound *soundNowPlaying;
+	NSUndoManager *undoManager, *undoMng4SndPnl;
+	SoundType playingSoundType, openingSoundType;
+	SoundPrm orgSndParams;
+	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
+		FDBTDm, FDBTObs, FDBTFulScr, FDBTInfoV;
+	UInt64 UDBits, FDBits;
+}
+- (NSString *)windowNibName { return @"ControlPanel"; }
+- (NSArray<NSArray *> *)scrPopUpInfo {
+	return @[@[screenPopUp, scrForFullScrFD, scrForFullScr],
+		@[infoVConfPopUp, infoViewConfFD, infoViewConf]];
+}
 static void displayReconfigCB(CGDirectDisplayID display,
 	CGDisplayChangeSummaryFlags flags, void *userInfo) {
 	if ((flags & kCGDisplayBeginConfigurationFlag) != 0 ||
 		(flags & (kCGDisplayAddFlag | kCGDisplayRemoveFlag |
 		kCGDisplayEnabledFlag | kCGDisplayDisabledFlag)) == 0) return;
 	in_main_thread(^{
-		setup_screen_menu((__bridge NSPopUpButton *)userInfo);
+		for (NSArray *info in ((__bridge ControlPanel *)userInfo).scrPopUpInfo)
+			setup_screen_menu(info[0], info[1], info[2]);
 	});
 }
-
-@implementation ControlPanel {
-	NSArray<NSColorWell *> *colWels;
-	NSArray<NSTextField *> *ivDgts, *fvDgts, *uvDgts, *sndTxts;
-	NSArray<NSButton *> *colBtns, *dmBtns, *boolVBtns, *editBtns, *playBtns;
-	NSArray<NSStepper *> *ivStps;
-	NSArray<NSControl *> *sndContrls, *wrldControls;
-	NSSound *soundNowPlaying;
-	NSUndoManager *undoManager, *undoMng4SndPnl;
-	SoundType playingSoundType, openingSoundType;
-	SoundPrm orgSndParams;
-	int FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
-		FDBTDm, FDBTObs, FDBTFulScr;
-	UInt64 UDBits, FDBits;
-}
-- (NSString *)windowNibName { return @"ControlPanel"; }
 static NSString *sound_name(SoundType type) {
 	return [sndData[type].key substringFromIndex:5];
 }
@@ -115,11 +123,12 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	for (NSTextField *dgt in uvDgts) dgt.integerValue = UIntegerVars[dgt.tag].v;
 	for (NSStepper *stp in ivStps) stp.intValue = *IntVars[stp.tag].v;
 	for (NSButton *btn in boolVBtns) btn.state = BoolVars[btn.tag].v;
-	for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
-	for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
+	[ptclColorPopup selectItemAtIndex:ptclColorMode];
+	[ptclShapePopup selectItemAtIndex:ptclShapeMode];
 	dgtStrokeWidth.enabled = (ptclShapeMode != PTCLbyLines);
 	[obsPopUp selectItemAtIndex:newObsMode];
 	[screenPopUp selectItemWithTitle:scrForFullScr];
+	[infoVConfPopUp selectItemWithTitle:infoViewConf];
 	[self adjustSoundsCtrls];
 	for (NSControl *ctrl in wrldControls) ctrl.enabled = (newObsMode >= ObsPointer);
 	cboxRecordImages.enabled = (obstaclesMode != ObsExternal);
@@ -138,47 +147,39 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		ctr.action = @selector(act:);\
 		ctr.tag = tag ++; bit ++;\
 	}
-#define SETUP_RADIOBTN(b,var,fd,list,act)	b = (int)(bit ++); tag = 0;\
-	if (var != fd) FDBits |= 1 << b;\
-	for (NSButton *btn in list) {\
-		btn.target = self;\
-		btn.action = @selector(act:);\
-		btn.tag = tag ++;\
-	}
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	if (self.window == nil) return;
 	undoManager = NSUndoManager.new;
-	setup_screen_menu(screenPopUp);
+	setup_screen_menu(screenPopUp, scrForFullScrFD, scrForFullScr);
+	setup_screen_menu(infoVConfPopUp, infoViewConfFD, infoViewConf);
 	CGError error = CGDisplayRegisterReconfigurationCallback
-		(displayReconfigCB, (__bridge void *)screenPopUp);
+		(displayReconfigCB, (__bridge void *)self);
 	if (error != kCGErrorSuccess)
 		NSLog(@"CGDisplayRegisterReconfigurationCallback error = %d", error);
 	colWels = @[cwlBackground, cwObstacles, cwAgent, cwGridLines, cwSymbols, cwParticles,
-		cwTracking];
+		cwTracking, cwInfoFG];
 	ivDgts = @[dgtGridW, dgtGridH, dgtTileH, dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
 		dgtMemSize, dgtMemTrials, dgtNParticles, dgtLifeSpan];
 	ivStps = @[stpGridW, stpGridH, stpTileH, stpStartX, stpStartY, stpGoalX, stpGoalY];
 	fvDgts = @[dgtT0, dgtT1, dgtCoolingRate, dgtInitQValue, dgtGamma, dgtAlpha,
-		dgtStpPS, dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed, dgtLifeSpan];
+		dgtStpPS, dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed, dgtManObsLS,
+		dgtFadeoutSec];
 	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
-	boolVBtns = @[cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS, cBoxSAUDWT];
-	colBtns = @[btnColConst, btnColAngle, btnColSpeed];
-	dmBtns = @[btnDrawByRects, btnDrawByTriangles, btnDrawByLines];
+	boolVBtns = @[cboxDrawHand, cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS];
 	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
 	editBtns = @[editBump, editGoal, editGood, editBad, editAmbience];
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
 	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
 	wrldControls = @[dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
-		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtManObsLS, cwTracking];
+		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtManObsLS, cwTracking,
+		intrctPnlBtn, cboxDrawHand];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
 	SETUP_CNTRL(FDBTFloat, NSTextField, fvDgts, , *, FloatVars, changeFloatValue)
 	SETUP_CNTRL(FDBTUInt, NSTextField, uvDgts, , , UIntegerVars, changeUIntegerValue)
 	SETUP_CNTRL(FDBTBool, NSButton, boolVBtns, , , BoolVars, switchBoolValue)
-	SETUP_RADIOBTN(FDBTDc, ptclColorMode, ptclColorModeFD, colBtns, chooseColorMode)
-	SETUP_RADIOBTN(FDBTDm, ptclShapeMode, ptclShapeModeFD, dmBtns, chooseShapeMode)
 	for (NSInteger i = 0; i < ivStps.count; i ++) {
 		ivStps[i].tag = i;
 		ivStps[i].target = self;
@@ -191,6 +192,8 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	if (newObsMode != obsModeFD) FDBits |= 1 << bit;
 	FDBTFulScr = (int)(++ bit);
 	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
+	FDBTInfoV = (int)(++ bit);
+	if (infoViewConf != infoViewConfFD) FDBits |= 1 << bit;
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
 		s->FDBit = (int)(++ bit);
@@ -291,7 +294,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		fd:newValue == info->fd ud:newValue == info->ud];
 	if (dgt.tag == MAX_STEPS_TAG)
 		dgtCoolingRate.enabled = (MAX_STEPS == 0);
-	[NSNotificationCenter.defaultCenter
+	if (info->flag & ShouldPostNotification) [NSNotificationCenter.defaultCenter
 		postNotificationName:info->key object:NSApp];
 }
 - (IBAction)switchBoolValue:(NSButton *)btn {
@@ -309,14 +312,17 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	if (info->flag & ShouldPostNotification)
 		[NSNotificationCenter.defaultCenter
 			postNotificationName:info->key object:NSApp];
+	if (info->flag & ShouldRedrawScreen) [NSNotificationCenter.defaultCenter
+		postNotificationName:keyShouldRedraw object:NSApp];
 	if ([info->key isEqualToString:@"sounds"]) [self adjustSoundsCtrls];
 }
-- (IBAction)chooseColorMode:(NSButton *)btn {
-	PTCLColorMode newValue = (PTCLColorMode)btn.tag;
+- (IBAction)chooseColorMode:(NSPopUpButton *)popUp {
+	PTCLColorMode newValue = (PTCLColorMode)popUp.indexOfSelectedItem;
 	if (ptclColorMode == newValue) return;
-	NSButton *orgBtn = colBtns[ptclColorMode];
+	PTCLColorMode orgValue = ptclColorMode;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
-		[orgBtn performClick:nil];
+		[popUp selectItemAtIndex:orgValue];
+		[popUp sendAction:popUp.action to:popUp.target];
 	}];
 	undoManager.actionName = NSLocalizedString(keyColorMode, nil);
 	ptclColorMode = newValue;
@@ -324,12 +330,13 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		keyColorMode object:NSApp userInfo:@{keyCntlPnl:self}];
 }
-- (IBAction)chooseShapeMode:(NSButton *)btn {
-	PTCLShapeMode newValue = (PTCLShapeMode)btn.tag;
+- (IBAction)chooseShapeMode:(NSPopUpButton *)popUp {
+	PTCLShapeMode newValue = (PTCLShapeMode)popUp.indexOfSelectedItem;
 	if (ptclShapeMode == newValue) return;
-	NSButton *orgBtn = dmBtns[ptclShapeMode];
+	PTCLShapeMode orgValue = ptclShapeMode;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
-		[orgBtn performClick:nil];
+		[popUp selectItemAtIndex:orgValue];
+		[popUp sendAction:popUp.action to:popUp.target];
 	}];
 	undoManager.actionName = NSLocalizedString(keyShapeMode, nil);
 	ptclShapeMode = newValue;
@@ -351,19 +358,32 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	for (NSControl *cntrl in wrldControls) cntrl.enabled = (newValue >= ObsPointer);
 	[NSNotificationCenter.defaultCenter postNotificationName:keyObsMode object:NSApp];
 }
-- (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {
+- (IBAction)openInteractPanel:(id)sender {
+	if (intrctPnl == nil) intrctPnl =
+		[InteractionPanel.alloc initWithWindow:nil];
+	[intrctPnl showWindow:sender];
+}
+- (NSString *)chooseScreenName:(NSPopUpButton *)popUp key:(NSString *)key
+	orgValue:(NSString *)orgValue fd:(NSString *)fd ud:(NSString *)ud bit:(int)bit {
 	NSString *newValue = popUp.titleOfSelectedItem;
-	if ([scrForFullScr isEqualToString:newValue]) return;
-	NSString *orgValue = scrForFullScr;
+	if ([scrForFullScr isEqualToString:newValue]) return orgValue;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
 		if ([popUp itemWithTitle:orgValue] != nil)
 			[popUp selectItemWithTitle:orgValue];
 		else [popUp selectItemAtIndex:0];
 		[popUp sendAction:popUp.action to:target];
 	}];
-	undoManager.actionName = NSLocalizedString(keyScrForFullScr, nil);
-	scrForFullScr = newValue;
-	[self checkFDBits:FDBTFulScr fd:newValue == scrForFullScrFD ud:newValue == scrForFullScrUD];
+	undoManager.actionName = NSLocalizedString(key, nil);
+	[self checkFDBits:bit fd:newValue == fd ud:newValue == ud];
+	return newValue;
+}
+- (IBAction)chooseScreenForFullScreen:(NSPopUpButton *)popUp {
+	scrForFullScr = [self chooseScreenName:popUp key:keyScrForFullScr
+		orgValue:scrForFullScr fd:scrForFullScrFD ud:scrForFullScrUD bit:FDBTFulScr];
+}
+- (IBAction)chooseInfoViewConf:(NSPopUpButton *)popUp {
+	infoViewConf = [self chooseScreenName:popUp key:keyInfoViewConf
+		orgValue:infoViewConf fd:infoViewConfFD ud:infoViewConfUD bit:FDBTInfoV];
 }
 - (void)setSoundType:(SoundType)type prm:(SoundPrm)prm {
 	SoundSrc *s = &sndData[type];
@@ -620,7 +640,8 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	CLCT_DF_ENM(keyColorMode, ptclColorModeUD, ptclColorMode)
 	CLCT_DF_ENM(keyShapeMode, ptclShapeModeUD, ptclShapeMode)
 	CLCT_DF_ENM(keyObsMode, obsModeUD, newObsMode)
-	CLCT_DF_STR(keyScrForFullScr, scrForFullScrUD, keyScrForFullScr)
+	CLCT_DF_STR(keyScrForFullScr, scrForFullScrUD, scrForFullScr)
+	CLCT_DF_STR(keyInfoViewConf, infoViewConfUD, infoViewConf)
 	[self setParamValuesFromDict:md];
 	undoManager.actionName = btnRevertToUD.title;
 }
@@ -629,7 +650,8 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	CLCT_DF_ENM(keyColorMode, ptclColorModeFD, ptclColorMode)
 	CLCT_DF_ENM(keyShapeMode, ptclShapeModeFD, ptclShapeMode)
 	CLCT_DF_ENM(keyObsMode, obsModeFD, newObsMode)
-	CLCT_DF_STR(keyScrForFullScr, scrForFullScrFD, keyScrForFullScr)
+	CLCT_DF_STR(keyScrForFullScr, scrForFullScrFD, scrForFullScr)
+	CLCT_DF_STR(keyInfoViewConf, infoViewConfFD, infoViewConf)
 	[self setParamValuesFromDict:md];
 	undoManager.actionName = btnRevertToFD.title;
 }
@@ -651,6 +673,14 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 		if (var == udVar || newValue == udVar) *ubP |= bit;\
 		var = newValue;\
 		[postKeys addObject:key]; }}
+#define SETSTR_DICT(key,fdVar,udVar,var,bt)	newValue = dict[key];\
+	if (newValue != nil && ![var isEqualToString:newValue]) {\
+		orgValues[key] = var;\
+		UInt64 bit = 1 << bt;\
+		if (var == fdVar || newValue == fdVar) fdFlipBits |= bit;\
+		if (var == udVar || newValue == udVar) udFlipBits |= bit;\
+		var = newValue;\
+	}
 
 - (void)setParamValuesFromDict:(NSDictionary *)dict {
 	NSMutableArray<NSString *> *postKeys = NSMutableArray.new;
@@ -685,14 +715,9 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	SETENM_DICT(keyColorMode, PTCLColorMode, ptclColorModeFD, ptclColorModeUD, ptclColorMode, FDBTDc)
 	SETENM_DICT(keyShapeMode, PTCLShapeMode, ptclShapeModeFD, ptclShapeModeUD, ptclShapeMode, FDBTDm)
 	SETENM_DICT(keyObsMode, ObstaclesMode, obsModeFD, obsModeUD, newObsMode, FDBTObs)
-	NSString *newValue = dict[keyScrForFullScr];
-	if (newValue != nil && ![scrForFullScr isEqualToString:newValue]) {
-		orgValues[keyScrForFullScr] = scrForFullScr;
-		UInt64 bit = 1 << FDBTFulScr;
-		if (scrForFullScr == scrForFullScrFD || newValue == scrForFullScrFD) fdFlipBits |= bit;
-		if (scrForFullScr == scrForFullScrUD || newValue == scrForFullScrUD) udFlipBits |= bit;
-		scrForFullScr = newValue;
-	}
+	NSString *newValue;
+	SETSTR_DICT(keyScrForFullScr, scrForFullScrFD, scrForFullScrUD, scrForFullScr, FDBTFulScr)
+	SETSTR_DICT(keyInfoViewConf, infoViewConfFD, infoViewConfUD, infoViewConf, FDBTInfoV)
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
 		NSDictionary *dc = dict[s->key];
@@ -732,6 +757,7 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	md[keyShapeMode] = @(ptclShapeMode);
 	md[keyObsMode] = @(newObsMode);
 	md[keyScrForFullScr] = scrForFullScr;
+	md[keyInfoViewConf] = infoViewConf;
 	return md;
 }
 
@@ -786,7 +812,7 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	NSNumber *num = info[keyOldValue];
 	if (num != nil) {
 		ptclColorMode = (PTCLColorMode)num.intValue;
-		for (NSButton *btn in colBtns) btn.state = (ptclColorMode == btn.tag);
+		[ptclColorPopup selectItemAtIndex:ptclColorMode];
 		[self checkFDBits:FDBTDc
 			fd:ptclColorMode == ptclColorModeFD ud:ptclColorMode == ptclColorModeUD];
 	} else [undoManager undo];
@@ -795,7 +821,7 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	NSNumber *num = info[keyOldValue];
 	if (num != nil) {
 		ptclShapeMode = (PTCLShapeMode)num.intValue;
-		for (NSButton *btn in dmBtns) btn.state = (ptclShapeMode == btn.tag);
+		[ptclShapePopup selectItemAtIndex:ptclShapeMode];
 		[self checkFDBits:FDBTDm
 			fd:ptclShapeMode == ptclShapeModeFD ud:ptclShapeMode == ptclShapeModeUD];
 	} else [undoManager undo];

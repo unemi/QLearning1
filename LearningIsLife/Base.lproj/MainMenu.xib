@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21507" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="21701" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
         <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21507"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="21701"/>
     </dependencies>
     <objects>
         <customObject id="-2" userLabel="File's Owner"/>
@@ -210,10 +210,16 @@
                                 </connections>
                             </menuItem>
                             <menuItem isSeparatorItem="YES" id="8bS-KJ-gcU"/>
-                            <menuItem title="Comm Panel" keyEquivalent="c" id="ue2-Wo-JX0">
+                            <menuItem title="Interaction Panel" keyEquivalent="i" id="ue2-Wo-JX0">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>
-                                    <action selector="openCommPanel:" target="Voe-Tx-rLC" id="ATf-ig-lyq"/>
+                                    <action selector="openInteractPanel:" target="-1" id="ynI-5f-Ssh"/>
+                                </connections>
+                            </menuItem>
+                            <menuItem title="Communication Panel" keyEquivalent="c" id="KA4-v9-2GZ">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="openCommPanel:" target="Voe-Tx-rLC" id="XcE-Yx-XSV"/>
                                 </connections>
                             </menuItem>
                         </items>

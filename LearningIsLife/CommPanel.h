@@ -28,9 +28,9 @@ typedef enum { TrackRight, TrackFront, TrackLeft, NTrackings } TrackingIndex;
 @end
 
 @interface Tracker : NSObject <CommDelegate>
-- (id<MTLBuffer>)trackedPoints:(id<MTLDevice>)device;
+- (nullable id<MTLBuffer>)trackedPoints:(id<MTLDevice>)device;
 - (void)stepTracking;
-- (void)addTrackedPoint:(simd_float2)p;
+- (void)addTrackedPoint:(simd_float2)p index:(SInt32)index;
 - (void)sendAgentInfo:(AgentStepResult)result;
 - (void)sendVectorFieldInfo;
 @end

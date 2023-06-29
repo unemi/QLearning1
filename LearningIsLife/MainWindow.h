@@ -10,9 +10,9 @@
 #import "Comm.h"
 
 NS_ASSUME_NONNULL_BEGIN
-
+typedef enum { SimStop, SimRun, SimDecay } SimState;
 @interface MainWindow : NSWindowController <NSWindowDelegate, NSMenuItemValidation>
-@property (readonly) BOOL running;
+@property (readonly) SimState simState;
 @property (readonly) NSLock *agentEnvLock;
 - (void)adjustForRecordView:(NSNotification * _Nullable)note;
 - (simd_int2)agentPosition;
@@ -23,10 +23,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)setSendersPacketsPerSec:(float)pps;
 @end 
 
-extern NSString *scrForFullScr;
+extern NSString *scrForFullScr, *infoViewConf;
 extern MainWindow *theMainWindow;
 extern ObstaclesMode obstaclesMode, newObsMode;
 extern float ManObsLifeSpan;
+
+@interface MyInfoView : NSView
+@end
 
 @interface MyProgressBar : NSView
 @property CGFloat maxValue, doubleValue;

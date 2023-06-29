@@ -9,11 +9,11 @@
 /* Begin PBXBuildFile section */
 		2309A091296FC19600250E31 /* AVFAudio.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 23DB3560296EAA2B0008D821 /* AVFAudio.framework */; };
 		2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 2309B4E1297C11C7008704F2 /* Localizable.strings */; };
+		230E057D2A4C95FE00F38488 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 230E057B2A4C95FE00F38488 /* ControlPanel.xib */; };
 		230F43A9296028AA006513E2 /* Credits.rtf in Resources */ = {isa = PBXBuildFile; fileRef = 230F43A8296028AA006513E2 /* Credits.rtf */; };
 		2318A51E296697030025CCFB /* RecordView.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A51D296697030025CCFB /* RecordView.m */; };
 		2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */ = {isa = PBXBuildFile; fileRef = 2318A5202966E2AE0025CCFB /* MyViewForCG.m */; };
 		231D98B1297260EE006672BD /* MySound.m in Sources */ = {isa = PBXBuildFile; fileRef = 231D98AF297260EE006672BD /* MySound.m */; };
-		23214956295C6980001A40D3 /* ControlPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23214954295C6980001A40D3 /* ControlPanel.xib */; };
 		232208EF29DAAA9500C93977 /* AdjustKeys.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 232208EE29DAAA9500C93977 /* AdjustKeys.pdf */; };
 		232521712956BB7900159F30 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 232521702956BB7900159F30 /* AppDelegate.m */; };
 		232521732956BB7A00159F30 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 232521722956BB7A00159F30 /* Assets.xcassets */; };
@@ -24,6 +24,8 @@
 		23297D89296AD1CC00178016 /* equationP.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D87296AD1CC00178016 /* equationP.pdf */; };
 		23297D8A296AD1CC00178016 /* equationL.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 23297D88296AD1CC00178016 /* equationL.pdf */; };
 		232F39AD298A81AF00B1A28D /* CommPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 232F39AF298A81AF00B1A28D /* CommPanel.xib */; };
+		23349C552A482C7B0020E87C /* InteractionPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23349C542A482C7B0020E87C /* InteractionPanel.xib */; };
+		23349C582A482CD30020E87C /* InteractionPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 23349C572A482CD30020E87C /* InteractionPanel.m */; };
 		2334B39E29875E40003AC3FC /* CommPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2334B39D29875E40003AC3FC /* CommPanel.m */; };
 		233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 233DF0A0295B109C00F9F20C /* MyShaders.metal */; };
 		234090D82969025D008CC72D /* MainWindow.m in Sources */ = {isa = PBXBuildFile; fileRef = 234090D62969025D008CC72D /* MainWindow.m */; };
@@ -33,7 +35,6 @@
 		23505D5829860ED4002A7429 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5729860ED4002A7429 /* Assets.xcassets */; };
 		23505D5B29860ED4002A7429 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5929860ED4002A7429 /* MainMenu.xib */; };
 		23505D5D29860ED4002A7429 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23505D5C29860ED4002A7429 /* main.m */; };
-		23505D6229860F05002A7429 /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 2372103129DFF4A000B23CBD /* AdjustSaved.pdf */; };
 		23868EE7298519F100C02DCE /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */ = {isa = PBXBuildFile; fileRef = 2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */; };
@@ -44,6 +45,7 @@
 
 /* Begin PBXFileReference section */
 		2309B4E2297C11C7008704F2 /* Base */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = Base; path = Base.lproj/Localizable.strings; sourceTree = "<group>"; };
+		230E057C2A4C95FE00F38488 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
 		230F43A8296028AA006513E2 /* Credits.rtf */ = {isa = PBXFileReference; lastKnownFileType = text.rtf; path = Credits.rtf; sourceTree = "<group>"; };
 		2318A51C296697030025CCFB /* RecordView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = RecordView.h; sourceTree = "<group>"; };
 		2318A51D296697030025CCFB /* RecordView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = RecordView.m; sourceTree = "<group>"; };
@@ -51,7 +53,6 @@
 		2318A5202966E2AE0025CCFB /* MyViewForCG.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MyViewForCG.m; sourceTree = "<group>"; };
 		231D98AF297260EE006672BD /* MySound.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MySound.m; sourceTree = "<group>"; };
 		231D98B0297260EE006672BD /* MySound.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MySound.h; sourceTree = "<group>"; };
-		23214955295C6980001A40D3 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/ControlPanel.xib; sourceTree = "<group>"; };
 		232208EE29DAAA9500C93977 /* AdjustKeys.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = AdjustKeys.pdf; path = LearningIsLife/AdjustKeys.pdf; sourceTree = "<group>"; };
 		2325216C2956BB7900159F30 /* Learning is Life.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Learning is Life.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		2325216F2956BB7900159F30 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -68,6 +69,9 @@
 		23297D88296AD1CC00178016 /* equationL.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationL.pdf; path = LearningIsLife/equationL.pdf; sourceTree = "<group>"; };
 		232F39AE298A81AF00B1A28D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/CommPanel.xib; sourceTree = "<group>"; };
 		2330B0E6296972A100F87CEC /* Samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Samples; sourceTree = "<group>"; };
+		23349C542A482C7B0020E87C /* InteractionPanel.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = InteractionPanel.xib; sourceTree = "<group>"; };
+		23349C562A482CD30020E87C /* InteractionPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InteractionPanel.h; sourceTree = "<group>"; };
+		23349C572A482CD30020E87C /* InteractionPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = InteractionPanel.m; sourceTree = "<group>"; };
 		2334B39C29875E40003AC3FC /* CommPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = CommPanel.h; sourceTree = "<group>"; };
 		2334B39D29875E40003AC3FC /* CommPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = CommPanel.m; sourceTree = "<group>"; };
 		23363EE6295F12540005A64D /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
@@ -143,42 +147,15 @@
 		2325216E2956BB7900159F30 /* LearningIsLife */ = {
 			isa = PBXGroup;
 			children = (
-				23BD0D1F2976C7A600B5F91E /* CommonTypes.h */,
-				2325216F2956BB7900159F30 /* AppDelegate.h */,
-				232521702956BB7900159F30 /* AppDelegate.m */,
-				23BEB9E7298A7789006EF0A1 /* ControlPanel.h */,
-				23BEB9E8298A7789006EF0A1 /* ControlPanel.m */,
-				234090D52969025D008CC72D /* MainWindow.h */,
-				234090D62969025D008CC72D /* MainWindow.m */,
-				2318A51C296697030025CCFB /* RecordView.h */,
-				2318A51D296697030025CCFB /* RecordView.m */,
-				2325217F2956BBF700159F30 /* Agent.h */,
-				232521802956BBF700159F30 /* Agent.m */,
-				232521822956C38D00159F30 /* Display.h */,
-				232521832956C38D00159F30 /* Display.m */,
-				23868EE5298519F100C02DCE /* Comm.h */,
-				23868EE6298519F100C02DCE /* Comm.m */,
-				2334B39C29875E40003AC3FC /* CommPanel.h */,
-				2334B39D29875E40003AC3FC /* CommPanel.m */,
-				2318A51F2966E2AE0025CCFB /* MyViewForCG.h */,
-				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
-				234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */,
-				234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */,
-				231D98B0297260EE006672BD /* MySound.h */,
-				231D98AF297260EE006672BD /* MySound.m */,
 				23FDEFDC2967CA2700C6C1E2 /* Info.plist */,
-				232521722956BB7A00159F30 /* Assets.xcassets */,
-				23DAB3AC2970FDF400700DA9 /* MainWindow.xib */,
-				232521742956BB7A00159F30 /* MainMenu.xib */,
-				23214954295C6980001A40D3 /* ControlPanel.xib */,
-				232F39AF298A81AF00B1A28D /* CommPanel.xib */,
-				2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */,
-				232521772956BB7A00159F30 /* main.m */,
 				232521792956BB7A00159F30 /* LearningIsLife.entitlements */,
-				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
+				232521772956BB7A00159F30 /* main.m */,
+				23BD0D1F2976C7A600B5F91E /* CommonTypes.h */,
 				237780B3295BF81100789534 /* VecTypes.h */,
-				230F43A8296028AA006513E2 /* Credits.rtf */,
-				2309B4E1297C11C7008704F2 /* Localizable.strings */,
+				233DF0A0295B109C00F9F20C /* MyShaders.metal */,
+				239C299A2A400FFC004E567A /* Classes */,
+				239C299C2A401098004E567A /* User Interfaces */,
+				232521722956BB7A00159F30 /* Assets.xcassets */,
 			);
 			path = LearningIsLife;
 			sourceTree = "<group>";
@@ -215,6 +192,52 @@
 				23505D5E29860ED4002A7429 /* LiLCommSim.entitlements */,
 			);
 			path = LiLCommSim;
+			sourceTree = "<group>";
+		};
+		239C299A2A400FFC004E567A /* Classes */ = {
+			isa = PBXGroup;
+			children = (
+				2325216F2956BB7900159F30 /* AppDelegate.h */,
+				232521702956BB7900159F30 /* AppDelegate.m */,
+				23BEB9E7298A7789006EF0A1 /* ControlPanel.h */,
+				23BEB9E8298A7789006EF0A1 /* ControlPanel.m */,
+				23349C562A482CD30020E87C /* InteractionPanel.h */,
+				23349C572A482CD30020E87C /* InteractionPanel.m */,
+				234090D52969025D008CC72D /* MainWindow.h */,
+				234090D62969025D008CC72D /* MainWindow.m */,
+				2318A51C296697030025CCFB /* RecordView.h */,
+				2318A51D296697030025CCFB /* RecordView.m */,
+				2325217F2956BBF700159F30 /* Agent.h */,
+				232521802956BBF700159F30 /* Agent.m */,
+				232521822956C38D00159F30 /* Display.h */,
+				232521832956C38D00159F30 /* Display.m */,
+				23868EE5298519F100C02DCE /* Comm.h */,
+				23868EE6298519F100C02DCE /* Comm.m */,
+				2334B39C29875E40003AC3FC /* CommPanel.h */,
+				2334B39D29875E40003AC3FC /* CommPanel.m */,
+				2318A51F2966E2AE0025CCFB /* MyViewForCG.h */,
+				2318A5202966E2AE0025CCFB /* MyViewForCG.m */,
+				234A09EB296CF1F700ADDFD1 /* LogoDrawer.h */,
+				234A09EC296CF1F700ADDFD1 /* LogoDrawer.m */,
+				231D98B0297260EE006672BD /* MySound.h */,
+				231D98AF297260EE006672BD /* MySound.m */,
+			);
+			name = Classes;
+			sourceTree = "<group>";
+		};
+		239C299C2A401098004E567A /* User Interfaces */ = {
+			isa = PBXGroup;
+			children = (
+				230F43A8296028AA006513E2 /* Credits.rtf */,
+				2309B4E1297C11C7008704F2 /* Localizable.strings */,
+				2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */,
+				23DAB3AC2970FDF400700DA9 /* MainWindow.xib */,
+				232521742956BB7A00159F30 /* MainMenu.xib */,
+				230E057B2A4C95FE00F38488 /* ControlPanel.xib */,
+				23349C542A482C7B0020E87C /* InteractionPanel.xib */,
+				232F39AF298A81AF00B1A28D /* CommPanel.xib */,
+			);
+			name = "User Interfaces";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -261,7 +284,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1420;
+				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					2325216B2956BB7900159F30 = {
 						CreatedOnToolsVersion = 14.2;
@@ -299,15 +322,16 @@
 				23DAB3AA2970FDF400700DA9 /* MainWindow.xib in Resources */,
 				232F39AD298A81AF00B1A28D /* CommPanel.xib in Resources */,
 				239A784B29DE74C10068B33D /* Hand.pdf in Resources */,
-				23214956295C6980001A40D3 /* ControlPanel.xib in Resources */,
 				232521762956BB7A00159F30 /* MainMenu.xib in Resources */,
 				2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */,
 				23297D8A296AD1CC00178016 /* equationL.pdf in Resources */,
 				23297D89296AD1CC00178016 /* equationP.pdf in Resources */,
 				232208EF29DAAA9500C93977 /* AdjustKeys.pdf in Resources */,
 				2309B4E3297C11C8008704F2 /* Localizable.strings in Resources */,
+				230E057D2A4C95FE00F38488 /* ControlPanel.xib in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 				2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */,
+				23349C552A482C7B0020E87C /* InteractionPanel.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -338,6 +362,7 @@
 				23BEB9E9298A7789006EF0A1 /* ControlPanel.m in Sources */,
 				231D98B1297260EE006672BD /* MySound.m in Sources */,
 				232521712956BB7900159F30 /* AppDelegate.m in Sources */,
+				23349C582A482CD30020E87C /* InteractionPanel.m in Sources */,
 				2334B39E29875E40003AC3FC /* CommPanel.m in Sources */,
 				2318A51E296697030025CCFB /* RecordView.m in Sources */,
 			);
@@ -348,7 +373,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				23505D5D29860ED4002A7429 /* main.m in Sources */,
-				23505D6229860F05002A7429 /* Comm.m in Sources */,
 				23505D5629860ED3002A7429 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -364,10 +388,10 @@
 			name = Localizable.strings;
 			sourceTree = "<group>";
 		};
-		23214954295C6980001A40D3 /* ControlPanel.xib */ = {
+		230E057B2A4C95FE00F38488 /* ControlPanel.xib */ = {
 			isa = PBXVariantGroup;
 			children = (
-				23214955295C6980001A40D3 /* Base */,
+				230E057C2A4C95FE00F38488 /* Base */,
 			);
 			name = ControlPanel.xib;
 			sourceTree = "<group>";
@@ -440,6 +464,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
@@ -498,6 +523,7 @@
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -524,12 +550,13 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 18;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LearningIsLife/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022, 2023.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -538,7 +565,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -553,13 +580,14 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 12;
+				CURRENT_PROJECT_VERSION = 18;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = LearningIsLife/Info.plist;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.entertainment";
 				INFOPLIST_KEY_NSHumanReadableCopyright = "© Tatsuo Unemi, 2022, 2023.";
 				INFOPLIST_KEY_NSMainNibFile = MainMenu;
 				INFOPLIST_KEY_NSPrincipalClass = NSApplication;
@@ -568,7 +596,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.1;
+				MARKETING_VERSION = 1.2;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -583,7 +611,8 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 18;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;
@@ -610,7 +639,8 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 18;
+				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
 				GENERATE_INFOPLIST_FILE = YES;

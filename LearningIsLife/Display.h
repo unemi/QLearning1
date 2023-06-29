@@ -32,10 +32,11 @@ typedef id<MTLRenderCommandEncoder> RCE;
 #define CORNER_MK_R 30.
 
 extern int NParticles, LifeSpan;
-extern float Mass, Friction, StrokeLength, StrokeWidth, MaxSpeed;
+extern float Mass, Friction, StrokeLength, StrokeWidth, MaxSpeed, FadeoutSec;
 extern NSColor * _Nonnull colBackground, * _Nonnull colObstacles,
 	* _Nonnull colAgent, * _Nonnull colGridLines,
-	* _Nonnull colSymbols, * _Nonnull colParticles, * _Nonnull colTracking;
+	* _Nonnull colSymbols, * _Nonnull colParticles,
+	* _Nonnull colTracking, * _Nonnull colInfoFG;
 extern PTCLColorMode ptclColorMode;
 extern PTCLShapeMode ptclShapeMode;
 extern void add_observer(NSString * _Nonnull noteName,
@@ -63,9 +64,10 @@ NS_ASSUME_NONNULL_BEGIN
 - (int)cornerIndexAtPosition:(simd_float2)p size:(simd_float2)size;
 - (void)moveCorner:(int)idx to:(simd_float2)p size:(simd_float2)size;
 - (BOOL)saveAdjustmentCorners;
-- (void)setInfoView:(NSView *)iview;
+- (void)setInfoView:(NSView * _Nullable)iview;
 - (instancetype)initWithView:(MTKView *)view agent:(Agent *)a;
 - (int)nPtcls;
+- (void)startFading:(void (^)(void))handler;
 - (DisplayMode)displayMode;
 - (void)setDisplayMode:(DisplayMode)newMode;
 - (void)reset;

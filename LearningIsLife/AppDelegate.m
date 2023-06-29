@@ -9,6 +9,7 @@
 
 #import "AppDelegate.h"
 #import "ControlPanel.h"
+#import "InteractionPanel.h"
 #import "CommPanel.h"
 #import "MainWindow.h"
 #import "Display.h"
@@ -30,6 +31,7 @@ NSString *keyOldValue = @"oldValue", *keyShouldRedraw = @"shouldRedraw",
 NSString *keyColorMode = @"ptclColorMode", *keyShapeMode = @"ptclShapeMode",
 	*keyObsMode = @"obstaclesMode";
 NSString *scrForFullScrFD, *scrForFullScrUD, *keyScrForFullScr = @"screenForFullScreenMode";
+NSString *infoViewConfFD, *infoViewConfUD, *keyInfoViewConf = @"infoViewConf";
 PTCLColorMode ptclColorModeFD, ptclColorModeUD;
 PTCLShapeMode ptclShapeModeFD, ptclShapeModeUD;
 ObstaclesMode obsModeFD, obsModeUD;
@@ -62,6 +64,7 @@ FloatVarInfo FloatVars[] = {
 	{ @"ptclWeight", ShouldReviseVertices, &StrokeWidth },
 	{ @"ptclMaxSpeed", 0, &MaxSpeed },
 	{ @"manipulatedObstacleLifeSpan", 0, &ManObsLifeSpan },
+	{ @"fadeoutTimeInSecond", 0, &FadeoutSec },
 	{ nil }
 };
 ColVarInfo ColVars[] = {
@@ -72,14 +75,16 @@ ColVarInfo ColVars[] = {
 	{ @"colorSymbols", ShouldPostNotification, &colSymbols },
 	{ @"colorParticles", ShouldPostNotification, &colParticles },
 	{ @"colorTracking", 0, &colTracking },
+	{ @"colorInfoFG", ShouldPostNotification, &colInfoFG },
 	{ nil }
 };
 UIntegerVarInfo UIntegerVars[] = {
-	{ @"maxSteps", 0, 8000 },
-	{ @"maxGoalCount", 0, 60 },
+	{ @"maxSteps", ShouldPostNotification, 8000 },
+	{ @"maxGoalCount", ShouldPostNotification, 60 },
 	{ nil }
 };
 BoolVarInfo BoolVars[] = {
+	{ @"drawHand", ShouldRedrawScreen, YES },
 	{ @"sounds", ShouldPostNotification, YES  },
 	{ @"startWithFullScreenMode", 0, NO },
 	{ @"recordFinalImage", ShouldPostNotification, NO },
@@ -170,16 +175,20 @@ NSUInteger hex_string_to_ulong(NSString *str) {
 	ptclShapeModeFD = ptclShapeMode;
 	obsModeFD = obstaclesMode;
 	scrForFullScrFD = scrForFullScr;
+	infoViewConfFD = infoViewConf;
 	NSNumber *nm;
 	if ((nm = [ud objectForKey:keyColorMode]) != nil) ptclColorMode = nm.intValue;
 	if ((nm = [ud objectForKey:keyShapeMode]) != nil) ptclShapeMode = nm.intValue;
 	if ((nm = [ud objectForKey:keyObsMode]) != nil) newObsMode = nm.intValue;
-	NSString *str = [ud objectForKey:keyScrForFullScr];
-	if (str != nil) scrForFullScr = str;
+	NSString *str;
+	if ((str = [ud objectForKey:keyScrForFullScr]) != nil) scrForFullScr = str;
+	if ((str = [ud objectForKey:keyInfoViewConf]) != nil) infoViewConf = str;
 	ptclColorModeUD = ptclColorMode;
 	ptclShapeModeUD = ptclShapeMode;
-	obsModeUD = obstaclesMode;
+	obsModeUD = newObsMode;
 	scrForFullScrUD = scrForFullScr;
+	infoViewConfUD = infoViewConf;
+	[InteractionPanel initParams];
 	NSFileManager *fm = NSFileManager.defaultManager;
 	NSMutableDictionary<NSString *, NSString *> *missingSnd = NSMutableDictionary.new;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -225,6 +234,9 @@ NSUInteger hex_string_to_ulong(NSString *str) {
 #define SAVE_DFLT(forAll,type,star,setter)	forAll(^(type *p) {\
 	if (star p->v == p->fd) [ud removeObjectForKey:p->key];\
 	else [ud setter: star p->v forKey:p->key]; });
+#define SAVE_STR_DFLT(key,var,fdVar)	if ([var isEqualToString:fdVar])\
+		[ud removeObjectForKey:key];\
+	else [ud setObject:var forKey:key];
 void save_as_user_defaults(void) {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	SAVE_DFLT(for_all_int_vars, IntVarInfo, *, setInteger)
@@ -242,9 +254,8 @@ void save_as_user_defaults(void) {
 		else [ud setInteger:ptclShapeMode forKey:keyShapeMode];
 	if (newObsMode == obsModeFD) [ud removeObjectForKey:keyObsMode];
 		else [ud setInteger:newObsMode forKey:keyObsMode];
-	if ([scrForFullScr isEqualToString:scrForFullScrFD])
-		[ud removeObjectForKey:keyScrForFullScr];
-	else [ud setObject:scrForFullScr forKey:keyScrForFullScr];
+	SAVE_STR_DFLT(keyScrForFullScr, scrForFullScr, scrForFullScrFD)
+	SAVE_STR_DFLT(keyInfoViewConf, infoViewConf, infoViewConfFD)
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
 		if (prm_equal(&s->v, &s->fd)) [ud removeObjectForKey:s->key];
@@ -252,7 +263,38 @@ void save_as_user_defaults(void) {
 				@"mmax":@(s->v.mmax), @"vol":@(s->v.vol)} forKey:s->key];
 	}
 }
-- (void)applicationWillTerminate:(NSNotification *)notification {
-	if (SAVE_WHEN_TERMINATE) save_as_user_defaults();
+#define COMP_DFLT(forAll,type,cmp)	forAll(^(type *p) { if (cmp) @throw @YES; });
+static BOOL was_params_edited(void) {
+	@try {
+		COMP_DFLT(for_all_int_vars, IntVarInfo, *p->v != p->ud)
+		COMP_DFLT(for_all_float_vars, FloatVarInfo, *p->v != p->ud)
+		COMP_DFLT(for_all_uint_vars, UIntegerVarInfo, p->v != p->ud)
+		COMP_DFLT(for_all_bool_vars, BoolVarInfo, p->v != p->ud)
+		COMP_DFLT(for_all_color_vars, ColVarInfo, col_to_ulong(*p->v) != col_to_ulong(p->ud))
+		if (ptclColorMode != ptclColorModeUD) @throw @YES;
+		if (ptclShapeMode != ptclShapeModeUD) @throw @YES;
+		if (newObsMode != obsModeUD) @throw @YES;
+		if (![scrForFullScr isEqualToString:scrForFullScrUD]) @throw @YES;
+		if (![infoViewConf isEqualToString:infoViewConfUD]) @throw @YES;
+		for (SoundType type = 0; type < NVoices; type ++)
+			if (!prm_equal(&sndData[type].v, &sndData[type].ud)) @throw @YES;
+	} @catch (id _) { return YES; }
+	return NO;
+}
+- (NSApplicationTerminateReply)applicationShouldTerminate:(NSApplication *)sender{
+	if (was_params_edited()) {
+		NSAlert *alt = NSAlert.new;
+		alt.alertStyle = NSAlertStyleWarning;
+		alt.messageText = @"Shall we save the current settings as default?";
+		alt.informativeText = @"It'll start with the same settings in next time,"
+			@" if you press OK button.";
+		for (NSString *title in @[@"OK", @"Don’t Save", @"Cancel"])
+			[alt addButtonWithTitle:title];
+		switch ([alt runModal]) {
+			case NSAlertFirstButtonReturn: save_as_user_defaults();	// OK
+			case NSAlertSecondButtonReturn: return NSTerminateNow;	// Don't Save
+			default: return NSTerminateCancel;	// Cancel
+		}
+	} else return NSTerminateNow;	// Has nothing to save
 }
 @end

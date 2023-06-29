@@ -16,20 +16,36 @@
 
 ObstaclesMode obstaclesMode = ObsFixed, newObsMode = ObsFixed;
 float ManObsLifeSpan = 1.f;
-NSString *scrForFullScr = @"Main window's screen";
+NSString *scrForFullScr = @"Main window's screen", *infoViewConf = @"In the world view";
 static NSString *labelFullScreenOn = @"Full Screen", *labelFullScreenOff = @"Full Screen Off";
 MainWindow *theMainWindow = nil;
+
+static NSColor *middle_color(NSColor *col1, NSColor *col2) {
+	CGFloat r1, r2, g1, g2, b1, b2, a1, a2;
+	NSColorSpace *colspc = NSColorSpace.genericRGBColorSpace;
+	[[col1 colorUsingColorSpace:colspc] getRed:&r1 green:&g1 blue:&b1 alpha:&a1];
+	[[col2 colorUsingColorSpace:colspc] getRed:&r2 green:&g2 blue:&b2 alpha:&a2];
+	return [NSColor colorWithSRGBRed:(r1 + r2) / 2. green:(g1 + g2) / 2.
+		blue:(b1 + b2) / 2. alpha:(a1 + a2) / 2.];
+}
+@implementation MyInfoView {
+	NSColor *bgColor;
+}
+- (void)drawRect:(NSRect)dirtyRect {
+	if (self.inFullScreenMode) {
+		if (bgColor == nil) bgColor = middle_color(colBackground, colInfoFG);
+		[bgColor setFill];
+		[NSBezierPath fillRect:dirtyRect];
+	} else if (bgColor != nil) bgColor = nil;
+	[super drawRect:dirtyRect];
+}
+@end
 
 @implementation MyProgressBar
 - (void)setupAsDefault {
 	_background = colBackground;
-	_foreground = colSymbols;
-	CGFloat r1, r2, g1, g2, b1, b2, a1, a2;
-	NSColorSpace *colspc = NSColorSpace.genericRGBColorSpace;
-	[[_background colorUsingColorSpace:colspc] getRed:&r1 green:&g1 blue:&b1 alpha:&a1];
-	[[_foreground colorUsingColorSpace:colspc] getRed:&r2 green:&g2 blue:&b2 alpha:&a2];
-	_dimmed = [NSColor colorWithSRGBRed:(r1 + r2) / 2. green:(g1 + g2) / 2.
-		blue:(b1 + b2) / 2. alpha:(a1 + a2) / 2.];
+	_foreground = colInfoFG;
+	_dimmed = middle_color(_background, _foreground);
 	in_main_thread(^{ self.needsDisplay = YES; });
 }
 - (void)drawRect:(NSRect)dirtyRect {
@@ -66,46 +82,71 @@ MainWindow *theMainWindow = nil;
 }
 @end
 
+@interface ViewGeom : NSObject
+@property (readonly) NSView *view;
+@property (readonly) NSValue *geom;
+@property (readonly) NSFont *font;
+@end
+@implementation ViewGeom
+- (instancetype)initWithView:(NSView *)v {
+	if (!(self = [super init])) return nil;
+	_view = v;
+	_geom = [NSValue valueWithRect:v.frame];
+	if ([v isKindOfClass:NSControl.class]) _font = ((NSControl *)v).font;
+	return self;
+}
++ (ViewGeom *)geom:(NSView *)v { return [ViewGeom.alloc initWithView:v]; }
+- (void)apply {
+	_view.frame = _geom.rectValue;
+	if (_font != nil) ((NSControl *)_view).font = _font;
+}
+@end
+
 @implementation MainWindow {
 	Agent *agent;
 	Display *display;
 	NSUInteger steps, goalCount;
 	float sendingPPS;
-	NSRect infoViewFrame;
 	IBOutlet NSToolbarItem *startStopItem, *fullScreenItem;
 	IBOutlet NSPopUpButton *dispModePopUp;
 	IBOutlet MTKView *view;
 	IBOutlet RecordView *recordView;
+	IBOutlet MyInfoView *infoView;
 	IBOutlet MyProgressBar *stepsPrg, *goalsPrg;
-	IBOutlet NSTextField *stepsDgt, *goalsDgt, *stepsUnit, *goalsUnit,
-		*fpsDgt, *fpsUnit;
+	IBOutlet NSTextField *stepsDgt, *goalsDgt, *stepsUnit, *goalsUnit, *fpsDgt;
 	NSArray<NSTextField *> *infoTexts;
-	CGFloat FPS, expectedGoals, expectedSteps;
+	NSArray<ViewGeom *> *infoViewGeom;
+	CGFloat stepsPerSec, expectedGoals, expectedSteps;
 	NSTimer *pointerTrackTimer, *cursorHidingTimer;
 	NSMenuItem *dispAdjustItem;
+	BOOL winScrChanged;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
-static inline BOOL rec_enabled(void) {
-	return RECORD_IMAGES && obstaclesMode != ObsExternal;
+- (BOOL)recShownInMain {
+	return RECORD_IMAGES && !infoView.inFullScreenMode;
 }
 static inline CGFloat field_aspect_ratio(void) {
 	return (CGFloat)nGridW * tileSize.x / (nGridH * tileSize.y);
 }
-static CGFloat drawn_area_aspaect_ratio(void) {
+- (CGFloat)drawnAreaAspaectRatio {
 	CGFloat far = field_aspect_ratio();
-	return (!rec_enabled())? far : far + 5. / 18.;
+	return (![self recShownInMain])? far : far + 5. / 18.;
 }
 - (void)adjustViewFrame:(NSNotification *)note {	// called when contentview size changed
 	NSSize cSize = view.superview.frame.size;
 	CGFloat cAspect = cSize.width / cSize.height,
-		iAspect = drawn_area_aspaect_ratio();
+		iAspect = [self drawnAreaAspaectRatio];
+#ifdef DEBUG
+NSLog(@"adjustViewFrame %@ %.1fx%.1f c=%.3f, i=%.3f, %@", note.object,
+	cSize.width, cSize.height, cAspect, iAspect, note.name);
+#endif
 	NSRect vFrame = (cAspect == iAspect)? (NSRect){0., 0., cSize} :
 		(cAspect > iAspect)?
 			(NSRect){(cSize.width - cSize.height * iAspect) / 2., 0.,
 				cSize.height * iAspect, cSize.height} :
 			(NSRect){0., (cSize.height - cSize.width / iAspect) / 2.,
 				cSize.width, cSize.width / iAspect};
-	if (rec_enabled()) {
+	if ([self recShownInMain]) {
 		NSRect rFrame = vFrame;
 		vFrame.size.width = vFrame.size.height * field_aspect_ratio();
 		rFrame.size.width -= vFrame.size.width;
@@ -118,12 +159,16 @@ static CGFloat drawn_area_aspaect_ratio(void) {
 	if (!view.superview.inFullScreenMode) {
 		NSRect wFrame = view.window.frame;
 		NSSize cSize = view.superview.frame.size;
-		CGFloat deltaWidth = view.frame.size.height * drawn_area_aspaect_ratio() - cSize.width;
+		CGFloat deltaWidth = view.frame.size.height * [self drawnAreaAspaectRatio] - cSize.width;
 		wFrame.origin.x -= deltaWidth / 2.;
 		wFrame.size.width += deltaWidth;
 		[view.window setFrame:wFrame display:YES];
+#ifdef DEBUG
+NSLog(@"adjustForRecordView %.1fx%.1f d=%.3f, %@",
+	cSize.width, cSize.height, deltaWidth, note.name);
+#endif
 	} else [self adjustViewFrame:note];
-	recordView.hidden = !rec_enabled();
+	recordView.hidden = !RECORD_IMAGES;
 }
 - (void)adjustMaxStepsOrGoals:(NSInteger)tag {
 	switch (tag) {
@@ -136,11 +181,11 @@ static CGFloat drawn_area_aspaect_ratio(void) {
 		goalsPrg.needsDisplay = YES;
 	}
 }
-static BOOL is_symbol_color_visible(void) {
-	NSInteger nc = colSymbols.numberOfComponents;
+static BOOL is_info_visible(void) {
+	NSInteger nc = colInfoFG.numberOfComponents;
 	if (nc == 2 || nc == 4) {
 		CGFloat c[4];
-		[colSymbols getComponents:c];
+		[colInfoFG getComponents:c];
 		return (c[nc - 1] > 0.);
 	} else return YES;
 }
@@ -202,15 +247,15 @@ static void organize_work_mems(void) {
 	_agentEnvLock.name = @"Agent Environment";
 	agent = Agent.new;
 	display = [Display.alloc initWithView:(MTKView *)view agent:agent];
-	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt, fpsUnit];
-	for (NSTextField *txt in infoTexts) txt.textColor = colSymbols;
+	infoTexts = @[stepsDgt, stepsUnit, goalsDgt, goalsUnit, fpsDgt];
+	for (NSTextField *txt in infoTexts) txt.textColor = colInfoFG;
 	[recordView loadImages];
 	[self adjustMaxStepsOrGoals:MAX_STEPS_TAG];
 	[self adjustMaxStepsOrGoals:MAX_GOALCNT_TAG];
 	[stepsPrg setupAsDefault];
 	[goalsPrg setupAsDefault];
-	fpsDgt.hidden = fpsUnit.hidden = !SHOW_FPS;
-	stepsDgt.superview.hidden = !is_symbol_color_visible();
+	fpsDgt.hidden = !SHOW_FPS;
+	infoView.hidden = !is_info_visible();
 	NSMenu *cMenu = view.menu;
 	for (NSInteger i = cMenu.numberOfItems - 1; i >= 0; i --) {
 		NSMenuItem *item = [cMenu itemAtIndex:i];
@@ -232,19 +277,22 @@ static void organize_work_mems(void) {
 		[self->stepsPrg setupAsDefault]; [self->goalsPrg setupAsDefault]; });
 	add_observer(@"colorSymbols", ^(NSNotification * _Nonnull note) {
 		self->view.needsDisplay = YES;
-		for (NSTextField *txt in self->infoTexts) txt.textColor = colSymbols;
+	});
+	add_observer(@"colorInfoFG", ^(NSNotification * _Nonnull note) {
+		self->view.needsDisplay = YES;
+		for (NSTextField *txt in self->infoTexts) txt.textColor = colInfoFG;
 		[self->stepsPrg setupAsDefault]; [self->goalsPrg setupAsDefault];
-		self->stepsDgt.superview.hidden = !is_symbol_color_visible();
+		self->infoView.hidden = !is_info_visible();
 	});
 	add_observer(@"showFPS", ^(NSNotification * _Nonnull note) {
-		self->fpsDgt.hidden = self->fpsUnit.hidden = !SHOW_FPS; });
+		self->fpsDgt.hidden = !SHOW_FPS; });
 	add_observer(@"sounds", ^(NSNotification * _Nonnull note) {
-		if (self.running) {
+		if (self.simState == SimRun) {
 			if (SOUNDS_ON) start_audio_out();
 			else stop_audio_out();
 		}});
 	add_observer(keySoundTestExited, ^(NSNotification * _Nonnull note) {
-		if (SOUNDS_ON && self.running) start_audio_out(); });
+		if (SOUNDS_ON && self.simState == SimRun) start_audio_out(); });
 	add_observer(keyObsMode, ^(NSNotification * _Nonnull note) {
 		if (self->steps > 0) return;
 		[self setupObstacles];
@@ -317,7 +365,7 @@ static void feed_env_noise_params(void) {
 	set_audio_env_params(sep);
 }
 - (void)loopThreadForAgent {
-	while (_running) {
+	while (_simState == SimRun) {
 		NSUInteger tm = current_time_us();
 		[_agentEnvLock lock];
 		AgentStepResult result = [agent oneStep];
@@ -347,15 +395,17 @@ static void feed_env_noise_params(void) {
 			elapsed_us = 1e6 / StepsPerSec;
 			usleep((useconds_t)timeRemain);
 		}
-		FPS += (1e6 / elapsed_us - FPS) * fmax(.05, 1. / steps);
+		stepsPerSec += (1e6 / elapsed_us - stepsPerSec) * fmax(.05, 1. / steps);
 		in_main_thread(^{ [self showSteps]; });
 		if ((MAX_STEPS > 0 && steps >= MAX_STEPS)
 		 || (MAX_GOALCNT > 0 && goalCount >= MAX_GOALCNT)) {
-			_running = NO;
+			_simState = SimDecay;
 			in_main_thread(^{
 				[self recordImageIfNeeded];
-				[self reset:nil];
-				[self startStop:nil];
+				[self->display startFading:^{
+					[self reset:nil];
+					[self startStop:nil];
+				}];
 			});
 			if (goalCount >= MAX_GOALCNT) play_sound_effect(SndGood,
 				mag_to_scl((float)(MAX_STEPS - steps) /
@@ -371,7 +421,7 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 	}}
 }
 - (void)loopThreadForDisplay {
-	while (_running) {
+	while (_simState != SimStop) {
 		NSUInteger tm = current_time_us();
 		switch (obstaclesMode) {
 			case ObsExternal: if (!communication_is_running()) break;
@@ -382,12 +432,10 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 		feed_env_noise_params();
 		unsigned long elapsed_us = current_time_us() - tm;
 		NSInteger timeRemain = (DISP_INTERVAL - (1./52. - 1 / 60.)) * 1e6 - elapsed_us;
-		if (timeRemain > 0) {
-			elapsed_us = DISP_INTERVAL * 1e6;
-			usleep((useconds_t)timeRemain);
-		}
+		if (timeRemain > 0) usleep((useconds_t)timeRemain);
 		in_main_thread(^{ if (SHOW_FPS) self->fpsDgt.stringValue =
-			[NSString stringWithFormat:@"%5.2f/%5.2f", self->FPS, self->display.FPS];
+			[NSString stringWithFormat:@"%5.2f sps, %5.2f fps",
+				self->stepsPerSec, self->display.FPS];
 		});
 	}
 }
@@ -400,8 +448,17 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 	[self showSteps];
 	[self showGoals];
 }
+- (void)pointerTracker:(NSTimer *)timer {
+	NSPoint pt = [view convertPoint:
+		[view.window convertPointFromScreen:NSEvent.mouseLocation]
+		fromView:nil];
+	NSRect bounds = view.bounds;
+	if (NSPointInRect(pt, bounds)) [theTracker addTrackedPoint:
+		(simd_float2){pt.x / bounds.size.width, pt.y / bounds.size.height} index:0];
+}
 - (IBAction)startStop:(id)sender {
-	if ((_running = !_running)) {
+	switch (_simState) {
+		case SimStop: _simState = SimRun;
 		[NSThread detachNewThreadSelector:@selector(loopThreadForDisplay)
 			toTarget:self withObject:nil];
 		[NSThread detachNewThreadSelector:@selector(loopThreadForAgent)
@@ -410,21 +467,20 @@ NSLog(@"expected:steps=%.1f,goals=%.1f", expectedSteps, expectedGoals);
 		startStopItem.label = @"Stop";
 		if (SOUNDS_ON) start_audio_out();
 		if (obstaclesMode == ObsPointer) pointerTrackTimer =
-			[NSTimer scheduledTimerWithTimeInterval:1./30. repeats:YES block:
-			^(NSTimer * _Nonnull timer) {
-				NSPoint pt = [self->view convertPoint:
-					[self->view.window convertPointFromScreen:NSEvent.mouseLocation]
-					fromView:nil];
-				NSRect bounds = self->view.bounds;
-				if (NSPointInRect(pt, bounds)) [theTracker addTrackedPoint:
-					(simd_float2){pt.x / bounds.size.width, pt.y / bounds.size.height}];
-			}];
-	} else {
+			[NSTimer scheduledTimerWithTimeInterval:1./30. target:self
+				selector:@selector(pointerTracker:) userInfo:nil repeats:YES];
+		break;
+		case SimDecay: _simState = SimRun;
+		[NSThread detachNewThreadSelector:@selector(loopThreadForAgent)
+			toTarget:self withObject:nil];
+		break;
+		case SimRun: _simState = SimStop;
 		startStopItem.image = [NSImage imageNamed:NSImageNameTouchBarPlayTemplate];
 		startStopItem.label = @"Start";
 		if (SOUNDS_ON) stop_audio_out();
 		if (obstaclesMode == ObsPointer)
 			{ [pointerTrackTimer invalidate]; pointerTrackTimer = nil; }
+		break;
 	}
 }
 static void adjust_subviews_frame(NSView *view, CGFloat scale) {
@@ -439,37 +495,64 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 		}
 	}
 }
+static void shift_subviews(NSView *view, NSSize offset) {
+	for (NSView *v in view.subviews) {
+		NSPoint pt = v.frame.origin;
+		[v setFrameOrigin:(NSPoint){pt.x + offset.width, pt.y + offset.height}];
+	}
+}
+static CGFloat scale_for_rescale(NSSize orgVSz, NSSize newVSz) {
+	return (orgVSz.width / orgVSz.height <= newVSz.width / newVSz.height)?
+		newVSz.height / orgVSz.height : newVSz.width / orgVSz.width;
+}
 - (IBAction)fullScreen:(id)sender {
-	NSView *cView = view.superview, *infoView = stepsDgt.superview;
+	NSView *cView = view.superview;
 	if (!cView.inFullScreenMode) {
-		NSScreen *screen = self.window.screen;
+		NSScreen *screen = self.window.screen, *infoVScr = screen;
 		if (scrForFullScr != nil) for (NSScreen *scr in NSScreen.screens)
 			if ([scrForFullScr isEqualToString:scr.localizedName])
-				{ screen = scr; break; }
-		infoViewFrame = infoView.frame;
-		NSRect scrFrm = screen.frame;
-		NSSize orgVSz = view.frame.size;
-		[cView enterFullScreenMode:screen
-			withOptions:@{NSFullScreenModeAllScreens:@NO}];
-		NSSize newVSz = view.frame.size;
-		CGFloat scale = (orgVSz.width / orgVSz.height <= newVSz.width / newVSz.height)?
-			newVSz.height / orgVSz.height : newVSz.width / orgVSz.width;
-		[infoView setFrame:(NSRect){
-			infoViewFrame.origin.x * scale, infoViewFrame.origin.y * scale,
-			infoViewFrame.size.width * scale, infoViewFrame.size.height * scale
-		}];
-		adjust_subviews_frame(infoView, scale);
-		[display setInfoView:infoView];
+				{ screen = infoVScr = scr; break; }
+		if (infoViewConf != nil) for (NSScreen *scr in NSScreen.screens)
+			if ([infoViewConf isEqualToString:scr.localizedName])
+				{ infoVScr = scr; break; }
+		if (infoViewGeom == nil) {
+			NSInteger n = infoView.subviews.count + 1, idx = 0;
+			ViewGeom *vgs[n];
+			vgs[idx ++] = [ViewGeom geom:infoView];
+			for (NSView *v in infoView.subviews) vgs[idx ++] = [ViewGeom geom:v];
+			infoViewGeom = [NSArray arrayWithObjects:vgs count:n];
+		}
+		NSDictionary *option = @{NSFullScreenModeAllScreens:@NO};
+		NSRect infoViewFrame = infoView.frame;
+		if (screen == infoVScr) {
+			NSSize orgVSz = view.frame.size;
+			[cView enterFullScreenMode:screen withOptions:option];
+			CGFloat scale = scale_for_rescale(orgVSz, view.frame.size);
+			[infoView setFrame:(NSRect){
+				infoViewFrame.origin.x * scale, infoViewFrame.origin.y * scale,
+				infoViewFrame.size.width * scale, infoViewFrame.size.height * scale
+			}];
+			[display setInfoView:infoView];
+			adjust_subviews_frame(infoView, scale);
+		} else {
+			[infoView enterFullScreenMode:infoVScr withOptions:option];
+			adjust_subviews_frame(infoView,
+				scale_for_rescale(infoViewFrame.size, infoVScr.frame.size) * .9);
+			NSSize vSz = infoView.bounds.size;
+			shift_subviews(infoView, (NSSize){ vSz.width * .05, vSz.width * .05 });
+			[cView enterFullScreenMode:screen withOptions:option];
+		}
 		fullScreenItem.label = labelFullScreenOff;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameExitFullScreenTemplate];
 		[view.menu addItem:dispAdjustItem];
-		if (NSPointInRect(NSEvent.mouseLocation, scrFrm) && !display.dispAdjust)
+		if (NSPointInRect(NSEvent.mouseLocation, screen.frame) && !display.dispAdjust)
 			[NSCursor setHiddenUntilMouseMoves:YES];
 	} else {
-		CGFloat scale = infoViewFrame.size.width / infoView.frame.size.width;
+		[display setInfoView:nil];
 		[cView exitFullScreenModeWithOptions:nil];
-		[infoView setFrame:infoViewFrame];
-		adjust_subviews_frame(infoView, scale);
+		if (infoView.inFullScreenMode) [infoView exitFullScreenModeWithOptions:nil];
+		for (ViewGeom *vg in infoViewGeom) [vg apply];
+		infoView.hidden = !is_info_visible();
 		fullScreenItem.label = labelFullScreenOn;
 		fullScreenItem.image = [NSImage imageNamed:NSImageNameEnterFullScreenTemplate];
 		[view.menu removeItem:dispAdjustItem];
@@ -486,7 +569,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 	prInfo.leftMargin = pb.origin.x;
 	prInfo.rightMargin = pSize.width - NSMaxX(pb);
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:pb
-		display:display infoView:stepsDgt.superview recordView:recordView];
+		display:display infoView:infoView recordView:recordView];
 	NSPrintOperation *prOpe = [NSPrintOperation printOperationWithView:view printInfo:prInfo];
 	[prOpe.printPanel addAccessoryController:PrintPanelAccessory.new];
 	[prOpe runOperation];
@@ -494,7 +577,7 @@ static void adjust_subviews_frame(NSView *view, CGFloat scale) {
 - (IBAction)copy:(id)sender {
 	NSRect frame = {0., 0., PTCLMaxX, PTCLMaxY};
 	MyViewForCG *view = [MyViewForCG.alloc initWithFrame:frame
-		display:display infoView:stepsDgt.superview recordView:recordView];
+		display:display infoView:infoView recordView:recordView];
 	NSData *data = [view dataWithPDFInsideRect:frame];
 	NSPasteboard *pb = NSPasteboard.generalPasteboard;
 	[pb declareTypes:@[NSPasteboardTypePDF] owner:NSApp];
@@ -589,8 +672,14 @@ NSLog(@"code = %d, shift = %@", event.keyCode, shift? @"YES" : @"NO");
 	}
 }
 // Window Delegate
-- (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)frameSize {
-	return view.superview.inFullScreenMode? sender.frame.size : frameSize;
+- (NSSize)windowWillResize:(NSWindow *)sender toSize:(NSSize)newSize {
+	NSSize orgSz = sender.frame.size;
+	if (view.superview.inFullScreenMode) return orgSz;
+	if (winScrChanged) { winScrChanged = NO; return orgSz; }
+	return newSize;
+}
+- (void)windowDidChangeScreen:(NSNotification *)notification {
+	winScrChanged = YES;
 }
 - (void)windowWillClose:(NSNotification *)notification {
 	if (notification.object == self.window) {
@@ -602,9 +691,10 @@ NSLog(@"code = %d, shift = %@", event.keyCode, shift? @"YES" : @"NO");
 // Menu item validation
 - (BOOL)validateMenuItem:(NSMenuItem *)menuItem {
 	SEL action = menuItem.action;
-	if (action == @selector(startStop:))
-		menuItem.title = _running? @"Stop" : @"Start";
-	else if (action == @selector(fullScreen:))
+	if (action == @selector(startStop:)) {
+		menuItem.title = (_simState == SimRun)? @"Stop" : @"Start";
+		return _simState != SimDecay;
+	} else if (action == @selector(fullScreen:))
 		menuItem.title = view.superview.inFullScreenMode?
 			labelFullScreenOff : labelFullScreenOn;
 	else if (action == @selector(printScene:) && view.superview.inFullScreenMode)

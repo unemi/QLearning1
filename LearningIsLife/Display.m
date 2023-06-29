@@ -24,9 +24,10 @@
 	idxStart += nn;
 
 int NParticles = 120000, LifeSpan = 80;
-float Mass = 2., Friction = 0.9, StrokeLength = 0.2, StrokeWidth = .01, MaxSpeed = 0.05;
+float Mass = 2., Friction = 0.9, StrokeLength = 0.2, StrokeWidth = .01, MaxSpeed = 0.05,
+	FadeoutSec = 5.;
 NSColor *colBackground, *colObstacles, *colAgent,
-	*colGridLines, *colSymbols, *colParticles, *colTracking;
+	*colGridLines, *colSymbols, *colParticles, *colTracking, *colInfoFG;
 PTCLColorMode ptclColorMode = PTCLconstColor;
 PTCLShapeMode ptclShapeMode = PTCLbyLines;
 enum { FailPtclMem, FailColBuf, FailVxBuf, FailArrowMem };
@@ -56,6 +57,7 @@ void init_default_colors(void) {
 	colSymbols = color_with_comp((CGFloat []){.7, .7, .7, 1.});
 	colParticles = color_with_comp((CGFloat []){1., 1., 1., .1});
 	colTracking = color_with_comp((CGFloat []){1., 1., 1., .667});
+	colInfoFG = color_with_comp((CGFloat []){1., 1., 1., .8});
 }
 static simd_float4 col_to_vec(NSColor * _Nonnull col) {
 	CGFloat c[4] = {0, 0, 0, 1};
@@ -147,7 +149,7 @@ static simd_float2 particle_force(Particle *p) {
 }
 #endif
 static void particle_reset(Particle *p, BOOL isRandom) {
-	p->p = (simd_float(FieldP[lrand48() % nGridsInUse])
+	p->p = (simd_float(FieldP[(nGridsInUse == 0)? 0 : lrand48() % nGridsInUse])
 		+ (simd_float2){drand48(), drand48()}) * simd_float(tileSize);
 	simd_float2 f = particle_force(p);
 	float v = simd_length(f);
@@ -179,7 +181,8 @@ static void particle_step(Particle *p, simd_float2 f) {
 	simd_uint2 viewportSize;
 	DisplaySetups setups;
 	float maxSpeed;
-	unsigned long time_us, dispCnt;
+	unsigned long time_us, dispCnt, fadeStart;
+	void (^fadeEndHandler)(void);
 	simd_int2 *obsP, *obsMem;
 	int nObs;
 // for full screen
@@ -192,6 +195,10 @@ static void particle_step(Particle *p, simd_float2 f) {
 	BOOL cornersWereModified;
 }
 - (int)nPtcls { return setups.nPtcls; }
+- (void)startFading:(void (^)(void))handler {
+	fadeStart = current_time_us();
+	fadeEndHandler = handler;
+}
 - (DisplayMode)displayMode { return setups.displayMode; }
 - (id<MTLTexture>)textureDrawnBy:(void (^)(NSBitmapImageRep *bm))block
 	size:(NSSize)size scaleFactor:(CGFloat)sclFctr {
@@ -460,7 +467,7 @@ static simd_float4x2 DefaultCorners = {(simd_float2){-1, -1},
 	view.needsDisplay = YES;
 	return YES;
 }
-- (void)setInfoView:(NSView *)iview { infoView = iview; }
+- (void)setInfoView:(NSView * _Nullable)iview { infoView = iview; }
 #define MAKE_PSO(vs,fs,var)\
  	pplnStDesc.vertexFunction = fnDict[vs];\
 	pplnStDesc.fragmentFunction = fnDict[fs];\
@@ -697,7 +704,7 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 	int nVpL = (int)(vxBufD[vxBufIndex].length / sizeof(simd_float2) / setups.nPtcls);
 	simd_float2 *lines = vxBufD[vxBufIndex].contents;
 	Particle *p = _particleMem.mutableBytes;
-	float mxSpd[NTHREADS];
+	float mxSpd[(NTHREADS <= 0)? 1 : NTHREADS];
 	memset(mxSpd, 0, sizeof(mxSpd));
 	THREADS_PRE(long, setups.nPtcls)
 	for (int i = 0; i < nThreads; i ++) {
@@ -912,8 +919,11 @@ static void set_arrow_shape(simd_float2 *v, simd_float3x3 *trs) {
 		[self setupSymbolTex];
 		[self setupEquationTex];
 	}
+	view.needsDisplay = YES;
 #ifdef DEBUG
 	NSLog(@"Drawable size = %.1f x %.1f", size.width, size.height);
+	size = view.superview.frame.size;
+	NSLog(@"%@ size = %.1f x %.1f", view.superview.class, size.width, size.height);
 #endif
 }
 static void set_color(RCE rce, simd_float4 rgba) {
@@ -972,7 +982,9 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	free(obsMem);
 	obsMem = NULL;
 }
-- (void)drawScene:(nonnull MTKView *)view commandBuffer:(id<MTLCommandBuffer>)cmdBuf {
+- (void)drawScene:(nonnull MTKView *)view
+	commandBuffer:(id<MTLCommandBuffer>)cmdBuf adjustment:(BOOL)adjust {
+	float obsHeight[nGrids];
 	switch (obstaclesMode) {
 		case ObsFixed: case ObsRandom:
 		nObs = nObstacles; obsP = ObsP;
@@ -983,6 +995,7 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		[theMainWindow.agentEnvLock lock];
 		nObs = nObstacles;
 		memcpy(obsP, ObsP, sizeof(simd_int2) * nGrids);
+		memcpy(obsHeight, ObsHeight, sizeof(float) * nGrids);
 		[theMainWindow.agentEnvLock unlock];
 	}
 	MTLRenderPassDescriptor *rndrPasDesc = view.currentRenderPassDescriptor;
@@ -991,9 +1004,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	rce.label = @"MyRenderEncoder";
 	[rce setViewport:(MTLViewport){0., 0., viewportSize.x, viewportSize.y, 0., 1. }];
 	simd_float2 geomFactor = {PTCLMaxX, PTCLMaxY};
-	BOOL isFullScr = view.superview.inFullScreenMode;
 	[rce setVertexBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexGeomFactor];
-	[rce setVertexBytes:isFullScr? &adjustMx : &matrix_identity_float3x3
+	[rce setVertexBytes:adjust? &adjustMx : &matrix_identity_float3x3
 		length:sizeof(simd_float3x3) atIndex:IndexAdjustMatrix];
 	[rce setRenderPipelineState:shapePSO];
 	uint nv = 0;
@@ -1054,10 +1066,19 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	// Obstables
 	simd_float4 obsCol = col_to_vec(colObstacles);
 	if (obsCol.a > 0.) {
-		set_color(rce, obsCol);
-		for (int i = 0; i < nObs; i ++) fill_rect(rce, (NSRect)
-			{obsP[i].x * tileSize.x, obsP[i].y * tileSize.y, tileSize.x, tileSize.y});
-	}
+		if (obstaclesMode >= ObsPointer) {
+			float maxA = obsCol.a;
+			for (int i = 0; i < nObs; i ++) {
+				obsCol.a = maxA * fmin(1., obsHeight[ij_to_idx(obsP[i])]);
+				set_color(rce, obsCol);
+				fill_rect(rce, (NSRect)
+					{obsP[i].x * tileSize.x, obsP[i].y * tileSize.y, tileSize.x, tileSize.y});
+			}
+		} else {
+			set_color(rce, obsCol);
+			for (int i = 0; i < nObs; i ++) fill_rect(rce, (NSRect)
+				{obsP[i].x * tileSize.x, obsP[i].y * tileSize.y, tileSize.x, tileSize.y});
+	}}
 	if (obstaclesMode >= ObsPointer) {
 		id<MTLBuffer> info = [theTracker trackedPoints:view.device];
 		if (info != nil) {
@@ -1073,12 +1094,14 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 			[rce setFragmentBytes:&geomFactor length:sizeof(geomFactor) atIndex:IndexTPGeoFactor];
 			[rce setFragmentBytes:&adjustMxI length:sizeof(adjustMxI) atIndex:IndexInvAdjMx];
 			[rce drawPrimitives:MTLPrimitiveTypeTriangleStrip vertexStart:0 vertexCount:4];
-			if (handTex == nil) handTex = [self texWithName:@"Hand"];
-			[rce setRenderPipelineState:texPSO];
-			[rce setFragmentTexture:handTex atIndex:IndexTexture];
-			simd_float3 *dp = info.contents;
-			fill_rect(rce, (NSRect){dp[nPoints - 1].x - tileSize.x / 2.,
-				dp[nPoints - 1].y - tileSize.y, tileSize.x, tileSize.y});
+			if (DRAW_HAND) {
+				if (handTex == nil) handTex = [self texWithName:@"Hand"];
+				[rce setRenderPipelineState:texPSO];
+				[rce setFragmentTexture:handTex atIndex:IndexTexture];
+				simd_float3 *dp = info.contents;
+				fill_rect(rce, (NSRect){dp[nPoints - 1].x - tileSize.x / 2.,
+					dp[nPoints - 1].y - tileSize.y, tileSize.x, tileSize.y});
+			}
 		}
 	} else if (symCol.a > 0.) {
 	// project logo
@@ -1095,7 +1118,8 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		draw_equtex(rce, equPTex, obsP[4], 3);
 	}
 	// information view
-	if (symCol.a > 0. && isFullScr) {
+	simd_float4 infoCol = col_to_vec(colInfoFG);
+	if (infoCol.a > 0. && adjust && infoView != nil) {
 		if (infoViewCacheBM == nil) {
 			infoViewCacheBM = [infoView bitmapImageRepForCachingDisplayInRect:infoView.bounds];
 			MTLTextureDescriptor *texDesc = [MTLTextureDescriptor
@@ -1121,10 +1145,9 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 		fill_rect(rce, texRct);
 	} else if (infoViewCacheBM != nil) {
 		infoViewCacheBM = nil; infoViewTex = nil;
-		infoView.hidden = NO;
 	}
 	// display adjustment in full screen mode
-	if (_dispAdjust && isFullScr) {
+	if (_dispAdjust && adjust) {
 		if (adjustKeysTex == nil) adjustKeysTex = adjustTex =
 			[self texFromImageName:@"AdjustKeys" rotate:NO width:view.bounds.size.width / 2.];
 		[rce setRenderPipelineState:texPSO];
@@ -1159,13 +1182,20 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 	} else if (adjustKeysTex != nil) {
 		if (savedMsgTimer != nil && savedMsgTimer.valid) [savedMsgTimer invalidate];
 		adjustKeysTex = adjustSavedTex = adjustTex = nil;
+	} else if (fadeEndHandler != nil) {
+		unsigned long tm = current_time_us();
+		float darkness = (FadeoutSec <= 0.)? 1. : fmin(1., (tm - fadeStart) / (FadeoutSec * 1e6));
+		[rce setRenderPipelineState:shapePSO];
+		set_color(rce, (simd_float4){0., 0., 0., darkness});
+		fill_rect(rce, (NSRect){0., 0., PTCLMaxX, PTCLMaxY});
+		if (darkness == 1.) { fadeEndHandler(); fadeEndHandler = nil; }
 	}
 	[rce endEncoding];
 }
 - (void)drawInMTKView:(nonnull MTKView *)view {
 	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
 	cmdBuf.label = @"MyCommand";
-	[self drawScene:view commandBuffer:cmdBuf];
+	[self drawScene:view commandBuffer:cmdBuf adjustment:view.superview.inFullScreenMode];
 	[cmdBuf presentDrawable:view.currentDrawable];
 	[cmdBuf commit];
 	[cmdBuf waitUntilCompleted];
@@ -1246,7 +1276,7 @@ if ((++ cnt) >= 60) { cnt = 0; for (int i = 0; i < ns; i ++)
 	view.framebufferOnly = NO;
 	id<MTLCommandBuffer> cmdBuf = commandQueue.commandBuffer;
 	cmdBuf.label = @"OffScreenCommand";
-	[self drawScene:view commandBuffer:cmdBuf];
+	[self drawScene:view commandBuffer:cmdBuf adjustment:NO];
 	id<MTLTexture> tex = view.currentDrawable.texture;
 	NSAssert(tex, @"Failed to get texture from MTKView.");
 	NSUInteger texW = tex.width, texH = tex.height;

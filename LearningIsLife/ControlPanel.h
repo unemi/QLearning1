@@ -18,16 +18,15 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 		*dgtStartX, *dgtStartY, *dgtGoalX, *dgtGoalY, *dgtManObsLS;
 	IBOutlet NSStepper *stpGridW, *stpGridH, *stpTileH,
 		*stpStartX, *stpStartY, *stpGoalX, *stpGoalY;
+	IBOutlet NSButton *intrctPnlBtn;
 	IBOutlet NSColorWell *cwlBackground, *cwObstacles, *cwAgent,
-		*cwGridLines, *cwSymbols, *cwParticles, *cwTracking;
+		*cwGridLines, *cwSymbols, *cwParticles, *cwTracking, *cwInfoFG;
 	IBOutlet NSTextField *dgtMemSize, *dgtMemTrials, *dgtNParticles, *dgtLifeSpan;
 	IBOutlet NSTextField *dgtT0, *dgtT1, *dgtCoolingRate, *dgtInitQValue, *dgtGamma, *dgtAlpha,
 		*dgtStpPS, *dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;
-	IBOutlet NSButton *btnDrawByRects, *btnDrawByTriangles, *btnDrawByLines,
-		*btnColConst, *btnColAngle, *btnColSpeed;
-	IBOutlet NSButton *cBoxSounds, *cboxStartFullScr, *cboxRecordImages, *cBoxShowFPS, *cBoxSAUDWT,
+	IBOutlet NSPopUpButton *ptclColorPopup, *ptclShapePopup, *screenPopUp, *infoVConfPopUp, *obsPopUp;
+	IBOutlet NSButton *cboxDrawHand, *cBoxSounds, *cboxStartFullScr, *cboxRecordImages, *cBoxShowFPS,
 		*btnSaveAsUD, *btnRevertToUD, *btnRevertToFD, *btnExport;
-	IBOutlet NSPopUpButton *screenPopUp, *obsPopUp;
 	IBOutlet NSTextField *txtBump, *txtGaol, *txtGood, *txtBad, *txtAmbience;
 	IBOutlet NSButton *editBump, *editGoal, *editGood, *editBad, *editAmbience;
 	IBOutlet NSButton *playBump, *playGoal, *playGood, *playBad, *playAmbience;
@@ -37,7 +36,7 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 	IBOutlet NSButton *sndPlayStopBtn, *sndPMSetMinBtn, *sndPMSetMaxBtn,
 		*sndPRevertBtn, *sndApplyBtn;
 	IBOutlet MyProgressBar *sndProgress;
-	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt;
+	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt, *dgtFadeoutSec;
 }
 - (IBAction)importSettings:(NSButton *)sender;
 - (IBAction)exportSettings:(id)sender;
