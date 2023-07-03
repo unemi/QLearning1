@@ -6,24 +6,19 @@
 //
 
 #import "InteractionPanel.h"
+#import "SheetExtension.h"
+#import "AppDelegate.h"
+#import "ControlPanel.h"
 
-float minSpeed = 2, maxSpeed = 4, minEffect = 1, maxEffect = 5,
+float HandMinSpeed = 2, HandMaxSpeed = 4, HandMinEffect = 1, HandMaxEffect = 5,
 	obsGrow = 20, obsMaxH = 300, obsThrsh = 20, obsMaxSpeed = 1;
-InteractionParam interactionParams[] = {
-	{ @"handMinSpeed", &minSpeed },
-	{ @"HandMaxSpeed", &maxSpeed },
-	{ @"handMinEffect", &minEffect },
-	{ @"handMaxEffect", &maxEffect },
-	{ @"obstacleGrowth", &obsGrow },
-	{ @"obstacleMaxHeight", &obsMaxH },
-	{ @"obstacleThreshold", &obsThrsh },
-	{ @"obstacleMaxHandSpeed", &obsMaxSpeed },
-	{ nil }
-};
+int FDBTInteract = 0;
+#define NIntrctParams 8
+FloatVarInfo *fVarInfo;
 void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float speed) {
-	if (speed < minSpeed || speed > maxSpeed) return;
-	float effect = (speed - minSpeed) / (maxSpeed - minSpeed)
-		* (maxEffect - minEffect) + minEffect;
+	if (speed < HandMinSpeed || speed > HandMaxSpeed) return;
+	float effect = (speed - HandMinSpeed) / (HandMaxSpeed - HandMinSpeed)
+		* (HandMaxEffect - HandMinEffect) + HandMinEffect;
 	simd_float2 e = dp * (effect * .01 / len);
 	simd_float4 a = (simd_float4){ e.y, e.x, -e.y, -e.x };	// up, right, down, left
 	for (NSInteger i = 0; i < 4; i ++) {
@@ -34,10 +29,15 @@ void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float s
 @interface InteractionPanel () {
 	NSArray<NSTextField *> *digits;
 	NSUndoManager *undoManager;
+	ControlPanel *ctrlPnl;
 }
 @end
 @implementation InteractionPanel
 - (NSString *)windowNibName { return @"InteractionPanel"; }
+- (void)setupControls {
+    for (NSInteger i = 0; i < digits.count; i ++)
+		digits[i].floatValue = *fVarInfo[i].v;
+}
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	if (self.window == nil) return;
@@ -45,38 +45,33 @@ void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float s
     digits = @[minSpdDgt, maxSpdDgt, minEfcDgt, maxEfcDgt,
 		obsGrwDgt, obsMaxHDgt, obsThrDgt, obsMxSpdDgt];
     for (NSInteger i = 0; i < digits.count; i ++) {
-		digits[i].floatValue = *interactionParams[i].var;
 		digits[i].target = self;
 		digits[i].action = @selector(changeDigits:);
 	}
 }
-+ (void)initParams {
-	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
-	NSNumber *num;
-	for (InteractionParam *p = interactionParams; p->key; p ++) {
-		p->fd = p->ud = *p->var;
-		if ((num = [ud objectForKey:p->key])) *p->var = p->ud = num.floatValue;
++ (NSInteger)initParams:(NSInteger)fdBit fdBits:(UInt64 *)fdB {
+	for (fVarInfo = FloatVars; fVarInfo->key != nil; fVarInfo ++)
+		if (fVarInfo->v == &HandMinSpeed) break;
+	FDBTInteract = (int)fdBit;
+	for (NSInteger i = 0; i < NIntrctParams; i ++) {
+		if (*fVarInfo[i].v != fVarInfo[i].fd) *fdB |= 1 << (fdBit + i);
 	}
+	return fdBit + NIntrctParams;
 }
 - (IBAction)changeDigits:(NSTextField *)dgt {
 	NSInteger idx = [digits indexOfObject:dgt];
 	if (idx == NSNotFound) return;
-	float orgValue = *interactionParams[idx].var;
+	FloatVarInfo *info = fVarInfo + idx;
+	float orgValue = *info->v, newValue = dgt.floatValue;
+	if (orgValue == newValue) return;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nullable target) {
 		dgt.floatValue = orgValue;
 		[dgt sendAction:dgt.action to:dgt.target];
 	}];
-	*interactionParams[idx].var = dgt.floatValue;
-	BOOL isAsUd = YES;
-	for (InteractionParam *p = interactionParams; p->key; p ++)
-		if (*p->var != p->ud) { isAsUd = NO; break; }
-	svAsDfltBtn.enabled = !isAsUd;
-}
-- (IBAction)saveAsDefaults:(id)sender {
-	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
-	for (InteractionParam *p = interactionParams; p->key; p ++)
-		[ud setFloat:*p->var forKey:p->key];
-	svAsDfltBtn.enabled = NO;
+	*info->v = newValue;
+	if (ctrlPnl == nil) ctrlPnl = (ControlPanel *)self.window.sheetParent.delegate;
+	[ctrlPnl checkFDBits:FDBTInteract + idx
+		fd:newValue == info->fd ud:newValue == info->ud];
 }
 //
 - (NSUndoManager *)windowWillReturnUndoManager:(NSWindow *)window {

@@ -83,6 +83,7 @@
                 <outlet property="sndPanel" destination="nrZ-bH-pbY" id="tzb-eA-oTc"/>
                 <outlet property="sndPlayStopBtn" destination="KQO-bO-525" id="Wka-HI-m8l"/>
                 <outlet property="sndProgress" destination="v1R-lE-1YM" id="8tf-EZ-hLs"/>
+                <outlet property="spdColPnlBtn" destination="hzk-hT-NKB" id="5nA-hI-ooi"/>
                 <outlet property="stpGoalX" destination="Pw8-lO-vQN" id="pbp-cq-1Qt"/>
                 <outlet property="stpGoalY" destination="xTZ-DN-m1s" id="dS7-on-J93"/>
                 <outlet property="stpGridH" destination="tdZ-ER-mlZ" id="AZH-Xv-3Gx"/>
@@ -1321,6 +1322,17 @@
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
+                    <button verticalHuggingPriority="750" fixedFrame="YES" translatesAutoresizingMaskIntoConstraints="NO" id="hzk-hT-NKB">
+                        <rect key="frame" x="193" y="136" width="122" height="32"/>
+                        <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                        <buttonCell key="cell" type="push" title="Speed color ..." bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="41i-40-jth">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                        </buttonCell>
+                        <connections>
+                            <action selector="openSpeedColPanel:" target="-2" id="s6p-zV-uSV"/>
+                        </connections>
+                    </button>
                 </subviews>
             </view>
             <connections>

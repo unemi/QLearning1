@@ -7,6 +7,7 @@
 
 #include <sys/sysctl.h>
 #import "ControlPanel.h"
+#import "SpeedColPanel.h"
 #import "CommPanel.h"	// for Tracked points
 #import "Display.h"
 #import "MainWindow.h"
@@ -605,7 +606,7 @@ simd_float3x3 particle_tr_mx(Particle *p) {
 }
 #define EASY_HSB
 #ifdef EASY_HSB
-static simd_float4 hsb_to_rgb(simd_float4 hsba) {
+simd_float4 hsb_to_rgb(simd_float4 hsba, BOOL white) {
 	float h = hsba.x * 6.f;
 	simd_float3 rgb = ((h < 1.)? (simd_float3){1., h, 0.} :
 		(h < 2.)? (simd_float3){2. - h, 1., 0.} :
@@ -613,7 +614,7 @@ static simd_float4 hsb_to_rgb(simd_float4 hsba) {
 		(h < 4.)? (simd_float3){0., 4. - h, 1.} :
 		(h < 5.)? (simd_float3){h - 4., 0., 1.} :
 			(simd_float3){1., 0., 6. - h}) * hsba.z;
-	float g = simd_reduce_add(rgb) / 3.;
+	float g = white? hsba.z : simd_reduce_add(rgb) / 3.;
 	rgb += ((simd_float3){g, g, g} - rgb) * (1. - hsba.y);
 	return (simd_float4){rgb.r, rgb.g, rgb.b, hsba.w};
 }
@@ -622,7 +623,7 @@ static simd_float3 cmp(simd_float3 a, simd_float3 b, simd_float3 c) {
 	return simd_make_float3(
 		(a.x < 0.)? b.x : c.x, (a.y < 0.)? b.y : c.y, (a.z < 0.)? b.z : c.z);
 }
-static simd_float4 hsb_to_rgb(simd_float4 hsba) {
+simd_float4 hsb_to_rgb(simd_float4 hsba) {
 	float h=hsba.x*6.2831853;
 	float x=hsba.y * cosf(h) / 3., y = hsba.y * sinf(h) / 1.73205080757;
 	simd_float3 v = fmod(simd_abs(
@@ -650,29 +651,17 @@ static simd_float4 hsb_to_rgb(simd_float4 hsba) {
 	return simd_make_float4(v.x, v.y, v.z, hsba.w);
 }
 #endif
-static float grade_to_hue(float grade) {
-	static struct { float hue; float x; } G[] = {
-		{2./3., 0.},	// blue
-		{1./3., .3}, // green
-		{1./6., .6}, // yellow
-		{0., 1.} // red
-	};
-	for (int i = 1; i < 4; i ++) if (grade < G[i].x) {
-		float a = (grade - G[i - 1].x) / (G[i].x - G[i - 1].x);
-		return G[i - 1].hue * (1.f - a) + G[i].hue * a;
-	}
-	return 5./6.;
-}
 simd_float4 ptcl_hsb_color(void) {
 	CGFloat h, s, b, a;
 	[colParticles getHue:&h saturation:&s brightness:&b alpha:&a];
 	return (simd_float4){h, s, b, a};
 }
 simd_float4 ptcl_rgb_color(Particle * _Nonnull p, simd_float4 hsba, float maxSpeed) {
-	return hsb_to_rgb((simd_float4){(ptclColorMode == PTCLangleColor)?
-			fmodf(atan2f(p->v.y, p->v.x) / (2 * M_PI) + hsba.x + 1.f, 1.f) :
-			grade_to_hue(simd_length(p->v) / maxSpeed),
-		(hsba.y + .1) * .5, hsba.z, hsba.w});
+	return hsb_to_rgb((ptclColorMode == PTCLangleColor)?
+		(simd_float4){fmodf(atan2f(p->v.y, p->v.x) / (2 * M_PI) + hsba.x + 1.f, 1.f),
+			(hsba.y + .1) * .5, hsba.z, hsba.w} :
+		^(simd_float4 hsb){ hsb.y = (hsb.y + .1) * .5; return hsb; }( 
+			grade_to_hsb(simd_length(p->v) / maxSpeed)), NO);
 }
 simd_float2 particle_size(Particle * _Nonnull p) {
 	simd_float2 sz = (simd_float2){

@@ -10,6 +10,7 @@
 #import "AppDelegate.h"
 #import "ControlPanel.h"
 #import "InteractionPanel.h"
+#import "SpeedColPanel.h"
 #import "CommPanel.h"
 #import "MainWindow.h"
 #import "Display.h"
@@ -65,6 +66,14 @@ FloatVarInfo FloatVars[] = {
 	{ @"ptclMaxSpeed", 0, &MaxSpeed },
 	{ @"manipulatedObstacleLifeSpan", 0, &ManObsLifeSpan },
 	{ @"fadeoutTimeInSecond", 0, &FadeoutSec },
+	{ @"handMinSpeed", 0, &HandMinSpeed },
+	{ @"handMaxSpeed", 0, &HandMaxSpeed },
+	{ @"handMinEffect", 0, &HandMinEffect },
+	{ @"handMaxEffect", 0, &HandMaxEffect },
+	{ @"obstacleGrowth", 0, &obsGrow },
+	{ @"obstacleMaxHeight", 0, &obsMaxH },
+	{ @"obstacleThreshold", 0, &obsThrsh },
+	{ @"obstacleMaxHandSpeed", 0, &obsMaxSpeed },
 	{ nil }
 };
 ColVarInfo ColVars[] = {
@@ -188,7 +197,7 @@ NSUInteger hex_string_to_ulong(NSString *str) {
 	obsModeUD = newObsMode;
 	scrForFullScrUD = scrForFullScr;
 	infoViewConfUD = infoViewConf;
-	[InteractionPanel initParams];
+	[SpeedColPanel initParamDefaults];
 	NSFileManager *fm = NSFileManager.defaultManager;
 	NSMutableDictionary<NSString *, NSString *> *missingSnd = NSMutableDictionary.new;
 	for (SoundType type = 0; type < NVoices; type ++) {
@@ -233,10 +242,16 @@ NSUInteger hex_string_to_ulong(NSString *str) {
 }
 #define SAVE_DFLT(forAll,type,star,setter)	forAll(^(type *p) {\
 	if (star p->v == p->fd) [ud removeObjectForKey:p->key];\
-	else [ud setter: star p->v forKey:p->key]; });
-#define SAVE_STR_DFLT(key,var,fdVar)	if ([var isEqualToString:fdVar])\
+	else [ud setter: star p->v forKey:p->key];\
+	p->ud = star p->v; });
+#define SAVE_ENM_DFLT(key,var,fdVar,udVar)	if (var == fdVar)\
 		[ud removeObjectForKey:key];\
-	else [ud setObject:var forKey:key];
+	else [ud setInteger:var forKey:key];\
+	udVar = var;
+#define SAVE_STR_DFLT(key,var,fdVar,udVar)	if ([var isEqualToString:fdVar])\
+		[ud removeObjectForKey:key];\
+	else [ud setObject:var forKey:key];\
+	udVar = var;
 void save_as_user_defaults(void) {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	SAVE_DFLT(for_all_int_vars, IntVarInfo, *, setInteger)
@@ -247,21 +262,23 @@ void save_as_user_defaults(void) {
 		NSUInteger cu = col_to_ulong(*p->v);
 		if (cu == col_to_ulong(p->fd)) [ud removeObjectForKey:p->key];
 		else [ud setObject:[NSString stringWithFormat:@"%08lX", cu] forKey:p->key];
+		p->ud = *p->v;
 	});
-	if (ptclColorMode == ptclColorModeFD) [ud removeObjectForKey:keyColorMode];
-		else [ud setInteger:ptclColorMode forKey:keyColorMode];
-	if (ptclShapeMode == ptclShapeModeFD) [ud removeObjectForKey:keyShapeMode];
-		else [ud setInteger:ptclShapeMode forKey:keyShapeMode];
-	if (newObsMode == obsModeFD) [ud removeObjectForKey:keyObsMode];
-		else [ud setInteger:newObsMode forKey:keyObsMode];
-	SAVE_STR_DFLT(keyScrForFullScr, scrForFullScr, scrForFullScrFD)
-	SAVE_STR_DFLT(keyInfoViewConf, infoViewConf, infoViewConfFD)
+	SAVE_ENM_DFLT(keyColorMode, ptclColorMode, ptclColorModeFD, ptclColorModeUD)
+	SAVE_ENM_DFLT(keyShapeMode, ptclShapeMode, ptclShapeModeFD, ptclShapeModeUD)
+	SAVE_ENM_DFLT(keyObsMode, newObsMode, obsModeFD, obsModeUD)
+	SAVE_STR_DFLT(keyScrForFullScr, scrForFullScr, scrForFullScrFD, scrForFullScrUD)
+	SAVE_STR_DFLT(keyInfoViewConf, infoViewConf, infoViewConfFD, infoViewConfUD)
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
 		if (prm_equal(&s->v, &s->fd)) [ud removeObjectForKey:s->key];
 		else [ud setObject:@{@"path":s->v.path, @"mmin":@(s->v.mmin),
 				@"mmax":@(s->v.mmax), @"vol":@(s->v.vol)} forKey:s->key];
+		s->ud = s->v;
 	}
+	if (spdcol_is_equal_to(spdColFD)) {
+		[ud removeObjectForKey:keySpeedColors]; spdColUD = spdColFD;
+	} else [ud setObject:(spdColUD = data_from_spdCols()) forKey:keySpeedColors];
 }
 #define COMP_DFLT(forAll,type,cmp)	forAll(^(type *p) { if (cmp) @throw @YES; });
 static BOOL was_params_edited(void) {
@@ -278,6 +295,7 @@ static BOOL was_params_edited(void) {
 		if (![infoViewConf isEqualToString:infoViewConfUD]) @throw @YES;
 		for (SoundType type = 0; type < NVoices; type ++)
 			if (!prm_equal(&sndData[type].v, &sndData[type].ud)) @throw @YES;
+		if (!spdcol_is_equal_to(spdColUD)) @throw @YES;
 	} @catch (id _) { return YES; }
 	return NO;
 }

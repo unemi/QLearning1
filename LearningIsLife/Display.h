@@ -48,6 +48,7 @@ extern simd_float4 ptcl_hsb_color(void);
 extern simd_float4 ptcl_rgb_color(Particle * _Nonnull p, simd_float4 hsba, float maxSpeed);
 extern simd_float2 particle_size(Particle * _Nonnull p);
 extern simd_float3x3 particle_tr_mx(Particle * _Nonnull p);
+extern simd_float4 hsb_to_rgb(simd_float4 hsba, BOOL white);
 extern void fill_circle_at(RCE _Nonnull rce, simd_float2 center, float radius, int nEdges);
 
 NS_ASSUME_NONNULL_BEGIN

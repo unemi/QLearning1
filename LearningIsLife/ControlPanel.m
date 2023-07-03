@@ -7,6 +7,7 @@
 
 #import "ControlPanel.h"
 #import "InteractionPanel.h"
+#import "SpeedColPanel.h"
 #import "AppDelegate.h"
 #import "MainWindow.h"
 #import "Display.h"
@@ -52,6 +53,7 @@ static void setup_screen_menu(NSPopUpButton *popup,
 	NSArray<NSStepper *> *ivStps;
 	NSArray<NSControl *> *sndContrls, *wrldControls;
 	InteractionPanel *intrctPnl;
+	SpeedColPanel *spdColPnl;
 	NSSound *soundNowPlaying;
 	NSUndoManager *undoManager, *undoMng4SndPnl;
 	SoundType playingSoundType, openingSoundType;
@@ -139,6 +141,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	dgtCoolingRate.enabled = (MAX_STEPS == 0);
 	btnRevertToFD.enabled = btnExport.enabled = (FDBits != 0);
 	btnSaveAsUD.enabled = btnRevertToUD.enabled = (UDBits != 0);
+	spdColPnlBtn.enabled = ptclColorMode == PTCLspeedColor;
 }
 #define SETUP_CNTRL(b,class,list,fn,var,ref,act)	b = (int)bit; tag = 0;\
 	for (class *ctr in list) {\
@@ -147,6 +150,9 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		ctr.action = @selector(act:);\
 		ctr.tag = tag ++; bit ++;\
 	}
+#define SETUP_CHOICE(b,var,varFD)	b = (int)bit;\
+	if (var != varFD) FDBits |= 1 << bit;\
+	bit ++;
 - (void)windowDidLoad {
 	[super windowDidLoad];
 	if (self.window == nil) return;
@@ -178,6 +184,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)
 	SETUP_CNTRL(FDBTFloat, NSTextField, fvDgts, , *, FloatVars, changeFloatValue)
+	bit = [InteractionPanel initParams:bit fdBits:&FDBits];
 	SETUP_CNTRL(FDBTUInt, NSTextField, uvDgts, , , UIntegerVars, changeUIntegerValue)
 	SETUP_CNTRL(FDBTBool, NSButton, boolVBtns, , , BoolVars, switchBoolValue)
 	for (NSInteger i = 0; i < ivStps.count; i ++) {
@@ -188,17 +195,24 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		ivStps[i].minValue = fmt.minimum.integerValue;
 		ivStps[i].maxValue = fmt.maximum.integerValue;
 	}
-	FDBTObs = (int)bit;
-	if (newObsMode != obsModeFD) FDBits |= 1 << bit;
-	FDBTFulScr = (int)(++ bit);
-	if (scrForFullScr != scrForFullScrFD) FDBits |= 1 << bit;
-	FDBTInfoV = (int)(++ bit);
-	if (infoViewConf != infoViewConfFD) FDBits |= 1 << bit;
-	for (SoundType type = 0; type < NVoices; type ++) {
+	SETUP_CHOICE(FDBTDc, ptclColorMode, ptclColorModeFD)
+	SETUP_CHOICE(FDBTDm, ptclShapeMode, ptclShapeModeFD)
+	SETUP_CHOICE(FDBTObs, newObsMode, obsModeFD)
+	SETUP_CHOICE(FDBTFulScr, scrForFullScr, scrForFullScrFD)
+	SETUP_CHOICE(FDBTInfoV, infoViewConf, infoViewConfFD)
+	bit = [SpeedColPanel initParams:bit fdBits:&FDBits];
+	for (SoundType type = 0; type < NVoices; type ++, bit ++) {
 		SoundSrc *s = &sndData[type];
-		s->FDBit = (int)(++ bit);
+		s->FDBit = (int)bit;
 		if (!prm_equal(&s->v, &s->fd)) FDBits |= 1 << bit;
 	}
+#ifdef DEBUG
+NSLog(@"%ld parameters", bit);
+printf("FDBTCol=%d, FDBTInt=%d, FDBTFloat=%d, FDBTUInt=%d, FDBTBool=%d, FDBTDc=%d,\
+ FDBTDm=%d, FDBTObs=%d, FDBTFulScr=%d, FDBTInfoV=%d\n",
+		FDBTCol, FDBTInt, FDBTFloat, FDBTUInt, FDBTBool, FDBTDc,
+		FDBTDm, FDBTObs, FDBTFulScr, FDBTInfoV);
+#endif
 	[self adjustControls];
 	[NSNotificationCenter.defaultCenter addObserverForName:@"obsModeChangedByReset"
 		object:NSApp queue:nil usingBlock:^(NSNotification * _Nonnull note) {
@@ -329,6 +343,7 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 	[self checkFDBits:FDBTDc fd:newValue == ptclColorModeFD ud:newValue == ptclColorModeUD];
 	[NSNotificationCenter.defaultCenter postNotificationName:
 		keyColorMode object:NSApp userInfo:@{keyCntlPnl:self}];
+	spdColPnlBtn.enabled = newValue == PTCLspeedColor;
 }
 - (IBAction)chooseShapeMode:(NSPopUpButton *)popUp {
 	PTCLShapeMode newValue = (PTCLShapeMode)popUp.indexOfSelectedItem;
@@ -361,7 +376,16 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 - (IBAction)openInteractPanel:(id)sender {
 	if (intrctPnl == nil) intrctPnl =
 		[InteractionPanel.alloc initWithWindow:nil];
-	[intrctPnl showWindow:sender];
+	if (intrctPnl.window != nil) [intrctPnl setupControls];
+	[self.window beginSheet:intrctPnl.window completionHandler:
+		^(NSModalResponse returnCode) {	}];
+}
+- (IBAction)openSpeedColPanel:(id)sender {
+	if (spdColPnl == nil) spdColPnl =
+		[SpeedColPanel.alloc initWithWindow:nil];
+	if (spdColPnl.window != nil) [spdColPnl setupControls];
+	[self.window beginSheet:spdColPnl.window completionHandler:
+		^(NSModalResponse returnCode) {}];
 }
 - (NSString *)chooseScreenName:(NSPopUpButton *)popUp key:(NSString *)key
 	orgValue:(NSString *)orgValue fd:(NSString *)fd ud:(NSString *)ud bit:(int)bit {
@@ -642,6 +666,7 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	CLCT_DF_ENM(keyObsMode, obsModeUD, newObsMode)
 	CLCT_DF_STR(keyScrForFullScr, scrForFullScrUD, scrForFullScr)
 	CLCT_DF_STR(keyInfoViewConf, infoViewConfUD, infoViewConf)
+	if (!spdcol_is_equal_to(spdColUD)) md[keySpeedColors] = spdColUD;
 	[self setParamValuesFromDict:md];
 	undoManager.actionName = btnRevertToUD.title;
 }
@@ -652,6 +677,7 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	CLCT_DF_ENM(keyObsMode, obsModeFD, newObsMode)
 	CLCT_DF_STR(keyScrForFullScr, scrForFullScrFD, scrForFullScr)
 	CLCT_DF_STR(keyInfoViewConf, infoViewConfFD, infoViewConf)
+	if (!spdcol_is_equal_to(spdColFD)) md[keySpeedColors] = spdColFD;
 	[self setParamValuesFromDict:md];
 	undoManager.actionName = btnRevertToFD.title;
 }
@@ -718,6 +744,16 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 	NSString *newValue;
 	SETSTR_DICT(keyScrForFullScr, scrForFullScrFD, scrForFullScrUD, scrForFullScr, FDBTFulScr)
 	SETSTR_DICT(keyInfoViewConf, infoViewConfFD, infoViewConfUD, infoViewConf, FDBTInfoV)
+	NSData *spdColData = dict[keySpeedColors];
+	if (spdColData != nil && !spdcol_is_equal_to(spdColData)) {
+		orgValues[keySpeedColors] = data_from_spdCols();
+		if (spdcol_is_equal_to(spdColFD) || [spdColData isEqualToData:spdColFD])
+			fdFlipBits |= 1 << FDBTSpdCol;
+		if (spdcol_is_equal_to(spdColUD) || [spdColData isEqualToData:spdColUD])
+			udFlipBits |= 1 << FDBTSpdCol;
+		spdCols_from_data(spdColData);
+		[postKeys addObject:keySpeedColors];
+	}
 	for (SoundType type = 0; type < NVoices; type ++) {
 		SoundSrc *s = &sndData[type];
 		NSDictionary *dc = dict[s->key];
@@ -799,6 +835,8 @@ void set_param_from_dict(SoundPrm *prm, NSDictionary *dict) {
 }
 - (IBAction)saveAsUserDefaults:(id)sender {
 	save_as_user_defaults();
+	UDBits = 0;
+	btnSaveAsUD.enabled = btnRevertToUD.enabled = NO;
 }
 - (void)adjustNParticleDgt { // called when memory allocation failed.
 	dgtNParticles.integerValue = NParticles;

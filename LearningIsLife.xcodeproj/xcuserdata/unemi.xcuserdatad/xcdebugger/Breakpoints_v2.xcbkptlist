@@ -46,8 +46,8 @@
             filePath = "LearningIsLife/ControlPanel.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "362"
-            endingLineNumber = "362"
+            startingLineNumber = "377"
+            endingLineNumber = "377"
             landmarkName = "-openInteractPanel:"
             landmarkType = "7">
          </BreakpointContent>
@@ -62,8 +62,8 @@
             filePath = "LearningIsLife/AppDelegate.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "191"
-            endingLineNumber = "191"
+            startingLineNumber = "201"
+            endingLineNumber = "201"
             landmarkName = "-applicationWillFinishLaunching:"
             landmarkType = "7">
          </BreakpointContent>
@@ -78,8 +78,8 @@
             filePath = "LearningIsLife/InteractionPanel.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "27"
-            endingLineNumber = "27"
+            startingLineNumber = "22"
+            endingLineNumber = "22"
             landmarkName = "affect_hand_motion(qvalues, dp, len, speed)"
             landmarkType = "9">
          </BreakpointContent>
@@ -87,49 +87,49 @@
       <BreakpointProxy
          BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
          <BreakpointContent
-            uuid = "FF711F2E-756F-48DF-BA97-4348717D2644"
+            uuid = "E6745773-1DF2-4888-B615-C69580AA27CC"
             shouldBeEnabled = "No"
             ignoreCount = "0"
             continueAfterRunningActions = "No"
-            filePath = "LearningIsLife/InteractionPanel.m"
+            filePath = "LearningIsLife/SpeedColPanel.m"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "65"
-            endingLineNumber = "65"
-            landmarkName = "-changeDigits:"
+            startingLineNumber = "235"
+            endingLineNumber = "235"
+            landmarkName = "-setupColors:count:"
             landmarkType = "7">
-            <Locations>
-               <Location
-                  uuid = "FF711F2E-756F-48DF-BA97-4348717D2644 - cdfec10277c812e9"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "-[InteractionPanel changeDigits:]"
-                  moduleName = "Learning is Life"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/unemi/Program/ALife/LearningIsLife/LearningIsLife/InteractionPanel.m"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "60"
-                  endingLineNumber = "60"
-                  offsetFromSymbolStart = "152">
-               </Location>
-               <Location
-                  uuid = "FF711F2E-756F-48DF-BA97-4348717D2644 - aa247ea7f9ab13e4"
-                  shouldBeEnabled = "Yes"
-                  ignoreCount = "0"
-                  continueAfterRunningActions = "No"
-                  symbolName = "__33-[InteractionPanel changeDigits:]_block_invoke"
-                  moduleName = "Learning is Life"
-                  usesParentBreakpointCondition = "Yes"
-                  urlString = "file:///Users/unemi/Program/ALife/LearningIsLife/LearningIsLife/InteractionPanel.m"
-                  startingColumnNumber = "9223372036854775807"
-                  endingColumnNumber = "9223372036854775807"
-                  startingLineNumber = "61"
-                  endingLineNumber = "61"
-                  offsetFromSymbolStart = "60">
-               </Location>
-            </Locations>
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "19F5FE4E-B63D-4B91-BF96-790E42A569ED"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "LearningIsLife/SpeedColPanel.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "92"
+            endingLineNumber = "92"
+            landmarkName = "-moveXTo:undoable:"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "C69B3F76-A01D-428E-92DC-FD28F09A6C04"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "LearningIsLife/ControlPanel.m"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "771"
+            endingLineNumber = "771"
+            landmarkName = "-setParamValuesFromDict:"
+            landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>
    </Breakpoints>

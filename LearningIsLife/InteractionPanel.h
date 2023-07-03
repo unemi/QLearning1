@@ -9,15 +9,16 @@
 @import simd;
 
 NS_ASSUME_NONNULL_BEGIN
-typedef struct { NSString *key; float *var, fd, ud; } InteractionParam;
-extern float obsGrow, obsMaxH, obsThrsh, obsMaxSpeed;
+extern float HandMinSpeed, HandMaxSpeed, HandMinEffect, HandMaxEffect,
+	obsGrow, obsMaxH, obsThrsh, obsMaxSpeed;
 extern void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float speed);
 @interface InteractionPanel : NSWindowController <NSWindowDelegate> {
 	IBOutlet NSTextField *minSpdDgt, *maxSpdDgt, *minEfcDgt, *maxEfcDgt,
 		*obsGrwDgt, *obsMaxHDgt, *obsThrDgt, *obsMxSpdDgt;
 	IBOutlet NSButton *svAsDfltBtn;
 }
-+ (void)initParams;
+- (void)setupControls;
++ (NSInteger)initParams:(NSInteger)fdBit fdBits:(UInt64 *)fd;
 @end
 
 NS_ASSUME_NONNULL_END

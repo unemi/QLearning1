@@ -216,6 +216,12 @@
                                     <action selector="openInteractPanel:" target="-1" id="ynI-5f-Ssh"/>
                                 </connections>
                             </menuItem>
+                            <menuItem title="Speed Color Panel" keyEquivalent="s" id="y8f-wC-Sqk">
+                                <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
+                                <connections>
+                                    <action selector="openSpeedColPanel:" target="-1" id="4pL-pz-sGr"/>
+                                </connections>
+                            </menuItem>
                             <menuItem title="Communication Panel" keyEquivalent="c" id="KA4-v9-2GZ">
                                 <modifierMask key="keyEquivalentModifierMask" option="YES" command="YES"/>
                                 <connections>

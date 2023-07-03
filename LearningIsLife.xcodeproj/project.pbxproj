@@ -35,6 +35,9 @@
 		23505D5829860ED4002A7429 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5729860ED4002A7429 /* Assets.xcassets */; };
 		23505D5B29860ED4002A7429 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = 23505D5929860ED4002A7429 /* MainMenu.xib */; };
 		23505D5D29860ED4002A7429 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = 23505D5C29860ED4002A7429 /* main.m */; };
+		2358B4452A4F52C3001E83E4 /* SheetExtension.m in Sources */ = {isa = PBXBuildFile; fileRef = 2358B4442A4F52C3001E83E4 /* SheetExtension.m */; };
+		2358FCBD2A4D7F9A002CC281 /* SpeedColPanel.m in Sources */ = {isa = PBXBuildFile; fileRef = 2358FCBB2A4D7F9A002CC281 /* SpeedColPanel.m */; };
+		2358FCBE2A4D7F9A002CC281 /* SpeedColPanel.xib in Resources */ = {isa = PBXBuildFile; fileRef = 2358FCBC2A4D7F9A002CC281 /* SpeedColPanel.xib */; };
 		2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */ = {isa = PBXBuildFile; fileRef = 2372103129DFF4A000B23CBD /* AdjustSaved.pdf */; };
 		23868EE7298519F100C02DCE /* Comm.m in Sources */ = {isa = PBXBuildFile; fileRef = 23868EE6298519F100C02DCE /* Comm.m */; };
 		2393B1A529A2285D00CEDA12 /* PrintPanelAccessory.xib in Resources */ = {isa = PBXBuildFile; fileRef = 2393B1A429A2285D00CEDA12 /* PrintPanelAccessory.xib */; };
@@ -88,6 +91,11 @@
 		23505D5A29860ED4002A7429 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		23505D5C29860ED4002A7429 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
 		23505D5E29860ED4002A7429 /* LiLCommSim.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = LiLCommSim.entitlements; sourceTree = "<group>"; };
+		2358B4432A4F52C3001E83E4 /* SheetExtension.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SheetExtension.h; sourceTree = "<group>"; };
+		2358B4442A4F52C3001E83E4 /* SheetExtension.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SheetExtension.m; sourceTree = "<group>"; };
+		2358FCBA2A4D7F9A002CC281 /* SpeedColPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = SpeedColPanel.h; sourceTree = "<group>"; };
+		2358FCBB2A4D7F9A002CC281 /* SpeedColPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = SpeedColPanel.m; sourceTree = "<group>"; };
+		2358FCBC2A4D7F9A002CC281 /* SpeedColPanel.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = SpeedColPanel.xib; sourceTree = "<group>"; };
 		2372103129DFF4A000B23CBD /* AdjustSaved.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = AdjustSaved.pdf; path = LearningIsLife/AdjustSaved.pdf; sourceTree = "<group>"; };
 		237780B3295BF81100789534 /* VecTypes.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VecTypes.h; sourceTree = "<group>"; };
 		23868EE5298519F100C02DCE /* Comm.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Comm.h; sourceTree = "<group>"; };
@@ -201,8 +209,12 @@
 				232521702956BB7900159F30 /* AppDelegate.m */,
 				23BEB9E7298A7789006EF0A1 /* ControlPanel.h */,
 				23BEB9E8298A7789006EF0A1 /* ControlPanel.m */,
+				2358B4432A4F52C3001E83E4 /* SheetExtension.h */,
+				2358B4442A4F52C3001E83E4 /* SheetExtension.m */,
 				23349C562A482CD30020E87C /* InteractionPanel.h */,
 				23349C572A482CD30020E87C /* InteractionPanel.m */,
+				2358FCBA2A4D7F9A002CC281 /* SpeedColPanel.h */,
+				2358FCBB2A4D7F9A002CC281 /* SpeedColPanel.m */,
 				234090D52969025D008CC72D /* MainWindow.h */,
 				234090D62969025D008CC72D /* MainWindow.m */,
 				2318A51C296697030025CCFB /* RecordView.h */,
@@ -235,6 +247,7 @@
 				232521742956BB7A00159F30 /* MainMenu.xib */,
 				230E057B2A4C95FE00F38488 /* ControlPanel.xib */,
 				23349C542A482C7B0020E87C /* InteractionPanel.xib */,
+				2358FCBC2A4D7F9A002CC281 /* SpeedColPanel.xib */,
 				232F39AF298A81AF00B1A28D /* CommPanel.xib */,
 			);
 			name = "User Interfaces";
@@ -331,6 +344,7 @@
 				230E057D2A4C95FE00F38488 /* ControlPanel.xib in Resources */,
 				230F43A9296028AA006513E2 /* Credits.rtf in Resources */,
 				2372103229DFF4A000B23CBD /* AdjustSaved.pdf in Resources */,
+				2358FCBE2A4D7F9A002CC281 /* SpeedColPanel.xib in Resources */,
 				23349C552A482C7B0020E87C /* InteractionPanel.xib in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -352,11 +366,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				232521812956BBF700159F30 /* Agent.m in Sources */,
+				2358B4452A4F52C3001E83E4 /* SheetExtension.m in Sources */,
 				232521782956BB7A00159F30 /* main.m in Sources */,
 				23868EE7298519F100C02DCE /* Comm.m in Sources */,
 				2318A5212966E2AE0025CCFB /* MyViewForCG.m in Sources */,
 				232521842956C38D00159F30 /* Display.m in Sources */,
 				234090D82969025D008CC72D /* MainWindow.m in Sources */,
+				2358FCBD2A4D7F9A002CC281 /* SpeedColPanel.m in Sources */,
 				233DF0A1295B109C00F9F20C /* MyShaders.metal in Sources */,
 				234A09ED296CF1F700ADDFD1 /* LogoDrawer.m in Sources */,
 				23BEB9E9298A7789006EF0A1 /* ControlPanel.m in Sources */,
@@ -550,7 +566,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -565,7 +581,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -580,7 +596,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -596,7 +612,7 @@
 					"@executable_path/../Frameworks",
 				);
 				MACOSX_DEPLOYMENT_TARGET = 11.0;
-				MARKETING_VERSION = 1.2;
+				MARKETING_VERSION = 1.3;
 				PRODUCT_BUNDLE_IDENTIFIER = jp.ac.soka.unemi.LearningIsLife;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -611,7 +627,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -639,7 +655,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 18;
+				CURRENT_PROJECT_VERSION = 19;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;

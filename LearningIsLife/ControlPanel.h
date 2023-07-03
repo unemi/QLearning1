@@ -18,7 +18,7 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 		*dgtStartX, *dgtStartY, *dgtGoalX, *dgtGoalY, *dgtManObsLS;
 	IBOutlet NSStepper *stpGridW, *stpGridH, *stpTileH,
 		*stpStartX, *stpStartY, *stpGoalX, *stpGoalY;
-	IBOutlet NSButton *intrctPnlBtn;
+	IBOutlet NSButton *intrctPnlBtn, *spdColPnlBtn;
 	IBOutlet NSColorWell *cwlBackground, *cwObstacles, *cwAgent,
 		*cwGridLines, *cwSymbols, *cwParticles, *cwTracking, *cwInfoFG;
 	IBOutlet NSTextField *dgtMemSize, *dgtMemTrials, *dgtNParticles, *dgtLifeSpan;
@@ -38,6 +38,7 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 	IBOutlet MyProgressBar *sndProgress;
 	IBOutlet NSTextField *dgtMaxSteps, *dgtMaxGoalCnt, *dgtFadeoutSec;
 }
+- (void)checkFDBits:(NSInteger)bitPosition fd:(BOOL)fdc ud:(BOOL)udc;
 - (IBAction)importSettings:(NSButton *)sender;
 - (IBAction)exportSettings:(id)sender;
 - (IBAction)saveAsUserDefaults:(id)sender;

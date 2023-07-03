@@ -16,7 +16,6 @@
                 <outlet property="obsMaxHDgt" destination="RYI-Tg-gd3" id="N0D-hh-R8P"/>
                 <outlet property="obsMxSpdDgt" destination="CcT-H7-DUG" id="CLn-tp-7kM"/>
                 <outlet property="obsThrDgt" destination="CZR-lt-hdC" id="9eO-8w-6mn"/>
-                <outlet property="svAsDfltBtn" destination="I5K-Xb-IST" id="JYl-eC-f8w"/>
                 <outlet property="window" destination="QvC-M9-y7g" id="80W-Mt-0a3"/>
             </connections>
         </customObject>
@@ -25,9 +24,9 @@
         <window title="Interaction" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES"/>
             <windowPositionMask key="initialPositionMask" leftStrut="YES" rightStrut="YES" topStrut="YES" bottomStrut="YES"/>
-            <rect key="contentRect" x="739" y="227" width="354" height="315"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1800" height="1125"/>
-            <view key="contentView" wantsLayer="YES" misplaced="YES" id="EiT-Mj-1SZ">
+            <rect key="contentRect" x="739" y="227" width="354" height="313"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1512" height="944"/>
+            <view key="contentView" wantsLayer="YES" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="354" height="313"/>
                 <autoresizingMask key="autoresizingMask"/>
                 <subviews>
@@ -269,16 +268,6 @@
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
-                    <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="I5K-Xb-IST">
-                        <rect key="frame" x="208" y="13" width="133" height="32"/>
-                        <buttonCell key="cell" type="push" title="Save as defaults" bezelStyle="rounded" alignment="center" enabled="NO" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="Xdn-5F-g3L">
-                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                            <font key="font" metaFont="system"/>
-                        </buttonCell>
-                        <connections>
-                            <action selector="saveAsDefaults:" target="-2" id="FPZ-In-9bN"/>
-                        </connections>
-                    </button>
                     <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="jaN-u2-ZKA">
                         <rect key="frame" x="278" y="72" width="57" height="16"/>
                         <textFieldCell key="cell" lineBreakMode="clipping" title="grid/sec." id="pgi-aS-O8y">
@@ -303,6 +292,22 @@
                             <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                         </textFieldCell>
                     </textField>
+                    <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="Cck-LW-YzE">
+                        <rect key="frame" x="247" y="13" width="94" height="32"/>
+                        <constraints>
+                            <constraint firstAttribute="width" constant="80" id="UN8-I1-8SE"/>
+                        </constraints>
+                        <buttonCell key="cell" type="push" title="OK" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="zUD-Iv-qEK">
+                            <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                            <font key="font" metaFont="system"/>
+                            <string key="keyEquivalent" base64-UTF8="YES">
+DQ
+</string>
+                        </buttonCell>
+                        <connections>
+                            <action selector="sheetOk:" target="-2" id="DcV-dB-nbC"/>
+                        </connections>
+                    </button>
                 </subviews>
                 <constraints>
                     <constraint firstItem="etb-y9-Mbp" firstAttribute="leading" secondItem="RYI-Tg-gd3" secondAttribute="trailing" constant="8" symbolic="YES" id="06T-a1-Yz3"/>
@@ -322,17 +327,15 @@
                     <constraint firstItem="etb-y9-Mbp" firstAttribute="firstBaseline" secondItem="VwT-2i-wDJ" secondAttribute="firstBaseline" id="JBi-ut-xDy"/>
                     <constraint firstAttribute="trailing" secondItem="Yed-BA-Ygw" secondAttribute="trailing" id="JuU-ex-6K0"/>
                     <constraint firstItem="1UI-LT-fHS" firstAttribute="baseline" secondItem="JQw-hu-s5g" secondAttribute="baseline" id="LLu-db-7r6"/>
+                    <constraint firstItem="Cck-LW-YzE" firstAttribute="top" secondItem="Yed-BA-Ygw" secondAttribute="bottom" constant="20" symbolic="YES" id="Mij-DU-iXt"/>
                     <constraint firstItem="VwT-2i-wDJ" firstAttribute="leading" secondItem="XYO-xK-Ox4" secondAttribute="trailing" constant="8" symbolic="YES" id="P4u-h4-XBx"/>
                     <constraint firstAttribute="trailing" secondItem="jEc-FL-FDA" secondAttribute="trailing" id="Pii-ao-3pM"/>
                     <constraint firstItem="Sjr-wZ-ziA" firstAttribute="leading" secondItem="EiT-Mj-1SZ" secondAttribute="leading" constant="20" symbolic="YES" id="Pm2-0Z-3V6"/>
                     <constraint firstItem="cPN-X9-T05" firstAttribute="leading" secondItem="c4T-d0-Ch4" secondAttribute="trailing" constant="8" symbolic="YES" id="Srw-sF-gBp"/>
-                    <constraint firstAttribute="trailing" secondItem="I5K-Xb-IST" secondAttribute="trailing" constant="20" symbolic="YES" id="VUU-Zr-rXn"/>
                     <constraint firstItem="nPN-lN-Dek" firstAttribute="leading" secondItem="cPN-X9-T05" secondAttribute="trailing" constant="8" symbolic="YES" id="WFH-Mc-YwF"/>
-                    <constraint firstItem="I5K-Xb-IST" firstAttribute="top" secondItem="Yed-BA-Ygw" secondAttribute="bottom" constant="20" symbolic="YES" id="WJ3-G1-4aH"/>
                     <constraint firstItem="Og1-mm-kbg" firstAttribute="firstBaseline" secondItem="Sjr-wZ-ziA" secondAttribute="firstBaseline" id="XaU-zM-cgu"/>
                     <constraint firstItem="t9U-6f-yK2" firstAttribute="trailing" secondItem="JQw-hu-s5g" secondAttribute="trailing" id="Xf9-2Z-dQS"/>
                     <constraint firstItem="zew-S7-Ci7" firstAttribute="leading" secondItem="f6D-7J-Meh" secondAttribute="trailing" constant="8" symbolic="YES" id="XfN-MR-pvl"/>
-                    <constraint firstAttribute="bottom" secondItem="I5K-Xb-IST" secondAttribute="bottom" constant="20" symbolic="YES" id="Xia-G8-7gq"/>
                     <constraint firstItem="iAD-0s-QfS" firstAttribute="leading" secondItem="EiT-Mj-1SZ" secondAttribute="leading" constant="20" symbolic="YES" id="YWb-VB-4X8"/>
                     <constraint firstItem="iAD-0s-QfS" firstAttribute="top" secondItem="EiT-Mj-1SZ" secondAttribute="top" constant="20" symbolic="YES" id="Z0E-lS-KZu"/>
                     <constraint firstItem="t9U-6f-yK2" firstAttribute="leading" relation="greaterThanOrEqual" secondItem="EiT-Mj-1SZ" secondAttribute="leading" constant="20" symbolic="YES" id="ad4-P0-xtD"/>
@@ -350,6 +353,7 @@
                     <constraint firstItem="Og1-mm-kbg" firstAttribute="top" secondItem="ITi-CL-fuB" secondAttribute="bottom" constant="8" symbolic="YES" id="lqM-by-GZf"/>
                     <constraint firstItem="CZR-lt-hdC" firstAttribute="top" secondItem="Og1-mm-kbg" secondAttribute="bottom" constant="10" symbolic="YES" id="nLt-kD-WFL"/>
                     <constraint firstItem="f6D-7J-Meh" firstAttribute="baseline" secondItem="1UI-LT-fHS" secondAttribute="baseline" id="pnS-6P-MKh"/>
+                    <constraint firstAttribute="trailing" secondItem="Cck-LW-YzE" secondAttribute="trailing" constant="20" symbolic="YES" id="qQe-c3-KhI"/>
                     <constraint firstItem="RYI-Tg-gd3" firstAttribute="firstBaseline" secondItem="CZR-lt-hdC" secondAttribute="firstBaseline" id="qT2-XK-a9t"/>
                     <constraint firstItem="1UI-LT-fHS" firstAttribute="leading" secondItem="JQw-hu-s5g" secondAttribute="trailing" constant="8" symbolic="YES" id="qbe-dx-6O0"/>
                     <constraint firstItem="nPN-lN-Dek" firstAttribute="firstBaseline" secondItem="cPN-X9-T05" secondAttribute="firstBaseline" id="rII-IF-Ctk"/>
@@ -360,6 +364,7 @@
                     <constraint firstItem="zew-S7-Ci7" firstAttribute="baseline" secondItem="f6D-7J-Meh" secondAttribute="baseline" id="weu-m1-Z3F"/>
                     <constraint firstItem="jaN-u2-ZKA" firstAttribute="leading" secondItem="CcT-H7-DUG" secondAttribute="trailing" constant="8" symbolic="YES" id="wx3-XM-fwS"/>
                     <constraint firstItem="RYI-Tg-gd3" firstAttribute="firstBaseline" secondItem="VwT-2i-wDJ" secondAttribute="firstBaseline" id="xPc-pn-mNT"/>
+                    <constraint firstAttribute="bottom" secondItem="Cck-LW-YzE" secondAttribute="bottom" constant="20" symbolic="YES" id="xhI-z5-66f"/>
                     <constraint firstItem="c4T-d0-Ch4" firstAttribute="firstBaseline" secondItem="t9U-6f-yK2" secondAttribute="firstBaseline" id="xzA-iV-eBv"/>
                     <constraint firstItem="jaN-u2-ZKA" firstAttribute="firstBaseline" secondItem="dom-xb-JWX" secondAttribute="firstBaseline" id="yGV-RL-Hfs"/>
                     <constraint firstItem="7Zl-1n-NF4" firstAttribute="firstBaseline" secondItem="4Id-aB-pR4" secondAttribute="firstBaseline" id="yMl-MO-Oce"/>
@@ -369,7 +374,7 @@
             <connections>
                 <outlet property="delegate" destination="-2" id="idG-7g-BD5"/>
             </connections>
-            <point key="canvasLocation" x="77" y="165.5"/>
+            <point key="canvasLocation" x="77" y="164.5"/>
         </window>
     </objects>
 </document>
