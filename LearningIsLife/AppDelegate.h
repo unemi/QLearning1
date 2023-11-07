@@ -32,6 +32,7 @@ extern SoundSrc sndData[NVoices];
 #define START_WIDTH_FULL_SCR (BoolVars[2].v)
 #define RECORD_IMAGES (BoolVars[3].v)
 #define SHOW_FPS (BoolVars[4].v)
+#define ALTERNATE_SG (BoolVars[5].v)
 
 extern simd_int2 Move[4], FixedObsP[NObstaclesDF], FixedStartP, FixedGoalP;
 extern int nGridW, nGridH, nObstacles, maxNObstacles;

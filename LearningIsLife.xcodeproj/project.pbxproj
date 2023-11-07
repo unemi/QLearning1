@@ -71,7 +71,6 @@
 		23297D87296AD1CC00178016 /* equationP.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationP.pdf; path = LearningIsLife/equationP.pdf; sourceTree = "<group>"; };
 		23297D88296AD1CC00178016 /* equationL.pdf */ = {isa = PBXFileReference; lastKnownFileType = image.pdf; name = equationL.pdf; path = LearningIsLife/equationL.pdf; sourceTree = "<group>"; };
 		232F39AE298A81AF00B1A28D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/CommPanel.xib; sourceTree = "<group>"; };
-		2330B0E6296972A100F87CEC /* Samples */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Samples; sourceTree = "<group>"; };
 		23349C542A482C7B0020E87C /* InteractionPanel.xib */ = {isa = PBXFileReference; lastKnownFileType = file.xib; path = InteractionPanel.xib; sourceTree = "<group>"; };
 		23349C562A482CD30020E87C /* InteractionPanel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = InteractionPanel.h; sourceTree = "<group>"; };
 		23349C572A482CD30020E87C /* InteractionPanel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = InteractionPanel.m; sourceTree = "<group>"; };
@@ -136,7 +135,6 @@
 				23363EE6295F12540005A64D /* README.md */,
 				23297D8B296AD1DF00178016 /* Images */,
 				2325216E2956BB7900159F30 /* LearningIsLife */,
-				2330B0E6296972A100F87CEC /* Samples */,
 				23505D5329860ED3002A7429 /* LiLCommSim */,
 				2325216D2956BB7900159F30 /* Products */,
 				234090DA296937CF008CC72D /* Frameworks */,
@@ -297,7 +295,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastUpgradeCheck = 1430;
+				LastUpgradeCheck = 1500;
 				TargetAttributes = {
 					2325216B2956BB7900159F30 = {
 						CreatedOnToolsVersion = 14.2;
@@ -484,6 +482,7 @@
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -543,6 +542,7 @@
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -566,7 +566,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -596,7 +596,7 @@
 				CODE_SIGN_ENTITLEMENTS = LearningIsLife/LearningIsLife.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -627,7 +627,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;
@@ -655,7 +655,7 @@
 				CODE_SIGN_ENTITLEMENTS = LiLCommSim/LiLCommSim.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 19;
+				CURRENT_PROJECT_VERSION = 23;
 				DEAD_CODE_STRIPPING = YES;
 				DEVELOPMENT_TEAM = 726X5Z9867;
 				ENABLE_HARDENED_RUNTIME = YES;

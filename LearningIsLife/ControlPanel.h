@@ -25,7 +25,8 @@ extern void set_param_from_dict(SoundPrm *prm, NSDictionary *dict);
 	IBOutlet NSTextField *dgtT0, *dgtT1, *dgtCoolingRate, *dgtInitQValue, *dgtGamma, *dgtAlpha,
 		*dgtStpPS, *dgtMass, *dgtFriction, *dgtStrokeLength, *dgtStrokeWidth, *dgtMaxSpeed;
 	IBOutlet NSPopUpButton *ptclColorPopup, *ptclShapePopup, *screenPopUp, *infoVConfPopUp, *obsPopUp;
-	IBOutlet NSButton *cboxDrawHand, *cBoxSounds, *cboxStartFullScr, *cboxRecordImages, *cBoxShowFPS,
+	IBOutlet NSButton *cboxAltSG, *cboxDrawHand, *cBoxSounds,
+		*cboxStartFullScr, *cboxRecordImages, *cBoxShowFPS,
 		*btnSaveAsUD, *btnRevertToUD, *btnRevertToFD, *btnExport;
 	IBOutlet NSTextField *txtBump, *txtGaol, *txtGood, *txtBad, *txtAmbience;
 	IBOutlet NSButton *editBump, *editGoal, *editGood, *editBad, *editAmbience;

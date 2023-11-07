@@ -172,14 +172,14 @@ static void adjust_position_max_values(NSTextField *dgt, NSStepper *stp, NSInteg
 		dgtStpPS, dgtMass, dgtFriction, dgtStrokeLength, dgtStrokeWidth, dgtMaxSpeed, dgtManObsLS,
 		dgtFadeoutSec];
 	uvDgts = @[dgtMaxSteps, dgtMaxGoalCnt];
-	boolVBtns = @[cboxDrawHand, cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS];
+	boolVBtns = @[cboxDrawHand, cBoxSounds, cboxStartFullScr, cboxRecordImages, cBoxShowFPS, cboxAltSG];
 	sndTxts = @[txtBump, txtGaol, txtGood, txtBad, txtAmbience];
 	editBtns = @[editBump, editGoal, editGood, editBad, editAmbience];
 	playBtns = @[playBump, playGoal, playGood, playBad, playAmbience];
 	sndContrls = @[sndPMVal, sndPMValSld, sndPVolSld, sndPMSetMinBtn, sndPMSetMaxBtn];
 	wrldControls = @[dgtStartX, dgtStartY, dgtGoalX, dgtGoalY,
 		stpStartX, stpStartY, stpGoalX, stpGoalY, dgtManObsLS, cwTracking,
-		intrctPnlBtn, cboxDrawHand];
+		intrctPnlBtn, cboxDrawHand, cboxAltSG];
 	NSInteger bit = 0, tag;
 	SETUP_CNTRL(FDBTCol, NSColorWell, colWels, col_to_ulong, *, ColVars, chooseColorWell)
 	SETUP_CNTRL(FDBTInt, NSTextField, ivDgts, , *, IntVars, changeIntValue)

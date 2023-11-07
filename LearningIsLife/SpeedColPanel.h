@@ -16,6 +16,7 @@ extern NSInteger nSpeedColors;
 extern SpeedColor *speedColors;
 extern int FDBTSpdCol;
 extern NSData *spdColUD, *spdColFD;
+extern float MaxPTCLSpeedLowLimit, MaxPTCLSpeedSensitivity;
 extern BOOL spdcol_is_equal_to(NSData *data);
 extern simd_float4 grade_to_hsb(float grade);
 extern NSData *data_from_spdCols(void);
@@ -33,6 +34,7 @@ extern void spdCols_from_data(NSData *data);
 	<NSWindowDelegate, GradientBarDelegate> {
 	IBOutlet GradientBar *gradientBar;
 	IBOutlet NSButton *rvtUDBtn, *rvtFDBtn;
+	IBOutlet NSTextField *lowLmtMxSpdDgt, *snstvMxSpdDgt;
 }
 - (void)setupControls;
 + (void)initParamDefaults;

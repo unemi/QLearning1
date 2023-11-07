@@ -119,7 +119,7 @@ static NSColor *middle_color(NSColor *col1, NSColor *col2) {
 	CGFloat stepsPerSec, expectedGoals, expectedSteps;
 	NSTimer *pointerTrackTimer, *cursorHidingTimer;
 	NSMenuItem *dispAdjustItem;
-	BOOL winScrChanged;
+	BOOL winScrChanged, flipSG;
 }
 - (NSString *)windowNibName { return @"MainWindow"; }
 - (BOOL)recShownInMain {
@@ -200,6 +200,11 @@ static void organize_work_mems(void) {
 	for (ixy.x = 0; ixy.x < nGridW; ixy.x ++)
 		if (ObsHeight[ij_to_idx(ixy)] == 0 && k < nActiveGrids) FieldP[k ++] = ixy;
 }
+static int random_post(int x, int max) {
+	if (x < max / 2) return random() % (x + 1);
+	else if (x >= max) return max - 1;
+	else return max - (random() % (max - x)) - 1;
+}
 -(void)setupObstacles {
 	BOOL gridChanged = nGridW != newGridW || nGridH != newGridH,
 		dimChanged = gridChanged || tileSize.y != newTileH,
@@ -231,6 +236,18 @@ static void organize_work_mems(void) {
 		case ObsExternal:
 		StartP = simd_min((simd_int2){newStartX, newStartY}, (simd_int2){nGridW, nGridH} - 1);
 		GoalP = simd_min((simd_int2){newGoalX, newGoalY}, (simd_int2){nGridW, nGridH} - 1);
+		if (ALTERNATE_SG) {
+			if (flipSG) { int x = StartP.x; StartP.x = GoalP.x; GoalP.x = x; }
+			if (random() & 1) {
+				StartP.y = nGridH - 1 - StartP.y; 
+				GoalP.y = nGridH - 1 - GoalP.y; 
+			}
+			StartP.x = random_post(StartP.x, nGridW);
+			StartP.y = random_post(StartP.y, nGridH);
+			GoalP.x = random_post(GoalP.x, nGridW);
+			GoalP.y = random_post(GoalP.y, nGridH);
+			flipSG = !flipSG;
+		}
 		nObstacles = 0;
 		ObsP = realloc(ObsP, sizeof(simd_int2) * nGrids);
 		organize_work_mems();

@@ -734,7 +734,8 @@ simd_float2 particle_size(Particle * _Nonnull p) {
 	in_main_thread(^{ self->vxBuf = buf; }); 
 	if (isARM) vxBufIndex = 1 - vxBufIndex;
 	else [vxBuf didModifyRange:(NSRange){0, vxBuf.length}];
-	maxSpeed = fmaxf(mxSpd[0], tileSize.x * .005);
+	float mxSpdToBe = fmaxf(mxSpd[0], tileSize.x * MaxPTCLSpeedLowLimit / 60.);
+	maxSpeed += (mxSpdToBe - maxSpeed) * MaxPTCLSpeedSensitivity / 100.;
 	for (int i = 1; i < NTHREADS; i ++) if (maxSpeed < mxSpd[i]) maxSpeed = mxSpd[i];
 }
 #ifdef USE_FORCE_GRID
@@ -1088,8 +1089,9 @@ static void draw_equtex(RCE rce, id<MTLTexture> tex, simd_int2 tileP, int nTiles
 				[rce setRenderPipelineState:texPSO];
 				[rce setFragmentTexture:handTex atIndex:IndexTexture];
 				simd_float3 *dp = info.contents;
-				fill_rect(rce, (NSRect){dp[nPoints - 1].x - tileSize.x / 2.,
-					dp[nPoints - 1].y - tileSize.y, tileSize.x, tileSize.y});
+				for (NSInteger i = 0; i < nPoints; i ++)
+					fill_rect(rce, (NSRect){dp[i].x - tileSize.x / 2.,
+						dp[i].y - tileSize.y, tileSize.x, tileSize.y});
 			}
 		}
 	} else if (symCol.a > 0.) {

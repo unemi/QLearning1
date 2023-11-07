@@ -26,10 +26,12 @@ NSString *keySpeedColors = @"speedColors";
 NSInteger nSpeedColors = 3;
 SpeedColor *speedColors = (SpeedColor[3]){
 	{0., {.667, 1., .667, .1}},
-	{.6, {.167, 1., .667, .15}},
-	{1., {0., 1., .667, .2}}
+	{.6, {.167, 1., .667, .1}},
+	{1., {0., 1., .667, .1}}
 };
 NSData *spdColUD, *spdColFD;
+float MaxPTCLSpeedLowLimit = .3;	// unit = grid/sec
+float MaxPTCLSpeedSensitivity = .1;	// unit %/step
 int FDBTSpdCol = 0;
 
 BOOL spdcol_is_equal_to(NSData *data) {
@@ -390,19 +392,23 @@ static void fill_pixels(unsigned char *buf, NSInteger bpr, NSInteger pxW, NSInte
 	NSData *lastSpdCols;
 }
 @end
+static FloatVarInfo *fInfo;
 @implementation SpeedColPanel
 - (NSString *)windowNibName { return @"SpeedColPanel"; }
 - (void)windowDidLoad {
 	add_observer(keySpeedColors, ^(NSNotification * _Nonnull note) {
-		NSData *data = note.userInfo[keyOldValue];
-		NSLog(@"%@ %ld", keySpeedColors, data.length);
+//		NSData *data = note.userInfo[keyOldValue];
+//		NSLog(@"%@ %ld", keySpeedColors, data.length);
 		[NSNotificationCenter.defaultCenter postNotificationName:@"colorParticles" object:NSApp];
 	});
 }
+#define CHK_RVRT(dd) *fInfo[0].v != fInfo[0].dd || *fInfo[1].v != fInfo[1].dd
 - (void)setupControls {
 	[gradientBar setupColors:speedColors count:nSpeedColors];
-	rvtFDBtn.enabled = !spdcol_is_equal_to(spdColFD);
-	rvtUDBtn.enabled = !spdcol_is_equal_to(spdColUD);
+	lowLmtMxSpdDgt.floatValue = MaxPTCLSpeedLowLimit;
+	snstvMxSpdDgt.floatValue = MaxPTCLSpeedSensitivity;
+	rvtFDBtn.enabled = !spdcol_is_equal_to(spdColFD) || CHK_RVRT(fd);
+	rvtUDBtn.enabled = !spdcol_is_equal_to(spdColUD) || CHK_RVRT(ud);
 }
 NSData *data_from_spdCols(void) {
 	return [NSData dataWithBytes:speedColors length:sizeof(SpeedColor) * nSpeedColors];
@@ -420,16 +426,18 @@ void spdCols_from_data(NSData *data) {
 		spdCols_from_data(spdColFD);
 		spdColUD = spdColFD;
 	} else spdCols_from_data(spdColUD);
+	for (fInfo = FloatVars; fInfo->key != nil; fInfo ++)
+		if (fInfo->v == &MaxPTCLSpeedLowLimit) break;
 }
 + (NSInteger)initParams:(NSInteger)fdBit fdBits:(UInt64 *)fdB {
 	FDBTSpdCol = (int)fdBit;
 	if (!spdcol_is_equal_to(spdColFD)) *fdB |= 1 << fdBit;
 	return fdBit + 1;
 }
-- (void)checkModification {
+- (void)checkModification:(BOOL)colChanged {
 	BOOL isFD = spdcol_is_equal_to(spdColFD), isUD = spdcol_is_equal_to(spdColUD);
-	rvtFDBtn.enabled = !isFD;
-	rvtUDBtn.enabled = !isUD;
+	rvtFDBtn.enabled = !isFD || CHK_RVRT(fd);
+	rvtUDBtn.enabled = !isUD || CHK_RVRT(ud);
 	if (ctrlPnl == nil) ctrlPnl = (ControlPanel *)self.window.sheetParent.delegate;
 	[ctrlPnl checkFDBits:FDBTSpdCol fd:isFD ud:isUD];
 	[NSNotificationCenter.defaultCenter postNotificationName:@"colorParticles" object:NSApp];
@@ -438,14 +446,33 @@ void spdCols_from_data(NSData *data) {
 	NSData *data = [gradientBar dataOfValues];
 	if (spdcol_is_equal_to(data)) return;
 	spdCols_from_data(data);
-	[self checkModification];
+	[self checkModification:YES];
+}
+- (BOOL)changeFVarDgt:(NSTextField *)dgt index:(NSInteger)idx {
+	float orgValue = *fInfo[idx].v, newValue = dgt.floatValue;
+	if (orgValue == newValue) return NO;
+	[undoManager registerUndoWithTarget:dgt handler:^(id _Nonnull target) {
+		dgt.floatValue = orgValue;
+		[dgt sendAction:dgt.action to:dgt.target];
+	}];
+	*fInfo[idx].v = newValue;
+	return YES;
+}
+- (IBAction)changeMxSpdLowLimit:(id)sender {
+	if ([self changeFVarDgt:lowLmtMxSpdDgt index:0])
+		[self checkModification:YES];
+}
+- (IBAction)changeMxSpdSensitivity:(id)sender {
+	if ([self changeFVarDgt:snstvMxSpdDgt index:1])
+		[self checkModification:NO];;
 }
 - (IBAction)sheetOk:(id)sender {
 	[gradientBar hideColorPanelIfOpened];
 	lastSpdCols = data_from_spdCols();
 	[super sheetOk:sender];
 }
-- (void)setSpdColsFromData:(NSData *)data colWels:(NSArray<KeyColorWell *> *)colWels {
+- (BOOL)setSpdColsFromData:(NSData *)data colWels:(NSArray<KeyColorWell *> *)colWels {
+	if (spdcol_is_equal_to(data)) return NO;
 	NSData *orgData = data_from_spdCols();
 	NSArray<KeyColorWell *> *orgKeyColWels = gradientBar.colorWells;
 	[undoManager registerUndoWithTarget:self handler:^(id _Nonnull target) {
@@ -454,13 +481,25 @@ void spdCols_from_data(NSData *data) {
 	spdCols_from_data(data);
 	if (colWels == nil) [gradientBar setupColors:speedColors count:nSpeedColors];
 	else [gradientBar resetupColorsWells:speedColors count:nSpeedColors colWels:colWels];
-	[self checkModification];
+	return YES;
 }
 - (IBAction)revertToUserDefaults:(id)sender {
-	[self setSpdColsFromData:spdColUD colWels:nil];
+	BOOL modified = NO, ptclCol = NO;
+	lowLmtMxSpdDgt.floatValue = fInfo[0].ud;
+	if ([self changeFVarDgt:lowLmtMxSpdDgt index:0]) ptclCol = modified = YES;
+	snstvMxSpdDgt.floatValue = fInfo[1].ud;
+	if ([self changeFVarDgt:snstvMxSpdDgt index:1]) modified = YES;
+	if ([self setSpdColsFromData:spdColUD colWels:nil]) ptclCol = modified = YES;
+	if (modified) [self checkModification:ptclCol];
 }
 - (IBAction)revertToFactoryDefaults:(id)sender {
-	[self setSpdColsFromData:spdColFD colWels:nil];
+	BOOL modified = NO, ptclCol = NO;
+	lowLmtMxSpdDgt.floatValue = fInfo[0].fd;
+	if ([self changeFVarDgt:lowLmtMxSpdDgt index:0]) ptclCol = modified = YES;
+	snstvMxSpdDgt.floatValue = fInfo[1].fd;
+	if ([self changeFVarDgt:snstvMxSpdDgt index:1]) modified = YES;
+	if ([self setSpdColsFromData:spdColFD colWels:nil]) ptclCol = modified = YES;
+	if (modified) [self checkModification:ptclCol];
 }
 //
 - (NSUndoManager *)windowWillReturnUndoManager:(NSWindow *)window {

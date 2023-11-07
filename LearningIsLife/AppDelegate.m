@@ -74,6 +74,8 @@ FloatVarInfo FloatVars[] = {
 	{ @"obstacleMaxHeight", 0, &obsMaxH },
 	{ @"obstacleThreshold", 0, &obsThrsh },
 	{ @"obstacleMaxHandSpeed", 0, &obsMaxSpeed },
+	{ @"maxPTCLSpeedLowLimit", 0, &MaxPTCLSpeedLowLimit },
+	{ @"maxPTCLSpeedSensitivity", 0, &MaxPTCLSpeedSensitivity },
 	{ nil }
 };
 ColVarInfo ColVars[] = {
@@ -98,6 +100,7 @@ BoolVarInfo BoolVars[] = {
 	{ @"startWithFullScreenMode", 0, NO },
 	{ @"recordFinalImage", ShouldPostNotification, NO },
 	{ @"showFPS", ShouldPostNotification, YES },
+	{ @"alternateStartAndGoal", 0, YES },
 	{ @"saveAsUserDefaultsWhenTerminate", 0, YES },
 	{ nil }
 };
