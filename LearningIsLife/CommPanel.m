@@ -19,7 +19,7 @@ static void comm_setup_defaults(void) {
 	NSUserDefaults *ud = NSUserDefaults.standardUserDefaults;
 	NSString *str; NSNumber *num;
 	if ((str = [ud objectForKey:keyDstAddress]) != nil)
-		theComm.destinationAddress = str;
+		if (str.length > 6) theComm.destinationAddress = str;
 	if ((num = [ud objectForKey:keyDstPort]) != nil)
 		theComm.destinationPort = num.intValue;
 }

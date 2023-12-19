@@ -70,6 +70,8 @@ FloatVarInfo FloatVars[] = {
 	{ @"handMaxSpeed", 0, &HandMaxSpeed },
 	{ @"handMinEffect", 0, &HandMinEffect },
 	{ @"handMaxEffect", 0, &HandMaxEffect },
+	{ @"confidenceLow", 0, &ConfidenceLow },
+	{ @"confidenceHigh", 0, &ConfidenceHigh },
 	{ @"obstacleGrowth", 0, &obsGrow },
 	{ @"obstacleMaxHeight", 0, &obsMaxH },
 	{ @"obstacleThreshold", 0, &obsThrsh },

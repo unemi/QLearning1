@@ -10,10 +10,12 @@
 
 NS_ASSUME_NONNULL_BEGIN
 extern float HandMinSpeed, HandMaxSpeed, HandMinEffect, HandMaxEffect,
+	ConfidenceLow, ConfidenceHigh,
 	obsGrow, obsMaxH, obsThrsh, obsMaxSpeed;
 extern void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float speed);
 @interface InteractionPanel : NSWindowController <NSWindowDelegate> {
 	IBOutlet NSTextField *minSpdDgt, *maxSpdDgt, *minEfcDgt, *maxEfcDgt,
+		*cnfdncLowDgt, *cnfdncHighDgt,
 		*obsGrwDgt, *obsMaxHDgt, *obsThrDgt, *obsMxSpdDgt;
 	IBOutlet NSButton *svAsDfltBtn;
 }

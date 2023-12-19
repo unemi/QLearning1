@@ -86,7 +86,7 @@ static NSString *address_string(in_addr_t addr) {
 		if (n < 0) @throw @"Failed to send data";
 		if (sndHandler != nil) sndHandler(n);
 		return n;
-	} @catch (NSString *msg) { unix_error_msg(msg); }
+	} @catch (NSString *msg) { in_main_thread( ^{ unix_error_msg(msg); }); }
 	return 0;
 }
 - (void)receiverThread:(id<CommDelegate>)delegate {
@@ -157,10 +157,16 @@ static NSString *address_string(in_addr_t addr) {
 			myAddr = ((struct sockaddr_in *)&ifReq.ifr_ifru.ifru_addr)->sin_addr.s_addr;
 			break;
 		}
-		if (myAddr == 0) @throw @"No IP addresses";
-		if (ioctl(soc, SIOCGIFNETMASK, &ifReq) < 0) @throw @"Get my netmask";
-		in_addr_t mask = ((struct sockaddr_in *)&ifReq.ifr_ifru.ifru_addr)->sin_addr.s_addr;
-		myBcAddr = myAddr | ~ mask;
+//		if (myAddr == 0) @throw @"No IP addresses";
+		if (myAddr != 0) {
+			if (ioctl(soc, SIOCGIFNETMASK, &ifReq) < 0) @throw @"Get my netmask";
+			in_addr_t mask = ((struct sockaddr_in *)&ifReq.ifr_ifru.ifru_addr)
+				->sin_addr.s_addr;
+			myBcAddr = myAddr | ~ mask;
+		} else {
+			myAddr = inet_addr("127.0.0.1");
+			myBcAddr = inet_addr("127.255.255.255");
+		}
 	} @catch (NSString *msg) {
 		if (soc >= 0) close(soc);
 		unix_error_msg(msg);

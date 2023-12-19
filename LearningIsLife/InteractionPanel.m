@@ -11,15 +11,20 @@
 #import "ControlPanel.h"
 
 float HandMinSpeed = 2, HandMaxSpeed = 4, HandMinEffect = 1, HandMaxEffect = 5,
+	ConfidenceLow = 75, ConfidenceHigh = 90,
 	obsGrow = 20, obsMaxH = 300, obsThrsh = 20, obsMaxSpeed = 1;
 int FDBTInteract = 0;
 #define NIntrctParams 8
 FloatVarInfo *fVarInfo;
 void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float speed) {
 	if (speed < HandMinSpeed || speed > HandMaxSpeed) return;
+	float confdnc = simd_length(qvalues->xy - qvalues->zw);
+	if (confdnc > ConfidenceHigh * .01) return;
 	float effect = (speed - HandMinSpeed) / (HandMaxSpeed - HandMinSpeed)
 		* (HandMaxEffect - HandMinEffect) + HandMinEffect;
 	simd_float2 e = dp * (effect * .01 / len);
+	if (confdnc > ConfidenceLow * .01)
+		e *= (ConfidenceHigh -  confdnc * 100.) / (ConfidenceHigh - ConfidenceLow);
 	simd_float4 a = (simd_float4){ e.y, e.x, -e.y, -e.x };	// up, right, down, left
 	for (NSInteger i = 0; i < 4; i ++) {
 		if (a[i] > 0) (*qvalues)[i] += (1. -  (*qvalues)[i]) * a[i];
@@ -43,6 +48,7 @@ void affect_hand_motion(simd_float4 *qvalues, simd_float2 dp, float len, float s
 	if (self.window == nil) return;
 	undoManager = NSUndoManager.new;
     digits = @[minSpdDgt, maxSpdDgt, minEfcDgt, maxEfcDgt,
+		cnfdncLowDgt, cnfdncHighDgt,
 		obsGrwDgt, obsMaxHDgt, obsThrDgt, obsMxSpdDgt];
     for (NSInteger i = 0; i < digits.count; i ++) {
 		digits[i].target = self;
